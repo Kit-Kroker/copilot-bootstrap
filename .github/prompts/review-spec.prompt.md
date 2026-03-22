@@ -1,7 +1,7 @@
 ---
 name: review-spec
 description: Review the generated spec for consistency — checks that resource names, permissions, events, and state machines all align across the four spec files.
-agent: ask
+agent: Spec
 tools: ['read', 'search/codebase']
 ---
 
