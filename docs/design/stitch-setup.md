@@ -1,6 +1,6 @@
 # Google Stitch — Setup Guide
 
-Google Stitch generates high-fidelity HTML + TailwindCSS screens from natural language prompts via the `@google/stitch-sdk` MCP integration.
+Google Stitch generates high-fidelity HTML + TailwindCSS screens from natural language prompts via its MCP HTTP endpoint.
 
 ## How Stitch Fits in the Workflow
 
@@ -16,19 +16,11 @@ The Designer agent calls Stitch tools after `flows.md` is complete. Generated sc
 
 1. Go to [stitch.withgoogle.com](https://stitch.withgoogle.com) and sign in with your Google account
 2. Open your account settings and generate an API key
-3. Copy the key — you will need it in Step 3
+3. Copy the key — you will need it in Step 2
 
 ---
 
-## Step 2 — Install the SDK
-
-```sh
-npm install @google/stitch-sdk
-```
-
----
-
-## Step 3 — Set the API Key
+## Step 2 — Set the API Key
 
 Add `STITCH_API_KEY` to your environment. Do not commit this value.
 
@@ -51,31 +43,32 @@ export STITCH_API_KEY=your-key-here
 
 ---
 
-## Step 4 — Configure the MCP Server in VS Code
+## Step 3 — MCP Configuration (already included)
 
-The MCP configuration is already included at `.vscode/mcp.json`:
+The MCP server is pre-configured at `.vscode/mcp.json` using the official Stitch HTTP endpoint — no local server or npm install required:
 
 ```json
 {
   "servers": {
     "stitch": {
-      "command": "node",
-      "args": ["scripts/stitch-mcp.js"],
-      "env": {
-        "STITCH_API_KEY": "${env:STITCH_API_KEY}"
+      "url": "https://stitch.googleapis.com/mcp",
+      "type": "http",
+      "headers": {
+        "Accept": "application/json",
+        "X-Goog-Api-Key": "${env:STITCH_API_KEY}"
       }
     }
   }
 }
 ```
 
-`scripts/stitch-mcp.js` starts the `StitchProxy` MCP server using your API key. VS Code reads this file automatically.
+VS Code reads this file automatically. Restart VS Code after setting `STITCH_API_KEY`.
 
 ---
 
-## Step 5 — Verify
+## Step 4 — Verify
 
-Restart VS Code, then open Copilot Chat and type `#`. You should see `stitch` tools in the list:
+Open Copilot Chat and type `#`. You should see `stitch` tools in the list:
 
 | Tool | What it does |
 |------|-------------|
@@ -84,7 +77,7 @@ Restart VS Code, then open Copilot Chat and type `#`. You should see `stitch` to
 | `stitch/get_screen` | Retrieve a generated screen by ID |
 | `stitch/list_projects` | List your Stitch projects |
 
-If the tools do not appear, check the MCP server output in **View → Output → MCP**.
+If the tools do not appear, check: **View → Output → MCP → stitch**
 
 ---
 
@@ -92,11 +85,11 @@ If the tools do not appear, check the MCP server output in **View → Output →
 
 Stitch runs automatically in the Designer agent after flows are complete.
 
-To run it manually via slash command:
+To run it manually:
 
 ```
-/stitch                        Generate all screens from ia.md
-/stitch login screen           Generate or regenerate one specific screen
+/generate-stitch-screens              Generate all screens from ia.md
+/generate-stitch-screens login        Generate or regenerate one specific screen
 ```
 
 ---
@@ -105,37 +98,29 @@ To run it manually via slash command:
 
 | File | Contents |
 |------|----------|
-| `docs/design/screens/{screen-name}.html` | HTML + TailwindCSS screen output |
+| `docs/design/screens/{screen-name}.html` | HTML + TailwindCSS screen |
 | `docs/design/screens/index.md` | Screen inventory with states and notes |
 
-Screens can be:
-- Opened directly in a browser for preview
-- Exported to Figma via [stitch.withgoogle.com](https://stitch.withgoogle.com) for refinement
-- Used directly as implementation reference
+Screens can be opened directly in a browser or exported to Figma via [stitch.withgoogle.com](https://stitch.withgoogle.com).
 
 ---
 
 ## Graceful Fallback
 
-If the MCP server is not configured or the API key is missing, the Designer agent logs a warning in `docs/design/screens/index.md` and continues to the spec phase without blocking. Run `/stitch` later once setup is complete.
+If the MCP server is not reachable or the API key is missing, the Designer agent logs a note in `docs/design/screens/index.md` and continues without blocking. Run `/generate-stitch-screens` later once setup is complete.
 
 ---
 
 ## Troubleshooting
 
 **Stitch tools not showing in VS Code**
-- Confirm `STITCH_API_KEY` is set in your environment: `echo $STITCH_API_KEY`
-- Check the MCP server log: **View → Output → MCP → stitch**
-- Run the script manually to see errors: `STITCH_API_KEY=your-key node scripts/stitch-mcp.js`
-- Restart VS Code after changing `.vscode/mcp.json`
+- Confirm `STITCH_API_KEY` is set: `echo $STITCH_API_KEY`
+- Restart VS Code after setting the env var
+- Check: **View → Output → MCP → stitch**
 
-**`Error: Cannot find module '@google/stitch-sdk'`**
-- Run `npm install @google/stitch-sdk` in the project root
-
-**`StitchProxy is not a constructor`**
-- Update the SDK: `npm install @google/stitch-sdk@latest`
-- Check the SDK exports match — the API may have changed since this guide was written; refer to [github.com/google-labs-code/stitch-sdk](https://github.com/google-labs-code/stitch-sdk)
+**401 Unauthorized**
+- The API key is invalid or expired — generate a new one at [stitch.withgoogle.com](https://stitch.withgoogle.com)
 
 **Generation limit reached**
-- Use `/stitch {screen-name}` to regenerate only specific screens
+- Use `/generate-stitch-screens {screen-name}` to regenerate only specific screens
 - Check your usage at [stitch.withgoogle.com](https://stitch.withgoogle.com)
