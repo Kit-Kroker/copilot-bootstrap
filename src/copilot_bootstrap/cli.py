@@ -7,6 +7,7 @@ PACKAGE_DIR = Path(__file__).parent
 
 COMMANDS = {
     "init": "init.sh",
+    "sync": "sync.sh",
     "next": "next.sh",
     "step": "step.sh",
     "ask": "ask.sh",

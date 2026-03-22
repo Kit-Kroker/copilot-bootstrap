@@ -17,3 +17,5 @@ packages = ["src/copilot_bootstrap"]
 [tool.hatch.build.targets.wheel.force-include]
 "scripts" = "copilot_bootstrap/scripts"
 "docs" = "copilot_bootstrap/docs"
+".github" = "copilot_bootstrap/.github"
+".vscode" = "copilot_bootstrap/.vscode"

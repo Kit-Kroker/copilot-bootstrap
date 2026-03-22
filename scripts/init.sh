@@ -23,8 +23,13 @@ fi
 
 mkdir -p .project/state docs/workflow docs/analysis docs/design docs/domain docs/spec scripts
 
-if [ -n "$COPILOT_BOOTSTRAP_HOME" ] && [ -d "$COPILOT_BOOTSTRAP_HOME/docs" ]; then
-  cp -rn "$COPILOT_BOOTSTRAP_HOME/docs/." docs/
+if [ -n "$COPILOT_BOOTSTRAP_HOME" ]; then
+  [ -d "$COPILOT_BOOTSTRAP_HOME/docs" ] && cp -r --update=none "$COPILOT_BOOTSTRAP_HOME/docs/." docs/ 2>/dev/null || cp -rn "$COPILOT_BOOTSTRAP_HOME/docs/." docs/
+  [ -d "$COPILOT_BOOTSTRAP_HOME/.github" ] && cp -r --update=none "$COPILOT_BOOTSTRAP_HOME/.github/." .github/ 2>/dev/null || cp -rn "$COPILOT_BOOTSTRAP_HOME/.github/." .github/
+  if [ -f "$COPILOT_BOOTSTRAP_HOME/.vscode/mcp.json" ]; then
+    mkdir -p .vscode
+    cp --update=none "$COPILOT_BOOTSTRAP_HOME/.vscode/mcp.json" .vscode/mcp.json 2>/dev/null || cp -n "$COPILOT_BOOTSTRAP_HOME/.vscode/mcp.json" .vscode/mcp.json
+  fi
 fi
 
 cat > "$WORKFLOW_FILE" <<EOF
