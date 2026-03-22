@@ -16,36 +16,45 @@ The Designer agent calls Stitch tools after `flows.md` is complete. Generated sc
 
 1. Go to [stitch.withgoogle.com](https://stitch.withgoogle.com) and sign in with your Google account
 2. Open your account settings and generate an API key
-3. Copy the key — you will need it in Step 2
+3. Copy the key — you will need it in Step 3
 
 ---
 
-## Step 2 — Set the API Key
+## Step 2 — Create an OAuth Client ID
 
-Add `STITCH_API_KEY` to your environment. Do not commit this value.
+VS Code requires a Google OAuth client ID to authenticate with the Stitch MCP endpoint.
 
-**Option A — `.env` file** (add to `.gitignore`):
+1. Go to [console.cloud.google.com](https://console.cloud.google.com) → **APIs & Services → Credentials**
+2. Click **Create Credentials → OAuth 2.0 Client ID**
+3. Application type: **Desktop app**
+4. Name it (e.g. "Stitch MCP") and click **Create**
+5. Copy the **Client ID**
+
+---
+
+## Step 3 — Set Environment Variables
+
+Add both values to your environment. Do not commit these.
+
+**Shell profile** (`~/.bashrc` / `~/.zshrc`):
 ```sh
-echo "STITCH_API_KEY=your-key-here" >> .env
+export STITCH_API_KEY=your-api-key-here
+export STITCH_OAUTH_CLIENT_ID=your-client-id-here
 ```
 
-**Option B — shell profile** (`~/.bashrc` / `~/.zshrc`):
-```sh
-export STITCH_API_KEY=your-key-here
-```
-
-**Option C — VS Code `settings.json`** (user settings):
+Or **VS Code `settings.json`** (user settings):
 ```json
 "terminal.integrated.env.linux": {
-  "STITCH_API_KEY": "your-key-here"
+  "STITCH_API_KEY": "your-api-key-here",
+  "STITCH_OAUTH_CLIENT_ID": "your-client-id-here"
 }
 ```
 
 ---
 
-## Step 3 — MCP Configuration (already included)
+## Step 4 — MCP Configuration (already included)
 
-The MCP server is pre-configured at `.vscode/mcp.json` using the official Stitch HTTP endpoint — no local server or npm install required:
+The MCP server is pre-configured at `.vscode/mcp.json`:
 
 ```json
 {
@@ -56,13 +65,17 @@ The MCP server is pre-configured at `.vscode/mcp.json` using the official Stitch
       "headers": {
         "Accept": "application/json",
         "X-Goog-Api-Key": "${env:STITCH_API_KEY}"
+      },
+      "auth": {
+        "type": "oauth",
+        "clientId": "${env:STITCH_OAUTH_CLIENT_ID}"
       }
     }
   }
 }
 ```
 
-VS Code reads this file automatically. Restart VS Code after setting `STITCH_API_KEY`.
+VS Code reads this file automatically. Restart VS Code after setting the env vars.
 
 ---
 
