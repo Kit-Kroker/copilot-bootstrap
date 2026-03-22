@@ -1,7 +1,8 @@
 ---
 name: status
 description: Show the current bootstrap workflow state — active step, status, collected answers, and generated files.
-agent: Bootstrap
+agent: agent
+tools: ['read']
 ---
 
 Read `.project/state/workflow.json` and `.project/state/answers.json`.
