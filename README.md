@@ -10,19 +10,37 @@ uv tool install copilot-bootstrap --from git+https://github.com/Kit-Kroker/copil
 
 **Requirements:** `uv`, `jq`
 
-## Usage
-
-In a new project directory:
+## Quick Start
 
 ```sh
-copilot-bootstrap init     # initialise workflow state
+mkdir my-project && cd my-project
+copilot-bootstrap init
+code .
+```
+
+`init` copies all framework files (`.github/`, `docs/workflow/`, `.vscode/`) into the current directory and creates the initial workflow state. Then open in VS Code and use the **Bootstrap** Copilot agent to drive the workflow step by step.
+
+## Commands
+
+```sh
+copilot-bootstrap init     # set up a new project (copies agents, prompts, skills)
+copilot-bootstrap sync     # update framework files from the latest package version
 copilot-bootstrap step     # show current step
 copilot-bootstrap next     # advance to the next step
 copilot-bootstrap ask      # print questions for the current step
 copilot-bootstrap validate # validate state files
 ```
 
-Then open the folder in VS Code and use the **Bootstrap** Copilot agent to drive the workflow step by step.
+## Updating
+
+To get the latest agents, prompts, and skills in an existing project:
+
+```sh
+uv tool install copilot-bootstrap --from git+https://github.com/Kit-Kroker/copilot-bootstrap.git --force
+copilot-bootstrap sync
+```
+
+`sync` overwrites `.github/` and `docs/workflow/` from the updated package. It never touches `.project/state/` or `project.json`.
 
 ## Workflow Steps
 
