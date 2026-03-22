@@ -1,10 +1,11 @@
 {
   "servers": {
     "stitch": {
-      "command": "node",
-      "args": ["scripts/stitch-mcp.js"],
-      "env": {
-        "STITCH_API_KEY": "${env:STITCH_API_KEY}"
+      "url": "https://stitch.googleapis.com/mcp",
+      "type": "http",
+      "headers": {
+        "Accept": "application/json",
+        "X-Goog-Api-Key": "${env:STITCH_API_KEY}"
       }
     }
   }
