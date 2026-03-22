@@ -6,10 +6,6 @@
       "headers": {
         "Accept": "application/json",
         "X-Goog-Api-Key": "${env:STITCH_API_KEY}"
-      },
-      "auth": {
-        "type": "oauth",
-        "clientId": "${env:STITCH_OAUTH_CLIENT_ID}"
       }
     }
   }
