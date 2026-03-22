@@ -10,6 +10,7 @@ COMMANDS = {
     "sync": "sync.sh",
     "next": "next.sh",
     "step": "step.sh",
+    "redo": "redo.sh",
     "ask": "ask.sh",
     "validate": "validate-state.sh",
 }
