@@ -1,9 +1,13 @@
 ---
 name: Spec
-description: Generates the full implementation specification. Produces api.md, events.md, permissions.md, and state-machines.md under docs/spec/. Called after design artifacts are complete.
+description: Generates the full implementation specification. Produces api.md, events.md, permissions.md, and state-machines.md under docs/spec/. Called after design artifacts are complete. When ADLC is active, hands off to Evaluator instead of Script.
 tools: ['read', 'edit']
 user-invocable: false
 handoffs:
+  - label: "Generate Eval Framework & PoV Plan"
+    agent: evaluator
+    prompt: "Spec is complete and ADLC is active. Read docs/spec/, docs/analysis/kpis.md, docs/analysis/human-agent-map.md, and docs/domain/agent-pattern.md then generate the evaluation framework and PoV plan."
+    send: false
   - label: "Generate Scripts & Dev Skills"
     agent: script
     prompt: "Spec is complete. Read docs/spec/, docs/domain/, and .project/state/answers.json then generate dev skill stubs under .github/skills/ and operational scripts under scripts/."
@@ -23,6 +27,7 @@ Read all of these (stop and report if any required file is missing):
 - `docs/domain/workflows.md` ← required
 - `docs/design/ia.md` (if present)
 - `docs/design/flows.md` (if present)
+- `project.json` ← check `adlc` flag
 
 Generate all four files in one pass. Use consistent resource names, IDs, and terminology across all files.
 
@@ -130,8 +135,14 @@ Generate all four files in one pass. Use consistent resource names, IDs, and ter
 
 ## After All Four Files Are Generated
 
-- Update `.project/state/workflow.json`: `{ "step": "scripts", "status": "in_progress" }`
-- Tell the user: "Spec is complete. Click **Generate Scripts & Dev Skills** to finish."
+Read `project.json` to check the `adlc` flag.
+
+- If `adlc = true`:
+  - Update `.project/state/workflow.json`: `{ "step": "eval_framework", "status": "in_progress" }`
+  - Tell the user: "Spec is complete. Click **Generate Eval Framework & PoV Plan** to continue with ADLC."
+- If `adlc = false`:
+  - Update `.project/state/workflow.json`: `{ "step": "scripts", "status": "in_progress" }`
+  - Tell the user: "Spec is complete. Click **Generate Scripts & Dev Skills** to finish."
 
 ## Rules
 

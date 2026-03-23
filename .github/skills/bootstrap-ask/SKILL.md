@@ -15,10 +15,20 @@ Ask the user only the questions that are missing for the current step.
 
 ### idea
 - What is your project idea? Describe it in a few sentences.
+- What specific work, decision, or process is currently manual, slow, or error-prone?
+- Why is a human doing this today — what would need to be true for a machine to do it reliably?
+
+Save the last two answers under `pain_points` in answers.json alongside `idea`.
 
 ### project_info
 - What is the project name?
-- What type of project is it? (web app / mobile app / API / CLI / other)
+- What type of project is it? Valid types:
+  - `web-app` — traditional UI-driven application
+  - `mobile` — native or hybrid mobile application
+  - `api` — headless API service or backend
+  - `cli` — command-line tool
+  - `agent` — single LLM-driven agent with tool use
+  - `ai-system` — multi-agent or LLM-core product
 - What domain does it belong to? (for example: healthcare, finance, education, logistics)
 
 ### users
@@ -40,6 +50,53 @@ Ask the user only the questions that are missing for the current step.
   - saas: multi-tenant, subscriptions, external integrations
   - enterprise: large org, RBAC, compliance, many integrations
 
+If `type` is `agent` or `ai-system`, also ask:
+- What is the autonomy level of this agent?
+  - `reactive` — responds to requests, no background action
+  - `assistive` — takes actions on user request within a defined scope
+  - `autonomous` — initiates tasks, makes decisions, acts without per-request approval
+
+Save autonomy level to `answers.json → autonomy_level`. Also update `project.json → autonomy_level`.
+
+When `type` is `agent` or `ai-system`, set `project.json → adlc` to `true`. This activates the ADLC extended workflow after the standard bootstrap completes.
+
+### constraints
+*(Only active when `adlc = true` in project.json)*
+
+1. Are there regulatory or compliance requirements this agent must satisfy?
+   (e.g. GDPR, HIPAA, SOC2, PCI-DSS, internal audit policies)
+
+2. What is the maximum acceptable error rate for this agent's decisions?
+   (e.g. "less than 2% of ticket classifications wrong")
+
+3. List the actions this agent must NEVER take without explicit human approval.
+   (e.g. "never send an email to a customer", "never delete records", "never escalate to a manager")
+
+4. What is the acceptable latency for a response? (e.g. under 3 seconds for UI-facing, under 30 seconds for async)
+
+5. Is there an existing data source this agent will read from? What is its quality and governance status?
+
+Save to `answers.json → constraints`.
+
+### kpis
+*(Only active when `adlc = true` in project.json)*
+
+1. What is the primary business metric this agent will improve?
+   (e.g. "reduce average handle time from 8 minutes to 3 minutes")
+
+2. What does success look like after 30 days in production?
+   (quantified, measurable)
+
+3. What is the minimum accuracy threshold below which the agent should not be used?
+   (e.g. "must classify requests correctly at least 90% of the time")
+
+4. What would cause the agent to be rolled back or disabled?
+   (your kill-switch criteria)
+
+Save to `answers.json → kpis`.
+
+## Saving Answers
+
 After collecting answers, save them to `.project/state/answers.json` under the step name key.
 
 Example:
@@ -47,9 +104,13 @@ Example:
 ```json
 {
   "idea": "A helpdesk system for managing customer support tickets",
+  "pain_points": {
+    "manual_process": "Triaging tickets is manual — agents spend 3 minutes per ticket reading and classifying",
+    "why_human": "Classification requires reading free-text descriptions; a human does it because there was no ML model in place"
+  },
   "project_info": {
     "name": "HelpDesk Pro",
-    "type": "web app",
+    "type": "agent",
     "domain": "customer support"
   }
 }

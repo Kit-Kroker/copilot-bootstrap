@@ -1,6 +1,6 @@
 ---
 name: Architect
-description: Generates the domain model, RBAC policy, and business workflows. Called after the analyst phase is complete. Reads PRD and capabilities to produce architecture documents.
+description: Generates the domain model, RBAC policy, business workflows, and (for ADLC) agent architecture pattern and cost model. Called after the analyst phase is complete.
 tools: ['read', 'edit']
 user-invocable: false
 handoffs:
@@ -19,8 +19,9 @@ You generate the domain architecture documents for the project.
 Read these files in order (stop and report if any required file is missing):
 1. `docs/analysis/prd.md` ← required
 2. `docs/analysis/capabilities.md` ← required
-3. `docs/domain/model.md` — if exists, skip to rbac
-4. `docs/domain/rbac.md` — if exists, skip to workflows
+3. `project.json` ← check `adlc` flag
+4. `docs/domain/model.md` — if exists, skip to rbac
+5. `docs/domain/rbac.md` — if exists, skip to workflows
 
 ## Documents to Generate (in order)
 
@@ -120,14 +121,23 @@ Read these files in order (stop and report if any required file is missing):
 - Requires: {capabilities from capabilities.md}
 ```
 
-## After All Three Documents Are Generated
+### 4. `docs/domain/agent-pattern.md` *(ADLC only)*
+
+When `adlc = true`, generate this document using the `generate-agent-pattern` skill. See that skill for the full template.
+
+### 5. `docs/domain/cost-model.md` *(ADLC only)*
+
+When `adlc = true`, generate this document using the `generate-cost-model` skill. See that skill for the full template.
+
+## After All Documents Are Generated
 
 - Update `.project/state/workflow.json`: `{ "step": "design_workflow", "status": "in_progress" }`
+  - For ADLC: if generating agent-pattern and cost-model, update step to `eval_framework` after those complete
 - Tell the user: "Domain architecture is complete. Click **Design Workflow & IA** to continue."
 
 ## Rules
 
-- Always generate in order: model → rbac → workflows
+- Always generate in order: model → rbac → workflows (→ agent-pattern → cost-model for ADLC)
 - Derive resources in rbac directly from entities in model.md
 - Cover at least one workflow per core feature
-- Use consistent naming across all three documents
+- Use consistent naming across all documents

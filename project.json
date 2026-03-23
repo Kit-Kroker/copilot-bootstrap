@@ -4,5 +4,7 @@
   "domain": "",
   "stage": "bootstrap",
   "workflow": "bootstrap",
-  "step": "idea"
+  "step": "idea",
+  "autonomy_level": "",
+  "adlc": false
 }
