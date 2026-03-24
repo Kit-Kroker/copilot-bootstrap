@@ -23,6 +23,14 @@ Read these files (stop and report if any required file is missing):
 
 Extract the codebase path from `answers.json → codebase_setup.path`. Verify access to the codebase.
 
+## Running the Full Pipeline (Recommended)
+
+To run all 7 steps automatically without manual `next` commands, use the `run-discovery-pipeline` skill.
+This skill executes A1–A7 in sequence, skipping steps whose output already exists, and manages
+`.discovery/pipeline.lock.json` for resumability.
+
+Use individual steps below only when running a specific step in isolation or debugging.
+
 ## Pipeline Steps (run in order)
 
 ### Step 1: `seed_candidates` — Discover Capability Candidates

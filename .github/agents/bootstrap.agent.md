@@ -13,9 +13,9 @@ handoffs:
     agent: analyst
     prompt: "All bootstrap answers are collected. Read .project/state/answers.json and run the full analyst workflow: generate docs/analysis/prd.md then docs/analysis/capabilities.md."
     send: false
-  - label: "Start Codebase Discovery"
+  - label: "Run Discovery Pipeline"
     agent: discovery
-    prompt: "Project info collected with brownfield approach. Read .project/state/answers.json codebase_setup and begin the 7-step capability extraction pipeline. Start with discover-candidates."
+    prompt: "Codebase setup complete. Run the full brownfield discovery pipeline automatically using the run-discovery-pipeline skill. Read .project/state/answers.json codebase_setup first, then execute all 7 steps (A1–A7) in sequence without manual next commands."
     send: false
 ---
 
@@ -153,7 +153,7 @@ Save to answers.json: `{ "kpis": { ... } }`
 ### Brownfield (approach = brownfield)
 - Update `.project/state/workflow.json`: `{ "step": "seed_candidates", "status": "in_progress" }`
 - Update `project.json` step to `seed_candidates`
-- Tell the user: "Codebase setup complete. Click **Start Codebase Discovery** to begin the capability extraction pipeline."
+- Tell the user: "Codebase setup complete. Click **Run Discovery Pipeline** to automatically extract capabilities from the codebase (7 steps, no manual next commands required)."
 
 ## Rules
 

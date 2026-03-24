@@ -14,6 +14,8 @@ COMMANDS = {
     "redo": "redo.sh",
     "ask": "ask.sh",
     "validate": "validate-state.sh",
+    "discover": "discover.sh",
+    "discovery-status": "discovery-status.sh",
 }
 
 
