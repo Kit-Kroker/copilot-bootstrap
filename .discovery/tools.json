@@ -1,0 +1,9 @@
+{
+  "package_manager": "pip",
+  "linter": null,
+  "formatter": null,
+  "test_runner": null,
+  "bundler": null,
+  "container": null,
+  "orchestrator": null
+}

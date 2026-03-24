@@ -1,0 +1,22 @@
+{
+  "total_files": 87,
+  "languages": {
+    "md": 66,
+    "json": 9,
+    "sh": 8,
+    "py": 2,
+    "toml": 1,
+    "gitignore": 1
+  },
+  "configs": [
+    "pyproject.toml",
+    "pyproject.toml"
+  ],
+  "directories": [
+    "src/",
+    "scripts/",
+    "docs/",
+    ".github/"
+  ],
+  "ci": "none"
+}

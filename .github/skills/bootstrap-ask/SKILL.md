@@ -41,22 +41,58 @@ When `approach` is `brownfield`, the workflow switches to `docs/workflow/brownfi
 ### codebase_setup
 *(Only active when `approach = brownfield`)*
 
+Before asking questions, check if `.discovery/context.json` and `.discovery/confidence.json` exist.
+
+**If `.discovery/context.json` exists** (scan was already run):
+
+Read both files. For each question below, apply the confidence threshold:
+- Score ≥ 0.75: use the detected value as the answer — **skip the question entirely**
+- Score 0.50–0.74: show the detected value and ask the user to confirm or correct
+- Score < 0.50 or field missing: ask the question normally
+
+**If `.discovery/context.json` does not exist** (no scan run yet):
+
+Suggest running the scan first: "I can auto-detect the stack before asking questions. Run `copilot-bootstrap scan` first, or I can ask you directly. Which do you prefer?"
+
+If the user prefers to continue without scanning, ask all questions as normal.
+
+---
+
+**Questions (ask only what wasn't auto-detected with high confidence):**
+
 1. What is the path to the existing codebase? (absolute path or relative to workspace root)
+   - Detected from: `project.json → codebase_path` (set during project_info)
 
 2. What is the primary programming language? (e.g. Java, C#, Python, TypeScript, Go)
+   - Detected from: `.discovery/context.json → stack.languages`
+   - Confidence: `.discovery/confidence.json → language`
 
 3. What is the architecture style?
    - `monolith` — single deployable unit
    - `modular-monolith` — single deployment but internally modular
    - `microservices` — multiple independently deployable services
+   - Detected from: `.discovery/context.json → arch.style`
+   - Confidence: `.discovery/confidence.json → architecture`
 
 4. Are database schemas or migrations available? If yes, provide the path or describe how to access them.
+   - Detected DB engine from: `.discovery/context.json → stack.db`
+   - Confidence: `.discovery/confidence.json → db`
+   - This question is always asked for schema/migration paths (not auto-detected)
 
 5. Are there any pre-generated analysis reports to include? (e.g. nDepend exports, JetBrains dependency analysis, SonarQube reports, architecture diagrams). If yes, provide paths.
+   - Always ask — cannot be auto-detected
 
 6. Is there a frontend layer? (yes/no — if no, frontend entry point analysis will be skipped)
+   - Detected from: `.discovery/context.json → stack.frontend` (non-null means yes)
+   - Confidence: `.discovery/confidence.json → frontend`
+
+---
+
+**After collecting answers:**
 
 Save to `answers.json → codebase_setup`. Also update `project.json → codebase_path` with the codebase path.
+
+If the user corrected any auto-detected values, update `.discovery/context.json` with the corrections and set the corresponding confidence scores to `1.0` in `.discovery/confidence.json`.
 
 ### users
 - Who are the users of this system?

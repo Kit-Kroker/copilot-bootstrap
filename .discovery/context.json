@@ -1,0 +1,29 @@
+{
+  "stack": {
+    "languages": [
+      "python"
+    ],
+    "frontend": null,
+    "backend": null,
+    "db": null
+  },
+  "tools": {
+    "package_manager": "pip",
+    "linter": null,
+    "test_runner": null,
+    "bundler": null,
+    "container": null
+  },
+  "arch": {
+    "style": "layered",
+    "monorepo": false,
+    "services": 1
+  },
+  "paths": {
+    "src": "src/",
+    "tests": "tests/",
+    "docs": "docs/",
+    "config": "."
+  },
+  "entrypoints": []
+}
