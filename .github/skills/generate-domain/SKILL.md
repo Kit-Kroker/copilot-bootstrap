@@ -10,6 +10,7 @@ Read:
 - `.project/state/answers.json`
 - `docs/analysis/prd.md`
 - `docs/analysis/capabilities.md` (if present)
+- `project.json` (check `approach` field)
 
 Generate `docs/domain/model.md` using this structure:
 
@@ -72,6 +73,43 @@ Generate `docs/domain/model.md` using this structure:
 
 Prefer a normalized model over UI-driven structures.
 Use consistent naming across all domain documents.
+
+### Brownfield Mode (when approach = brownfield)
+
+When `project.json → approach = "brownfield"`, also read:
+- `docs/discovery/domain-model.md` ← required (primary input)
+- `docs/discovery/l1-capabilities.md`
+- `docs/discovery/l2-capabilities.md`
+
+**Changes to domain model generation:**
+
+1. **Use discovery domain model as primary input** — The `docs/discovery/domain-model.md` already contains code-derived entities, relationships, and bounded context candidates. Use this as the foundation rather than inventing entities from the PRD.
+
+2. **Enrich, don't replace** — Add DDD structure (aggregates, value objects, invariants, domain events) on top of the code-derived entities. The discovery model shows what IS; the domain model adds what SHOULD BE.
+
+3. **Bounded Contexts** — Use the bounded context candidates from the discovery domain model as starting points. Refine based on coupling analysis.
+
+4. **Add Legacy Entity Mapping section:**
+
+```markdown
+## Legacy Entity Mapping
+
+| Domain Entity | Legacy Table/Class | Mapping Notes |
+|--------------|-------------------|--------------|
+| {new entity name} | {original table or class name} | {rename, split, merge, or keep as-is} |
+```
+
+5. **Add Discovery Provenance section:**
+
+```markdown
+## Discovery Provenance
+
+This domain model is derived from codebase analysis of the existing system.
+- Code-derived entities: {count} (from docs/discovery/domain-model.md)
+- Code-derived bounded contexts: {count}
+- Cross-capability dependencies: {count}
+- See docs/discovery/ for full extraction pipeline outputs.
+```
 
 After generating the file:
 - Update `.project/state/workflow.json`: set `step` to `rbac`, `status` to `in_progress`

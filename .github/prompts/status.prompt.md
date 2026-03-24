@@ -21,6 +21,15 @@ Then check which output files exist from this list:
 - `docs/spec/permissions.md`
 - `docs/spec/state-machines.md`
 
+If `project.json → approach = "brownfield"`, also check:
+- `docs/discovery/candidates.md`
+- `docs/discovery/analysis.md`
+- `docs/discovery/coverage.md`
+- `docs/discovery/l1-capabilities.md`
+- `docs/discovery/l2-capabilities.md`
+- `docs/discovery/domain-model.md`
+- `docs/discovery/blueprint-comparison.md`
+
 If `project.json → adlc = true`, also check:
 - `docs/analysis/kpis.md`
 - `docs/analysis/human-agent-map.md`
@@ -36,16 +45,20 @@ Print a concise status report:
 ```
 Bootstrap Status
 ────────────────
-Step:    {step}
-Status:  {status}
-Type:    {type from project.json}
-ADLC:    {true/false}
+Step:      {step}
+Status:    {status}
+Type:      {type from project.json}
+Approach:  {greenfield/brownfield}
+ADLC:      {true/false}
 
 Answers collected:
   {list each key in answers.json with ✅ or ❌ if missing}
 
 Generated files:
   {list each file with ✅ exists or ❌ missing}
+
+Discovery files (if brownfield):
+  {list each discovery file with ✅ exists or ❌ missing}
 
 ADLC files (if active):
   {list each ADLC file with ✅ exists or ❌ missing}

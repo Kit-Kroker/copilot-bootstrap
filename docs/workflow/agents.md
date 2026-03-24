@@ -12,6 +12,7 @@
 | **evaluator** | Generate eval framework and PoV plan (ADLC) | `generate-eval-framework`, `generate-pov-plan` |
 | **script** | Generate automation scripts | `generate-scripts` |
 | **ops** | Generate monitoring and governance docs (ADLC) | `generate-monitoring-spec`, `generate-governance` |
+| **discovery** | Brownfield codebase analysis and capability extraction | `discover-candidates`, `analyze-candidates`, `verify-coverage`, `lock-l1`, `define-l2`, `generate-discovery-domain`, `compare-blueprint` |
 | **dev** | Code generation (post-bootstrap) | *(defined per project)* |
 
 ---
@@ -76,6 +77,52 @@ When `project.json → type` is `agent` or `ai-system`, these steps activate aft
 
 ---
 
+## Brownfield Workflow Routing (active when approach = brownfield)
+
+When `project.json → approach` is `brownfield`, these steps replace the standard greenfield interview steps (users, features, tech, complexity). The workflow follows `docs/workflow/brownfield.md`.
+
+### Bootstrap Phase
+
+| Step | Agent | Skill | Output |
+|------|-------|-------|--------|
+| `idea` | bootstrap | `bootstrap-ask` | answers.json: idea, pain_points |
+| `project_info` | bootstrap | `bootstrap-ask` | answers.json: project_info (incl. approach) |
+| `codebase_setup` | bootstrap | `bootstrap-ask` | answers.json: codebase_setup |
+
+### Discovery Pipeline (7-step capability extraction)
+
+| Step | Agent | Skill | Output |
+|------|-------|-------|--------|
+| `seed_candidates` | discovery | `discover-candidates` | docs/discovery/candidates.md |
+| `analyze_candidates` | discovery | `analyze-candidates` | docs/discovery/analysis.md |
+| `verify_coverage` | discovery | `verify-coverage` | docs/discovery/coverage.md |
+| `lock_l1` | discovery | `lock-l1` | docs/discovery/l1-capabilities.md |
+| `define_l2` | discovery | `define-l2` | docs/discovery/l2-capabilities.md |
+| `discovery_domain` | discovery | `generate-discovery-domain` | docs/discovery/domain-model.md |
+| `blueprint_comparison` | discovery | `compare-blueprint` | docs/discovery/blueprint-comparison.md |
+
+### Generation Phase (same as greenfield, but reads discovery outputs)
+
+| Step | Agent | Skill | Output |
+|------|-------|-------|--------|
+| `prd` | analyst | `generate-prd` | docs/analysis/prd.md (brownfield mode) |
+| `capabilities` | analyst | `generate-capabilities` | docs/analysis/capabilities.md (brownfield mode) |
+| `domain` | architect | `generate-domain` | docs/domain/model.md (brownfield mode) |
+| `design_workflow` | designer | `generate-design-workflow` | docs/workflow/design.md |
+| `skills` | script | `generate-skills` | .github/skills/ (dev skills) |
+| `scripts` | script | `generate-scripts` | scripts/*.sh |
+| `done` | — | — | Bootstrap complete |
+
+ADLC steps append after `done` when `adlc = true`, same as greenfield.
+
+### Agent Pipeline (brownfield)
+
+```
+Bootstrap → Discovery → Analyst → Architect → Designer → Spec → Script [→ Evaluator → Ops if ADLC]
+```
+
+---
+
 ## Decision Loop
 
 ```
@@ -96,3 +143,6 @@ When `project.json → type` is `agent` or `ai-system`, these steps activate aft
 - If a required input file is missing, report which step must run first
 - If a step produces no output (data insufficient), run bootstrap-ask and stay on step
 - When `adlc = true`, ADLC steps are mandatory — do not skip them
+- When `approach = brownfield`, use the brownfield routing table and `docs/workflow/brownfield.md` for step sequence
+- When `approach = brownfield`, Discovery agent owns steps `seed_candidates` through `blueprint_comparison`
+- When `approach = brownfield`, generation skills (prd, capabilities, domain) read from `docs/discovery/` as primary input

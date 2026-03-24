@@ -30,6 +30,33 @@ Save the last two answers under `pain_points` in answers.json alongside `idea`.
   - `agent` — single LLM-driven agent with tool use
   - `ai-system` — multi-agent or LLM-core product
 - What domain does it belong to? (for example: healthcare, finance, education, logistics)
+- Is this a new project or modernization of an existing system?
+  - `greenfield` — building from scratch, no existing codebase
+  - `brownfield` — analyzing and modernizing an existing codebase
+
+Save approach to `answers.json → project_info.approach`. Also update `project.json → approach` and `.project/state/workflow.json → approach`.
+
+When `approach` is `brownfield`, the workflow switches to `docs/workflow/brownfield.md` after `project_info`. The next step becomes `codebase_setup` instead of `users`.
+
+### codebase_setup
+*(Only active when `approach = brownfield`)*
+
+1. What is the path to the existing codebase? (absolute path or relative to workspace root)
+
+2. What is the primary programming language? (e.g. Java, C#, Python, TypeScript, Go)
+
+3. What is the architecture style?
+   - `monolith` — single deployable unit
+   - `modular-monolith` — single deployment but internally modular
+   - `microservices` — multiple independently deployable services
+
+4. Are database schemas or migrations available? If yes, provide the path or describe how to access them.
+
+5. Are there any pre-generated analysis reports to include? (e.g. nDepend exports, JetBrains dependency analysis, SonarQube reports, architecture diagrams). If yes, provide paths.
+
+6. Is there a frontend layer? (yes/no — if no, frontend entry point analysis will be skipped)
+
+Save to `answers.json → codebase_setup`. Also update `project.json → codebase_path` with the codebase path.
 
 ### users
 - Who are the users of this system?

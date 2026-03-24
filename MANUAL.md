@@ -2,7 +2,9 @@
 
 A multi-agent workflow that takes a project idea and produces a full implementation-ready specification: PRD, domain model, RBAC, API spec, design artifacts, and dev scaffolding scripts — all driven by GitHub Copilot agents in VS Code.
 
-For **agent** and **ai-system** projects, the workflow extends with the Agentic Development Lifecycle (ADLC): KPIs, human-agent responsibility mapping, agent architecture patterns, cost modelling, evaluation frameworks, Proof of Value plans, monitoring, and governance.
+Supports **greenfield** (build from scratch) and **brownfield** (modernize existing code) approaches. Brownfield uses a 7-step capability extraction pipeline to analyze the existing codebase before generating specifications.
+
+For **agent** and **ai-system** projects, the workflow extends with the Agentic Development Lifecycle (ADLC): KPIs, human-agent responsibility mapping, agent architecture patterns, cost modelling, evaluation frameworks, Proof of Value plans, monitoring, and governance. ADLC composes with both greenfield and brownfield approaches.
 
 ---
 
@@ -11,7 +13,7 @@ For **agent** and **ai-system** projects, the workflow extends with the Agentic 
 1. [Prerequisites](#1-prerequisites)
 2. [Quick Start](#2-quick-start)
 3. [How It Works](#3-how-it-works)
-4. [Project Types](#4-project-types)
+4. [Project Types & Approach](#4-project-types--approach)
 5. [Workflow Steps](#5-workflow-steps)
 6. [Agents](#6-agents)
 7. [Slash Commands](#7-slash-commands)
@@ -20,8 +22,9 @@ For **agent** and **ai-system** projects, the workflow extends with the Agentic 
 10. [File Structure](#10-file-structure)
 11. [Google Stitch Integration](#11-google-stitch-integration)
 12. [ADLC Extended Workflow](#12-adlc-extended-workflow)
-13. [Extending the Framework](#13-extending-the-framework)
-14. [Troubleshooting](#14-troubleshooting)
+13. [Brownfield Discovery Pipeline](#13-brownfield-discovery-pipeline)
+14. [Extending the Framework](#14-extending-the-framework)
+15. [Troubleshooting](#15-troubleshooting)
 
 ---
 
@@ -99,14 +102,19 @@ This framework uses all VS Code Copilot customization types:
 
 Agents are chained via **handoff buttons**. Each agent completes its phase and presents a button that passes context to the next agent.
 
-**Standard pipeline:**
+**Greenfield pipeline** (default):
 ```
 Bootstrap → Analyst → Architect → Designer → Spec → Script
 ```
 
-**ADLC pipeline** (when type is `agent` or `ai-system`):
+**Brownfield pipeline** (when approach is `brownfield`):
 ```
-Bootstrap → Analyst → Architect → Designer → Spec → Evaluator → Script → Ops
+Bootstrap → Discovery → Analyst → Architect → Designer → Spec → Script
+```
+
+**ADLC extension** (appends when type is `agent` or `ai-system`):
+```
+... → Evaluator → Script → Ops
 ```
 
 ### State Machine
@@ -116,7 +124,7 @@ Workflow progress is tracked in two files:
 - `.project/state/workflow.json` — current step and status
 - `.project/state/answers.json` — all collected answers
 
-Both files are updated by agents after each step. The `project.json` root file mirrors the current step and includes the `adlc` flag for quick reference.
+Both files are updated by agents after each step. The `project.json` root file mirrors the current step and includes the `approach` and `adlc` flags for quick reference.
 
 ### Dependency Chain
 
@@ -131,6 +139,20 @@ answers.json
                           └─► docs/domain/workflows.md
                                 └─► docs/design/overview.md + ia.md + flows.md
                                       └─► docs/spec/api.md + events.md + permissions.md + state-machines.md
+```
+
+Brownfield adds a discovery chain before generation:
+
+```
+answers.json (codebase_setup)
+  └─► docs/discovery/candidates.md
+        └─► docs/discovery/analysis.md
+              └─► docs/discovery/coverage.md
+                    └─► docs/discovery/l1-capabilities.md
+                          └─► docs/discovery/l2-capabilities.md
+                                └─► docs/discovery/domain-model.md
+                                      └─► docs/discovery/blueprint-comparison.md
+                                            └─► docs/analysis/prd.md (brownfield mode)
 ```
 
 ADLC extends this chain:
@@ -151,7 +173,9 @@ If a required input file is missing, the agent will report what needs to run fir
 
 ---
 
-## 4. Project Types
+## 4. Project Types & Approach
+
+### Project Types
 
 Valid project types are set during the `project_info` step:
 
@@ -170,11 +194,30 @@ When type is `agent` or `ai-system`:
 - Two additional bootstrap steps are added: `constraints` and `kpis`
 - After the standard bootstrap completes, the ADLC extended workflow activates
 
+### Project Approach
+
+The approach is also set during the `project_info` step:
+
+| Approach | Description |
+|----------|-------------|
+| `greenfield` | Building from scratch — user provides idea, features, tech stack (default) |
+| `brownfield` | Modernizing existing code — 7-step capability extraction pipeline analyzes the codebase first |
+
+When approach is `brownfield`:
+- `project.json → approach` is set to `"brownfield"`
+- `.project/state/workflow.json → approach` is set to `"brownfield"`
+- The workflow switches to `docs/workflow/brownfield.md`
+- Steps `users`, `features`, `tech`, `complexity` are replaced by `codebase_setup` + 7 discovery steps
+- A new `codebase_setup` step collects: codebase path, primary language, architecture style, DB access, pre-generated reports
+- The Discovery agent runs the 7-step capability extraction pipeline
+- After discovery, the pipeline merges back into `prd` → `capabilities` → `domain` with discovery outputs as primary input
+- ADLC extension still applies if type is `agent` or `ai-system` (approach and type are orthogonal)
+
 ---
 
 ## 5. Workflow Steps
 
-### Standard Bootstrap (13 steps)
+### Standard Bootstrap — Greenfield (13 steps)
 
 Defined in `docs/workflow/bootstrap.md`.
 
@@ -211,12 +254,30 @@ Defined in `docs/workflow/adlc.md`. Activate after `done` when `adlc = true`.
 | 22 | `governance` | Ops | docs/ops/governance.md |
 | 23 | `adlc_done` | — | Full ADLC lifecycle complete |
 
+### Brownfield Discovery Steps (replaces greenfield steps 3-6)
+
+Defined in `docs/workflow/brownfield.md`. Active when `approach = brownfield`.
+
+| # | Step | Agent | Output |
+|---|------|-------|--------|
+| 3 | `codebase_setup` | Bootstrap | answers.json: codebase_setup |
+| 4 | `seed_candidates` | Discovery | docs/discovery/candidates.md |
+| 5 | `analyze_candidates` | Discovery | docs/discovery/analysis.md |
+| 6 | `verify_coverage` | Discovery | docs/discovery/coverage.md |
+| 7 | `lock_l1` | Discovery | docs/discovery/l1-capabilities.md |
+| 8 | `define_l2` | Discovery | docs/discovery/l2-capabilities.md |
+| 9 | `discovery_domain` | Discovery | docs/discovery/domain-model.md |
+| 10 | `blueprint_comparison` | Discovery | docs/discovery/blueprint-comparison.md |
+
+After discovery, the workflow continues with `prd` (step 11) → `capabilities` → `domain` → ... using discovery outputs as input. The generation skills (generate-prd, generate-capabilities, generate-domain) switch to brownfield mode automatically, reading from `docs/discovery/` instead of user-supplied answers.
+
 ### Questions Asked Per Step
 
 | Step | Questions |
 |------|-----------|
 | `idea` | Describe your project idea; What is currently manual, slow, or error-prone?; Why is a human doing this today? |
-| `project_info` | Name; type (`web-app` / `mobile` / `api` / `cli` / `agent` / `ai-system`); domain |
+| `project_info` | Name; type (`web-app` / `mobile` / `api` / `cli` / `agent` / `ai-system`); domain; approach (`greenfield` / `brownfield`) |
+| `codebase_setup` | Codebase path; primary language; architecture style; DB access; pre-generated reports; has frontend *(brownfield only)* |
 | `users` | Who are the users; what roles do they have |
 | `features` | List 3–10 core features |
 | `tech` | Backend, frontend, database/infra preferences |
@@ -239,7 +300,32 @@ Collects all project answers step by step. Asks only missing questions. Saves an
 
 For ADLC projects, also collects `constraints` and `kpis` answers, and sets `project.json → adlc = true`.
 
+For brownfield projects, also collects `codebase_setup` answers. When complete, routes to the **Discovery** agent instead of Analyst.
+
 **Hook:** Runs `./scripts/validate-state.sh` after every file edit to ensure `workflow.json` and `answers.json` remain valid JSON.
+
+---
+
+### Discovery *(brownfield only)*
+**File:** `.github/agents/discovery.agent.md`
+**Tools:** `read`, `edit`, `search/codebase`
+**Visible in chat:** No (called via handoff from Bootstrap)
+
+Analyzes an existing codebase using the 7-step capability extraction pipeline:
+
+| Step | Skill | Output |
+|------|-------|--------|
+| `seed_candidates` | `discover-candidates` | docs/discovery/candidates.md |
+| `analyze_candidates` | `analyze-candidates` | docs/discovery/analysis.md |
+| `verify_coverage` | `verify-coverage` | docs/discovery/coverage.md |
+| `lock_l1` | `lock-l1` | docs/discovery/l1-capabilities.md |
+| `define_l2` | `define-l2` | docs/discovery/l2-capabilities.md |
+| `discovery_domain` | `generate-discovery-domain` | docs/discovery/domain-model.md |
+| `blueprint_comparison` | `compare-blueprint` | docs/discovery/blueprint-comparison.md |
+
+Each step reads one input, produces one output, and feeds the next. The pipeline is adaptive — it skips unavailable signal sources (no DB, no frontend). Each step also accepts pre-generated inputs (if its output file already exists in `docs/discovery/`, it uses that instead of regenerating).
+
+When done, presents the **Generate PRD from Discovery** handoff button.
 
 ---
 
@@ -440,6 +526,17 @@ Print the Proof of Value plan and go/no-go criteria from `docs/spec/pov-plan.md`
 
 ---
 
+### `/discovery-status`
+**File:** `.github/prompts/discovery-status.prompt.md`
+
+Show the brownfield discovery pipeline progress. Lists each of the 7 discovery output files with completion status, candidate counts, coverage percentage, and summary statistics. Only available when approach is `brownfield`.
+
+```
+/discovery-status
+```
+
+---
+
 ### `/reset`
 **File:** `.github/prompts/reset.prompt.md`
 
@@ -452,7 +549,7 @@ Jump the workflow to a specific step without deleting existing output files. Use
 /reset constraints
 ```
 
-Valid step names: `idea`, `project_info`, `users`, `features`, `tech`, `complexity`, `prd`, `capabilities`, `domain`, `design_workflow`, `skills`, `scripts`, `done`, `constraints`, `kpis`, `human_agent_map`, `agent_pattern`, `cost_model`, `eval_framework`, `pov`, `monitoring`, `governance`, `adlc_done`.
+Valid step names depend on the approach. For greenfield: `idea`, `project_info`, `users`, `features`, `tech`, `complexity`, `prd`, `capabilities`, `domain`, `design_workflow`, `skills`, `scripts`, `done` (+ ADLC steps). For brownfield: `idea`, `project_info`, `codebase_setup`, `seed_candidates`, `analyze_candidates`, `verify_coverage`, `lock_l1`, `define_l2`, `discovery_domain`, `blueprint_comparison`, `prd`, `capabilities`, `domain`, `design_workflow`, `skills`, `scripts`, `done` (+ ADLC steps).
 
 ---
 
@@ -531,6 +628,36 @@ Skills are reusable prompt workflows in `.github/skills/`. They are invoked by a
 | `generate-skills` | `skills` | `.github/skills/` (dev stubs) |
 | `generate-scripts` | `scripts` | `scripts/*.sh` |
 
+### Brownfield Discovery Skills
+
+These skills are only used when `project.json → approach = "brownfield"`. They are run by the Discovery agent.
+
+| Skill | Triggered at step | Output |
+|-------|------------------|--------|
+| `discover-candidates` | `seed_candidates` | `docs/discovery/candidates.md` |
+| `analyze-candidates` | `analyze_candidates` | `docs/discovery/analysis.md` |
+| `verify-coverage` | `verify_coverage` | `docs/discovery/coverage.md` |
+| `lock-l1` | `lock_l1` | `docs/discovery/l1-capabilities.md` |
+| `define-l2` | `define_l2` | `docs/discovery/l2-capabilities.md` |
+| `generate-discovery-domain` | `discovery_domain` | `docs/discovery/domain-model.md` |
+| `compare-blueprint` | `blueprint_comparison` | `docs/discovery/blueprint-comparison.md` |
+
+### What Each Discovery Skill Produces
+
+**`discover-candidates`** — Extracts capability candidates from 4 signal sources: package structure, database schema, backend entry points (REST, jobs, consumers), frontend entry points (pages, routes). Cross-references signals and assigns HIGH/MEDIUM/LOW confidence. Produces 15-25 raw candidates with evidence trails. Adaptive: skips DB analysis if no access, skips frontend if API-only.
+
+**`analyze-candidates`** — Deep analysis of each candidate: cohesion, coupling, boundary clarity. Forces each into a decision: confirm as capability, split into smaller ones, merge into broader domain, de-scope as non-business (infrastructure/cross-cutting), or flag for architect review. Key heuristic: deployment boundaries do not define business capabilities.
+
+**`verify-coverage`** — Maps all significant source files to capabilities. Targets >90% code coverage. Identifies orphan code and recommends: assign to existing capability, create new capability, mark as infrastructure, or mark as dead code.
+
+**`lock-l1`** — Finalizes the Level 1 capability list from confirmed, split, and merged candidates. Assigns stable IDs (BC-001, BC-002...) in logical domain order. Documents merge trace and excluded items.
+
+**`define-l2`** — For each L1 capability, defines Level 2 sub-capabilities as executable units of work. Maps each L2 to specific code locations, entities (with ownership: OWNS/MANAGES/READS/CREATES), operations (with endpoints), and external dependencies. Calculates migration complexity indicators.
+
+**`generate-discovery-domain`** — Consolidated domain model with capability hierarchy (L1→L2), entity catalog with ownership matrix, cross-capability dependencies, bounded context candidates, and infrastructure/cross-cutting concerns. Every entity, operation, and boundary is mapped to specific files.
+
+**`compare-blueprint`** — Compares code-derived capabilities against industry reference frameworks (BIAN for banking, TM Forum for telecom, APQC cross-industry). Classifies each as aligned, org-specific, or missing-from-code. Code remains source of truth; comparison adds context for modernization planning.
+
 ### ADLC Generation Skills
 
 These skills are only used when `project.json → adlc = true`.
@@ -581,14 +708,14 @@ Initialise a fresh project state. Safe — exits with an error if state already 
 Creates:
 - `.project/state/workflow.json` — step: `idea`, status: `in_progress`
 - `.project/state/answers.json` — empty `{}`
-- `project.json` — blank project metadata (includes `autonomy_level` and `adlc` fields)
-- All output folders
+- `project.json` — blank project metadata (includes `approach`, `codebase_path`, `autonomy_level`, and `adlc` fields)
+- All output folders (including `docs/discovery/`)
 
 ---
 
 ### `next.sh`
 
-Advance the workflow to the next step in `bootstrap.md`.
+Advance the workflow to the next step. Reads `workflow.json → approach` to determine which workflow file to use (`bootstrap.md` for greenfield, `brownfield.md` for brownfield).
 
 ```sh
 ./scripts/next.sh
@@ -643,7 +770,8 @@ Checks:
   copilot-instructions.md         Always-on project context
 
   agents/
-    bootstrap.agent.md            Collects answers, orchestrates pipeline
+    bootstrap.agent.md            Collects answers, routes to Discovery or Analyst
+    discovery.agent.md            Brownfield codebase analysis (7-step pipeline)**
     analyst.agent.md              Generates PRD, capabilities, kpis*, human-agent-map*
     architect.agent.md            Generates domain model, RBAC, workflows, agent-pattern*, cost-model*
     designer.agent.md             Generates design overview, IA, flows
@@ -655,6 +783,7 @@ Checks:
   prompts/
     bootstrap.prompt.md           /bootstrap    — start or resume
     status.prompt.md              /status       — show current state
+    discovery-status.prompt.md    /discovery-status — show discovery pipeline progress**
     adlc-status.prompt.md         /adlc-status  — show ADLC-specific state*
     pov.prompt.md                 /pov          — print PoV plan*
     reset.prompt.md               /reset        — jump to a step
@@ -686,18 +815,34 @@ Checks:
     generate-scripts/SKILL.md     Generate operational scripts
     generate-monitoring-spec/SKILL.md Generate monitoring spec*
     generate-governance/SKILL.md  Generate governance doc*
+    discover-candidates/SKILL.md  Extract capability candidates from codebase**
+    analyze-candidates/SKILL.md   Deep analysis of each candidate**
+    verify-coverage/SKILL.md      Verify >90% code coverage by capabilities**
+    lock-l1/SKILL.md              Finalize L1 capability list**
+    define-l2/SKILL.md            Define L2 sub-capabilities**
+    generate-discovery-domain/SKILL.md  Generate domain model from code**
+    compare-blueprint/SKILL.md    Industry blueprint comparison**
 
 .project/
   state/
-    workflow.json                 { workflow, step, status }
-    answers.json                  { idea, pain_points, project_info, users, features, tech, complexity, autonomy_level, constraints*, kpis* }
+    workflow.json                 { workflow, approach, step, status }
+    answers.json                  { idea, pain_points, project_info, codebase_setup**, users, features, tech, complexity, autonomy_level, constraints*, kpis* }
 
 docs/
   workflow/
-    bootstrap.md                  23-step bootstrap sequence (13 standard + 10 ADLC)
+    bootstrap.md                  Greenfield bootstrap sequence (13 standard + 10 ADLC)
+    brownfield.md                 Brownfield bootstrap sequence (17 standard + 10 ADLC)**
     design.md                     13-step design sub-workflow
     adlc.md                       ADLC extended workflow definition*
     agents.md                     Routing table: step → agent → skill
+  discovery/
+    candidates.md                 Raw capability candidates with confidence ratings**
+    analysis.md                   Candidate analysis (confirm/split/merge/de-scope)**
+    coverage.md                   Code coverage verification**
+    l1-capabilities.md            Locked L1 capability list with stable IDs**
+    l2-capabilities.md            L2 sub-capabilities mapped to code**
+    domain-model.md               Code-derived domain model with traceability**
+    blueprint-comparison.md       Industry reference comparison**
   analysis/
     prd.md                        Product Requirements Document
     capabilities.md               Capability map
@@ -732,10 +877,10 @@ scripts/
   ask.sh                          Print questions for a step
   validate-state.sh               Validate state file integrity
 
-project.json                      Project metadata (name, type, domain, step, autonomy_level, adlc)
+project.json                      Project metadata (name, type, domain, approach, codebase_path, step, autonomy_level, adlc)
 ```
 
-*Files and entries marked with `*` are ADLC-specific — only generated/used when type is `agent` or `ai-system`.*
+*Files and entries marked with `*` are ADLC-specific — only generated/used when type is `agent` or `ai-system`. Files marked with `**` are brownfield-specific — only generated/used when approach is `brownfield`.*
 
 ---
 
@@ -849,11 +994,68 @@ ADLC activates automatically when `project_info → type` is set to `agent` or `
 
 ---
 
-## 13. Extending the Framework
+## 13. Brownfield Discovery Pipeline
+
+The brownfield discovery pipeline extracts a complete business capability map from an existing codebase in 7 steps.
+
+### When It Activates
+
+Brownfield activates when `project_info → approach` is set to `brownfield`. This sets `project.json → approach = "brownfield"` and switches the workflow to `docs/workflow/brownfield.md`.
+
+### Pipeline Steps
+
+| Step | Phase | What Happens |
+|------|-----------|-------------|
+| A1: Seed Candidates | `seed_candidates` | Extract signals from 4 sources: package structure, DB schema, backend entry points, frontend entry points. Cross-reference and assign confidence. Produce 15-25 raw candidates. |
+| A2: Analyze Candidates | `analyze_candidates` | Per candidate: assess cohesion, coupling, boundary clarity. Determine action: confirm/split/merge/de-scope/flag. |
+| A3: Verify Coverage | `verify_coverage` | Map all source files to capabilities. Target >90% coverage. Resolve orphan code. |
+| A4: Lock L1 | `lock_l1` | Finalize L1 capability list with stable IDs (BC-001, BC-002...). |
+| A5: Define L2 | `define_l2` | Per L1: define L2 sub-capabilities mapped to code locations, entities, operations. L2 = executable units of work. |
+| A6: Domain Model | `discovery_domain` | Consolidated domain model with capability hierarchy, entity ownership, cross-capability dependencies, code traceability. |
+| A7: Blueprint Comparison | `blueprint_comparison` | Compare against industry reference (BIAN, TM Forum, APQC). Flag: aligned / org-specific / missing-from-code. |
+
+### Design Principles
+
+- **Adaptive by default** — Skips unavailable signals (no DB → skip schema, API-only → skip frontend). Extraction continues with fewer signals.
+- **Pre-generated inputs accepted** — Each skill checks if its output file already exists. Feed it nDepend exports, JetBrains analysis, DBA reports, or architecture notes to anchor the analysis.
+- **Confidence-driven** — Every candidate carries HIGH/MEDIUM/LOW confidence. Ambiguous candidates are flagged for human review, not silently resolved.
+- **Code is truth** — Industry comparison adds context but does not override code-derived capabilities. Missing capabilities drive targeted questions, not assumptions.
+- **Traceable throughout** — Every capability, entity, and operation is mapped to specific files and code locations.
+
+### Key Concepts
+
+**Capability vs Feature** — A capability is what the business does (e.g. "Payments"). Features are how capabilities are accessed or configured (e.g. "scheduled payments" is a feature of the Payments capability, not a separate capability).
+
+**L1 vs L2** — L1 tells you what exists at a functional level. L2 tells you what can be acted on, migrated, extended, or replaced. L2 is where modernization plans become executable.
+
+**Confidence Ratings** — HIGH means the candidate appears across 3+ signal sources. MEDIUM means 2 sources or strong in 1. LOW means 1 source with weak evidence. These guide architect review — HIGH candidates are almost certainly real capabilities, LOW ones need human judgment.
+
+**Pre-Generated Inputs** — If you have better tooling (nDepend, SonarQube, JetBrains code analysis), export results to `docs/discovery/` before running the pipeline. The skills will use these files instead of regenerating. This anchors the AI analysis in higher-quality signals.
+
+### Brownfield + ADLC
+
+A brownfield project with type `agent` or `ai-system` gets both pipelines:
+
+```
+Bootstrap → Discovery → Analyst → Architect → Designer → Spec → Evaluator → Script → Ops
+(answers)   (codebase)  (PRD+caps) (domain)   (design)  (spec) (eval+pov)  (scripts) (monitoring+governance)
+```
+
+Total steps: 3 (bootstrap) + 7 (discovery) + 7 (generation) + 10 (ADLC) = 27 steps.
+
+### Brownfield-Specific Slash Commands
+
+| Command | Purpose |
+|---------|---------|
+| `/discovery-status` | Show all 7 discovery pipeline outputs with statistics |
+
+---
+
+## 14. Extending the Framework
 
 ### Add a new bootstrap step
 
-1. Add the step name to `docs/workflow/bootstrap.md` in the correct position
+1. Add the step name to `docs/workflow/bootstrap.md` (and/or `docs/workflow/brownfield.md` if applicable) in the correct position
 2. Add questions for it to `.github/skills/bootstrap-ask/SKILL.md`
 3. Add a row to the routing table in `docs/workflow/agents.md`
 4. Add the step's questions to `scripts/ask.sh`
@@ -918,7 +1120,7 @@ model: ['Claude Opus 4.6', 'GPT-4o']
 
 ---
 
-## 14. Troubleshooting
+## 15. Troubleshooting
 
 ### Agent is not visible in the chat selector
 
@@ -963,7 +1165,15 @@ The dependency chain was broken — a required previous step did not run. Use `/
 
 ### `next.sh` or `step.sh` says step not found
 
-The step name in `workflow.json` does not match any step in `docs/workflow/bootstrap.md`. Edit `workflow.json` directly and set `step` to a valid value from `./scripts/step.sh --list`.
+The step name in `workflow.json` does not match any step in the active workflow file. For brownfield projects, the scripts read `docs/workflow/brownfield.md`; for greenfield, `docs/workflow/bootstrap.md`. Check that `workflow.json → approach` matches the correct workflow file. Edit `workflow.json` directly and set `step` to a valid value from `./scripts/step.sh --list`.
+
+### Discovery agent cannot read the codebase
+
+Check that `answers.json → codebase_setup.path` is a valid absolute path or relative to the workspace root. If the codebase is in a different workspace, the agent needs the path to be accessible. Verify with `ls <path>`.
+
+### Brownfield steps are not activating
+
+Check `project.json → approach` is `"brownfield"` and `workflow.json → approach` is `"brownfield"`. If approach was set after workflow initialization, manually update both files.
 
 ---
 

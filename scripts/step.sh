@@ -9,12 +9,25 @@
 set -e
 
 WORKFLOW_FILE=".project/state/workflow.json"
-if [ -f "docs/workflow/bootstrap.md" ]; then
-  BOOTSTRAP_DOC="docs/workflow/bootstrap.md"
-elif [ -n "$COPILOT_BOOTSTRAP_HOME" ] && [ -f "$COPILOT_BOOTSTRAP_HOME/docs/workflow/bootstrap.md" ]; then
-  BOOTSTRAP_DOC="$COPILOT_BOOTSTRAP_HOME/docs/workflow/bootstrap.md"
+
+# Determine workflow doc based on approach (greenfield vs brownfield)
+APPROACH=""
+if [ -f "$WORKFLOW_FILE" ] && command -v jq > /dev/null 2>&1; then
+  APPROACH=$(jq -r '.approach // ""' "$WORKFLOW_FILE")
+fi
+
+if [ "$APPROACH" = "brownfield" ]; then
+  DOC_NAME="brownfield.md"
 else
-  echo "Error: docs/workflow/bootstrap.md not found. Run 'copilot-bootstrap init' first."
+  DOC_NAME="bootstrap.md"
+fi
+
+if [ -f "docs/workflow/$DOC_NAME" ]; then
+  BOOTSTRAP_DOC="docs/workflow/$DOC_NAME"
+elif [ -n "$COPILOT_BOOTSTRAP_HOME" ] && [ -f "$COPILOT_BOOTSTRAP_HOME/docs/workflow/$DOC_NAME" ]; then
+  BOOTSTRAP_DOC="$COPILOT_BOOTSTRAP_HOME/docs/workflow/$DOC_NAME"
+else
+  echo "Error: docs/workflow/$DOC_NAME not found. Run 'copilot-bootstrap init' first."
   exit 1
 fi
 

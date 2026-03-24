@@ -8,8 +8,10 @@ argument-hint: "<step-name> — e.g. prd, domain, spec"
 
 The user wants to reset the workflow to step: `${input:step:step name e.g. prd, domain, spec}`.
 
-1. Read `docs/workflow/bootstrap.md` to confirm `${input:step}` is a valid step name.
-   If not valid, list the valid steps and stop.
+1. Read `project.json` to check the `approach` field.
+   - If `approach = "brownfield"`, read `docs/workflow/brownfield.md` to get valid step names.
+   - Otherwise, read `docs/workflow/bootstrap.md` to get valid step names.
+   Confirm `${input:step}` is a valid step name. If not valid, list the valid steps and stop.
 
 2. Update `.project/state/workflow.json`:
 ```json

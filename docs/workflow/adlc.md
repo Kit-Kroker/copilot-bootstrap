@@ -4,6 +4,8 @@ This workflow activates after the standard bootstrap completes, when `project.js
 
 It adds the ADLC-specific phases that are missing from the standard bootstrap, covering Phases 1–7 of the Agentic Development Lifecycle.
 
+**Approach-independent:** ADLC steps are appended after `done` regardless of whether the project uses greenfield or brownfield approach. A brownfield agent project gets both the discovery pipeline AND the ADLC extension.
+
 ## Activation Condition
 
 ```

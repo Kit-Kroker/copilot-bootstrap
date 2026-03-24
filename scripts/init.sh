@@ -21,7 +21,7 @@ if [ -f "$WORKFLOW_FILE" ]; then
   exit 1
 fi
 
-mkdir -p .project/state docs/workflow docs/analysis docs/design docs/domain docs/spec scripts
+mkdir -p .project/state docs/workflow docs/analysis docs/design docs/domain docs/spec docs/discovery docs/ops scripts
 
 if [ -n "$COPILOT_BOOTSTRAP_HOME" ]; then
   [ -d "$COPILOT_BOOTSTRAP_HOME/docs" ] && cp -r --update=none "$COPILOT_BOOTSTRAP_HOME/docs/." docs/ 2>/dev/null || cp -rn "$COPILOT_BOOTSTRAP_HOME/docs/." docs/
@@ -35,6 +35,7 @@ fi
 cat > "$WORKFLOW_FILE" <<EOF
 {
   "workflow": "bootstrap",
+  "approach": "",
   "step": "idea",
   "status": "in_progress"
 }
@@ -49,9 +50,13 @@ cat > "$PROJECT_FILE" <<EOF
   "name": "",
   "type": "",
   "domain": "",
+  "approach": "",
+  "codebase_path": "",
   "stage": "bootstrap",
   "workflow": "bootstrap",
-  "step": "idea"
+  "step": "idea",
+  "autonomy_level": "",
+  "adlc": false
 }
 EOF
 

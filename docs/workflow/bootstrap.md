@@ -1,4 +1,6 @@
-# Bootstrap Workflow
+# Bootstrap Workflow (Greenfield)
+
+This is the default workflow for greenfield projects (building from scratch). When `approach = brownfield`, the workflow switches to `docs/workflow/brownfield.md` instead.
 
 ## Steps
 
