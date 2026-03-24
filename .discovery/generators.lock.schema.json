@@ -1,0 +1,59 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "generators.lock.schema.json",
+  "title": "Generator Orchestrator Lock",
+  "description": "Session state tracking progress of the generator orchestrator. Not committed to git.",
+  "type": "object",
+  "required": ["version", "generators"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "Schema version"
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "generators": {
+      "type": "object",
+      "description": "Map of generator name to execution status",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["status"],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["pending", "in_progress", "completed", "failed", "skipped"]
+          },
+          "completed_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "outputs": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Paths to files generated"
+          },
+          "error": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false,
+  "examples": [
+    {
+      "version": "1",
+      "started_at": "2024-01-01T13:00:00Z",
+      "generators": {
+        "rules": { "status": "completed", "completed_at": "2024-01-01T13:01:00Z", "outputs": [".claude/CLAUDE.md"] },
+        "agents": { "status": "completed", "completed_at": "2024-01-01T13:02:00Z", "outputs": [".claude/agents/"] },
+        "skills": { "status": "in_progress" },
+        "hooks": { "status": "pending" },
+        "workflow": { "status": "pending" }
+      }
+    }
+  ]
+}

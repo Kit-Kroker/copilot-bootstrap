@@ -1,0 +1,62 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "pipeline.lock.schema.json",
+  "title": "Discovery Pipeline Lock",
+  "description": "Session state tracking progress of the discovery pipeline (A1–A7 steps). Not committed to git.",
+  "type": "object",
+  "required": ["version", "steps"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "Schema version"
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when the pipeline was started"
+    },
+    "steps": {
+      "type": "object",
+      "description": "Map of step ID to completion status",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["status"],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["pending", "in_progress", "completed", "failed", "skipped"]
+          },
+          "completed_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "output": {
+            "type": "string",
+            "description": "Path to the output file produced by this step"
+          },
+          "error": {
+            "type": "string",
+            "description": "Error message if status is failed"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false,
+  "examples": [
+    {
+      "version": "1",
+      "started_at": "2024-01-01T12:00:00Z",
+      "steps": {
+        "A1-candidates": { "status": "completed", "completed_at": "2024-01-01T12:01:00Z", "output": "docs/discovery/candidates.md" },
+        "A2-analysis": { "status": "completed", "completed_at": "2024-01-01T12:03:00Z", "output": "docs/discovery/analysis.md" },
+        "A3-coverage": { "status": "in_progress" },
+        "A4-l1-capabilities": { "status": "pending" },
+        "A5-l2-capabilities": { "status": "pending" },
+        "A6-domain-model": { "status": "pending" },
+        "A7-blueprint-comparison": { "status": "pending" }
+      }
+    }
+  ]
+}

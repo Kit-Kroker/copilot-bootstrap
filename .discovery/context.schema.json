@@ -1,0 +1,150 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "context.schema.json",
+  "title": "Discovery Context",
+  "description": "Unified tech stack and project context. Single structured input for all generators and pipeline steps.",
+  "type": "object",
+  "required": ["stack", "tools", "arch", "paths"],
+  "properties": {
+    "stack": {
+      "type": "object",
+      "description": "Programming languages and frameworks detected in the project",
+      "required": ["languages"],
+      "properties": {
+        "languages": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1,
+          "description": "Primary programming languages (e.g. [\"typescript\", \"python\"])"
+        },
+        "frontend": {
+          "type": ["string", "null"],
+          "description": "Frontend framework (e.g. \"react\", \"vue\", \"angular\", null)"
+        },
+        "backend": {
+          "type": ["string", "null"],
+          "description": "Backend runtime or framework (e.g. \"node\", \"fastapi\", \"django\", null)"
+        },
+        "db": {
+          "type": ["string", "null"],
+          "description": "Primary database (e.g. \"postgres\", \"mysql\", \"mongodb\", null)"
+        }
+      },
+      "additionalProperties": false
+    },
+    "tools": {
+      "type": "object",
+      "description": "Detected toolchain",
+      "properties": {
+        "package_manager": {
+          "type": ["string", "null"],
+          "description": "e.g. \"npm\", \"yarn\", \"pnpm\", \"pip\", \"poetry\""
+        },
+        "linter": {
+          "type": ["string", "null"],
+          "description": "e.g. \"eslint\", \"ruff\", \"pylint\""
+        },
+        "test_runner": {
+          "type": ["string", "null"],
+          "description": "e.g. \"jest\", \"vitest\", \"pytest\""
+        },
+        "bundler": {
+          "type": ["string", "null"],
+          "description": "e.g. \"vite\", \"webpack\", \"esbuild\""
+        },
+        "container": {
+          "type": ["string", "null"],
+          "description": "e.g. \"docker\", \"podman\""
+        }
+      },
+      "additionalProperties": false
+    },
+    "arch": {
+      "type": "object",
+      "description": "Detected architecture style",
+      "required": ["style", "monorepo", "services"],
+      "properties": {
+        "style": {
+          "type": "string",
+          "enum": ["layered", "hexagonal", "microservices", "monolith", "serverless", "unknown"],
+          "description": "High-level architecture pattern"
+        },
+        "monorepo": {
+          "type": "boolean",
+          "description": "True if multiple packages/apps live in a single repo"
+        },
+        "services": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Number of distinct services (1 for monolith)"
+        }
+      },
+      "additionalProperties": false
+    },
+    "paths": {
+      "type": "object",
+      "description": "Key directory paths relative to project root",
+      "required": ["src", "tests", "docs", "config"],
+      "properties": {
+        "src": { "type": "string" },
+        "tests": { "type": "string" },
+        "docs": { "type": "string" },
+        "config": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "entrypoints": {
+      "type": "array",
+      "description": "Detected application entrypoints",
+      "items": {
+        "type": "object",
+        "required": ["type", "path"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["http", "cli", "worker", "cron", "grpc"],
+            "description": "Entrypoint kind"
+          },
+          "path": {
+            "type": "string",
+            "description": "Path relative to project root"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false,
+  "examples": [
+    {
+      "stack": {
+        "languages": ["typescript"],
+        "frontend": "react",
+        "backend": "node",
+        "db": "postgres"
+      },
+      "tools": {
+        "package_manager": "npm",
+        "linter": "eslint",
+        "test_runner": "jest",
+        "bundler": "vite",
+        "container": "docker"
+      },
+      "arch": {
+        "style": "layered",
+        "monorepo": false,
+        "services": 1
+      },
+      "paths": {
+        "src": "src/",
+        "tests": "tests/",
+        "docs": "docs/",
+        "config": "."
+      },
+      "entrypoints": [
+        { "type": "http", "path": "src/server.ts" },
+        { "type": "cli", "path": "src/cli.ts" }
+      ]
+    }
+  ]
+}

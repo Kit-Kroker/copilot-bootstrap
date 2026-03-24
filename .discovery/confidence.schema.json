@@ -1,0 +1,57 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "confidence.schema.json",
+  "title": "Detection Confidence",
+  "description": "Confidence scores (0.0–1.0) for each auto-detected field. Scores below 0.75 trigger user confirmation in codebase_setup.",
+  "type": "object",
+  "required": ["language", "architecture"],
+  "properties": {
+    "language": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "description": "Confidence in detected primary language(s)"
+    },
+    "frontend": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "description": "Confidence in detected frontend framework"
+    },
+    "backend": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "description": "Confidence in detected backend runtime/framework"
+    },
+    "db": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "description": "Confidence in detected database"
+    },
+    "architecture": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "description": "Confidence in detected architecture style"
+    },
+    "entrypoints": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "description": "Confidence in detected entrypoints"
+    }
+  },
+  "additionalProperties": false,
+  "examples": [
+    {
+      "language": 0.95,
+      "frontend": 0.85,
+      "backend": 0.90,
+      "db": 0.70,
+      "architecture": 0.60,
+      "entrypoints": 0.80
+    }
+  ]
+}

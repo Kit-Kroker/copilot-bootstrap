@@ -3,3 +3,7 @@ __pycache__/
 *.py[cod]
 *.egg-info/
 .venv/
+
+# .discovery/ lock files are session state — not committed
+.discovery/pipeline.lock.json
+.discovery/generators.lock.json
