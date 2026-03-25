@@ -4,24 +4,31 @@
   "title": "Greenfield Technology Decisions",
   "description": "Technology and architecture decisions with rationale. Captures what was chosen, why, and which fields were defaulted. Input for instructions and configuration generators.",
   "type": "object",
-  "required": ["stack_rationale", "arch_rationale", "defaults_applied"],
+  "required": ["stack_rationale", "tools_rationale", "arch_rationale", "defaults_applied"],
   "properties": {
     "stack_rationale": {
       "type": "object",
       "description": "Rationale for technology stack choices",
       "properties": {
-        "frontend": {
-          "$ref": "#/definitions/decision_entry"
-        },
-        "backend": {
-          "$ref": "#/definitions/decision_entry"
-        },
-        "db": {
-          "$ref": "#/definitions/decision_entry"
-        },
-        "runtime": {
-          "$ref": "#/definitions/decision_entry"
-        }
+        "language": { "$ref": "#/definitions/decision_entry" },
+        "frontend": { "$ref": "#/definitions/decision_entry" },
+        "backend": { "$ref": "#/definitions/decision_entry" },
+        "db": { "$ref": "#/definitions/decision_entry" },
+        "runtime": { "$ref": "#/definitions/decision_entry" }
+      },
+      "additionalProperties": false
+    },
+    "tools_rationale": {
+      "type": "object",
+      "description": "Rationale for toolchain choices (user-chosen vs smart defaults)",
+      "properties": {
+        "package_manager": { "$ref": "#/definitions/decision_entry" },
+        "linter": { "$ref": "#/definitions/decision_entry" },
+        "formatter": { "$ref": "#/definitions/decision_entry" },
+        "test_runner": { "$ref": "#/definitions/decision_entry" },
+        "bundler": { "$ref": "#/definitions/decision_entry" },
+        "container": { "$ref": "#/definitions/decision_entry" },
+        "orchestrator": { "$ref": "#/definitions/decision_entry" }
       },
       "additionalProperties": false
     },
@@ -29,15 +36,9 @@
       "type": "object",
       "description": "Rationale for architecture decisions",
       "properties": {
-        "style": {
-          "$ref": "#/definitions/decision_entry"
-        },
-        "auth": {
-          "$ref": "#/definitions/decision_entry"
-        },
-        "monorepo": {
-          "$ref": "#/definitions/decision_entry"
-        }
+        "style": { "$ref": "#/definitions/decision_entry" },
+        "auth": { "$ref": "#/definitions/decision_entry" },
+        "monorepo": { "$ref": "#/definitions/decision_entry" }
       },
       "additionalProperties": false
     },
@@ -50,11 +51,15 @@
   "definitions": {
     "decision_entry": {
       "type": "object",
-      "required": ["choice", "reason"],
+      "required": ["choice", "source", "reason"],
       "properties": {
-        "choice": { "type": "string", "description": "The value chosen" },
-        "reason": { "type": "string", "description": "Why this choice was made" },
-        "defaulted": { "type": "boolean", "description": "True if this was a smart default, not an explicit user choice" }
+        "choice": { "description": "The value chosen (string or boolean)" },
+        "source": {
+          "type": "string",
+          "enum": ["user", "default", "derived"],
+          "description": "How the value was obtained: user=explicit answer, default=smart default applied, derived=computed from another answer"
+        },
+        "reason": { "type": "string", "description": "Why this choice was made or how it was derived" }
       },
       "additionalProperties": false
     }
@@ -63,16 +68,24 @@
   "examples": [
     {
       "stack_rationale": {
-        "frontend": { "choice": "react", "reason": "Team familiarity, ecosystem maturity" },
-        "backend": { "choice": "node", "reason": "Full-stack TypeScript, async I/O" },
-        "db": { "choice": "postgres", "reason": "Relational data, JSONB support" },
-        "runtime": { "choice": "node", "reason": "Inferred from backend choice", "defaulted": true }
+        "language": { "choice": "typescript", "source": "user", "reason": "User selected" },
+        "frontend": { "choice": "react", "source": "user", "reason": "User selected" },
+        "backend": { "choice": "node", "source": "user", "reason": "User selected" },
+        "db": { "choice": "postgres", "source": "user", "reason": "User selected" },
+        "runtime": { "choice": "node", "source": "derived", "reason": "Derived from language: typescript" }
+      },
+      "tools_rationale": {
+        "package_manager": { "choice": "npm", "source": "default", "reason": "Default for TypeScript" },
+        "linter": { "choice": "eslint", "source": "default", "reason": "Default for TypeScript" },
+        "formatter": { "choice": "prettier", "source": "default", "reason": "Default for TypeScript" },
+        "test_runner": { "choice": "vitest", "source": "default", "reason": "Default for React + Vite" },
+        "bundler": { "choice": "vite", "source": "default", "reason": "Default for React" }
       },
       "arch_rationale": {
-        "style": { "choice": "layered", "reason": "Small team, single service, clear separation" },
-        "auth": { "choice": "jwt", "reason": "Stateless, SaaS multi-tenancy" }
+        "style": { "choice": "layered", "source": "derived", "reason": "Single service, web app" },
+        "monorepo": { "choice": false, "source": "derived", "reason": "Single service project" }
       },
-      "defaults_applied": ["linter", "formatter", "test_runner", "bundler", "runtime"]
+      "defaults_applied": ["package_manager", "linter", "formatter", "test_runner", "bundler", "runtime"]
     }
   ]
 }

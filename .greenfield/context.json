@@ -1,0 +1,38 @@
+{
+  "stack": {
+    "languages": [
+      "typescript"
+    ],
+    "frontend": "react",
+    "backend": "node",
+    "db": "postgres",
+    "runtime": "node"
+  },
+  "tools": {
+    "package_manager": "npm",
+    "linter": "eslint",
+    "formatter": "prettier",
+    "test_runner": "vitest",
+    "bundler": "vite",
+    "container": "docker",
+    "orchestrator": null
+  },
+  "arch": {
+    "style": "layered",
+    "monorepo": false,
+    "services": 1,
+    "patterns": []
+  },
+  "paths": {
+    "src": "src/",
+    "tests": "tests/",
+    "docs": "docs/",
+    "config": "."
+  },
+  "project": {
+    "name": "craft-market",
+    "type": "web",
+    "domain": "e-commerce",
+    "complexity": "saas"
+  }
+}

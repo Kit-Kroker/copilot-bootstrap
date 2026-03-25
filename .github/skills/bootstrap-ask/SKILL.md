@@ -6,6 +6,244 @@ argument-hint: "[step name to ask about, or leave blank to use current step]"
 
 # Skill Instructions
 
+Read `project.json` to determine the approach (`greenfield` or `brownfield`).
+
+**If `approach = "greenfield"`**, follow the **Greenfield Interview Mode** below.
+**Otherwise**, follow the standard step-by-step interview.
+
+---
+
+## Greenfield Interview Mode
+
+Use this mode when `project.json → approach = "greenfield"` or when running via `copilot-bootstrap interview`.
+
+### Overview
+
+Run a smart adaptive interview that collects only the answers not yet present in `.greenfield/answers.json`.
+Skip questions whose answers can be derived from prior answers.
+Apply smart defaults for toolchain — show them as suggestions, not forced choices.
+
+### Step Detection
+
+Read `.greenfield/answers.json`. Check `steps_completed` to find which steps are already done.
+Work through steps in order: `idea → project_info → users → features → tech → complexity`.
+Only ask questions for steps not yet in `steps_completed`.
+
+### Interview Steps
+
+#### Step: idea (always required)
+
+Ask:
+1. What is your project idea? Describe it in a few sentences.
+2. What specific problem does it solve? What is currently manual, slow, or error-prone?
+
+Save to `.greenfield/answers.json → idea`:
+```json
+{
+  "description": "...",
+  "pain_points": ["...", "..."]
+}
+```
+
+#### Step: project_info (always required)
+
+Ask:
+1. What is the project name? (slug-friendly, e.g. `craft-market`)
+2. What type of project is it?
+   - `web` — UI-driven web application
+   - `api` — headless API or backend service
+   - `cli` — command-line tool
+   - `mobile` — native or hybrid mobile app
+   - `library` — reusable library or SDK
+   - `agent` — AI agent with tool use
+   - `other`
+3. What business domain does it belong to? (e.g. e-commerce, fintech, healthcare)
+
+Save to `.greenfield/answers.json → project_info`:
+```json
+{
+  "name": "craft-market",
+  "type": "web",
+  "domain": "e-commerce"
+}
+```
+
+Also update `project.json → name`, `project.json → type`, `project.json → domain`.
+
+#### Step: users (always required)
+
+Ask:
+- Who are the users of this system? What roles do they have?
+  (e.g. customer, admin, seller, moderator)
+
+For each role collect: name and a one-sentence description.
+
+Save to `.greenfield/answers.json → users` as an array:
+```json
+[
+  { "role": "customer", "description": "End user browsing and purchasing" },
+  { "role": "admin", "description": "Store manager" }
+]
+```
+
+#### Step: features (always required)
+
+Ask:
+- What are the core features of the system? List 3–10 key features.
+- For each feature: what is the priority? (must-have / should-have / nice-to-have)
+
+Save to `.greenfield/answers.json → features`:
+```json
+[
+  { "name": "User registration", "priority": "must-have" },
+  { "name": "Product catalog", "priority": "must-have" },
+  { "name": "Payment processing", "priority": "must-have" }
+]
+```
+
+#### Step: tech (adaptive)
+
+**Before asking**, derive what you already know:
+
+| Derived field | Rule |
+|---------------|------|
+| `runtime` | TS/JS → `node`, Python → `python`, Go → `go`, Java/Kotlin → `jvm`, Rust → `rust` |
+| `frontend_needed` | type=`cli` or type=`api` → skip frontend questions |
+| `package_manager` | TS/JS → suggest `npm`, Python → `pip`, Go → not needed, Rust → `cargo` |
+
+**Questions to ask:**
+1. What is the primary language? (TypeScript, JavaScript, Python, Go, Java, Rust, other)
+2. What backend technology? (Node.js, FastAPI, Django, Express, Spring Boot, Go stdlib, none)
+3. (Skip if type=cli or type=api) What frontend technology? (React, Vue, Svelte, Next.js, none)
+4. What database? (PostgreSQL, MySQL, MongoDB, SQLite, none)
+5. Container? (Docker, Podman, none)
+
+**Smart defaults to show as suggestions (ask user to confirm or override):**
+
+| Stack choice | Suggested defaults |
+|---|---|
+| TypeScript + React | bundler: vite, test: vitest, lint: eslint, format: prettier |
+| TypeScript + Node (no frontend) | test: jest, lint: eslint, format: prettier |
+| Python + FastAPI/Django | test: pytest, lint: ruff, format: black |
+| Go | test: go test, lint: golangci-lint, format: gofmt |
+| Java + Spring | test: junit, lint: checkstyle, build: gradle |
+| Rust | test: cargo test, lint: clippy, format: rustfmt |
+
+Show the defaults and say: "Based on your stack, I'll default to: [list]. You can override any of these."
+
+**Do NOT ask:**
+- `runtime` — derive silently from language
+- `package_manager` — derive silently; show in summary
+- `monorepo` — default to false for all greenfield single-service projects
+
+Save to `.greenfield/answers.json → tech`:
+```json
+{
+  "languages": ["typescript"],
+  "frontend": "react",
+  "backend": "node",
+  "db": "postgres",
+  "runtime": null,
+  "package_manager": null,
+  "linter": null,
+  "formatter": null,
+  "test_runner": null,
+  "bundler": null,
+  "container": "docker",
+  "orchestrator": null
+}
+```
+
+Leave `null` for fields the user did not explicitly override (smart defaults are applied by `build-context`).
+
+#### Step: complexity (adaptive)
+
+Ask:
+1. How complex is this project?
+   - `mvp` — prototype or proof of concept, simple scope
+   - `startup` — small team, limited integrations
+   - `saas` — multi-tenant, subscriptions, external integrations
+   - `enterprise` — large org, RBAC, compliance, many integrations
+
+2. How much should the pipeline auto-decide without prompting you?
+   - `full` — run everything automatically, no prompts
+   - `semi` — confirm key decisions, auto-run routine steps
+   - `manual` — prompt at each step
+
+**If level = `saas` or `enterprise`**, also ask:
+- What authentication method? (JWT, OAuth2, session-based, other)
+
+**If project type = `agent` or `ai-system`**, also ask:
+- Enable Agentic Development Lifecycle (ADLC) extended workflow? (yes/no)
+
+Save to `.greenfield/answers.json → complexity`:
+```json
+{
+  "level": "saas",
+  "autonomy": "semi",
+  "adlc": false
+}
+```
+
+Also update `project.json → autonomy_level` and `project.json → adlc`.
+
+### Saving Answers
+
+After completing each step, update `.greenfield/answers.json`:
+
+1. Save the step data under its key
+2. Add the step name to `steps_completed`
+3. Update `collected_at` to the current UTC timestamp
+
+Example final structure:
+```json
+{
+  "collected_at": "2026-03-25T10:00:00Z",
+  "steps_completed": ["idea", "project_info", "users", "features", "tech", "complexity"],
+  "idea": { ... },
+  "project_info": { ... },
+  "users": [ ... ],
+  "features": [ ... ],
+  "tech": { ... },
+  "complexity": { ... }
+}
+```
+
+**Also write backward-compatible format to `.project/state/answers.json`:**
+
+Merge the new answers into the existing `.project/state/answers.json` so that existing
+skills that read from that location continue to work. Map fields as follows:
+- `idea.description` → `answers.idea`
+- `idea.pain_points` → `answers.pain_points`
+- `project_info` → `answers.project_info`
+- `users` → `answers.users`
+- `features` → `answers.features`
+- `tech` → `answers.tech`
+- `complexity.level` → `answers.complexity`
+- `complexity.autonomy` → `answers.autonomy_level`
+
+### After All Steps
+
+When all 6 steps are complete, say:
+
+```
+Greenfield interview complete. Answers saved to .greenfield/answers.json.
+
+Summary:
+  Project: {name} ({type}) — {domain}
+  Stack: {language} / {backend} / {frontend} / {db}
+  Features: {count} features ({must-have count} must-have)
+  Users: {user roles}
+  Complexity: {level} | Autonomy: {autonomy}
+
+Run 'copilot-bootstrap build-context' to build context.json, decisions.json, and scope.json.
+Then run 'copilot-bootstrap spec-pipeline' to generate specification documents.
+```
+
+---
+
+## Standard Step-by-Step Interview (non-greenfield)
+
 Read `.project/state/workflow.json` to find the current step.
 Read `.project/state/answers.json` to see what is already answered.
 

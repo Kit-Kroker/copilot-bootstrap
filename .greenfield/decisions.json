@@ -1,0 +1,85 @@
+{
+  "stack_rationale": {
+    "language": {
+      "choice": "typescript",
+      "source": "user",
+      "reason": "User selected"
+    },
+    "frontend": {
+      "choice": "react",
+      "source": "user",
+      "reason": "User selected"
+    },
+    "backend": {
+      "choice": "node",
+      "source": "user",
+      "reason": "User selected"
+    },
+    "db": {
+      "choice": "postgres",
+      "source": "user",
+      "reason": "User selected"
+    },
+    "runtime": {
+      "choice": "node",
+      "source": "derived",
+      "reason": "Derived from language: typescript"
+    }
+  },
+  "tools_rationale": {
+    "package_manager": {
+      "choice": "npm",
+      "source": "default",
+      "reason": "Default for TypeScript/JavaScript"
+    },
+    "linter": {
+      "choice": "eslint",
+      "source": "default",
+      "reason": "Default for TypeScript"
+    },
+    "formatter": {
+      "choice": "prettier",
+      "source": "default",
+      "reason": "Default for TypeScript"
+    },
+    "test_runner": {
+      "choice": "vitest",
+      "source": "default",
+      "reason": "Default for react + Vite"
+    },
+    "bundler": {
+      "choice": "vite",
+      "source": "default",
+      "reason": "Default bundler for react"
+    },
+    "container": {
+      "choice": "docker",
+      "source": "user",
+      "reason": "User selected"
+    },
+    "orchestrator": {
+      "choice": "",
+      "source": "user",
+      "reason": "User selected"
+    }
+  },
+  "arch_rationale": {
+    "style": {
+      "choice": "layered",
+      "source": "derived",
+      "reason": "Web app defaults to layered architecture"
+    },
+    "monorepo": {
+      "choice": false,
+      "source": "derived",
+      "reason": "Single service project — defaults to false"
+    }
+  },
+  "defaults_applied": [
+    "package_manager",
+    "linter",
+    "formatter",
+    "test_runner",
+    "bundler"
+  ]
+}
