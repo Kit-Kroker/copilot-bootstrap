@@ -1,12 +1,40 @@
 # copilot-bootstrap
 
-A multi-agent workflow that takes a project idea and produces a full implementation-ready specification — PRD, domain model, RBAC, API spec, design artifacts, and dev scaffolding scripts — all driven by GitHub Copilot agents in VS Code.
+A structured workflow that takes a project idea — or an existing codebase — and produces a complete, implementation-ready specification through a chain of GitHub Copilot agents in VS Code.
 
-Supports two approaches:
-- **Greenfield** — build from scratch: the agents collect your idea, features, and tech choices, then generate all specification documents.
-- **Brownfield** — modernize existing code: a 7-step capability extraction pipeline analyzes your codebase first, then feeds discovered capabilities into the same generation pipeline.
+---
 
-For **agent** and **ai-system** projects, the workflow extends with the Agentic Development Lifecycle (ADLC): KPIs, human-agent responsibility mapping, agent architecture patterns, cost modelling, evaluation frameworks, Proof of Value plans, monitoring, and governance. ADLC composes with both greenfield and brownfield approaches.
+## What is this
+
+copilot-bootstrap is a **specification generator driven by Copilot agents**. You describe a project, answer a short series of targeted questions, and a pipeline of specialized agents produces every document you need before writing a line of code: PRD, domain model, RBAC policy, API spec, design flows, and dev scaffolding.
+
+For **existing codebases**, a 7-step discovery pipeline reads your source tree and extracts the business capability map before generating any documents — so the output reflects what the code actually does, not what you think it does.
+
+For **agent and AI system projects**, the workflow extends with the Agentic Development Lifecycle (ADLC): KPI thresholds, human-agent responsibility mapping, agent architecture patterns, evaluation frameworks, Proof of Value plans, monitoring specs, and governance policies.
+
+---
+
+## Why it exists
+
+Starting a project with Copilot usually means free-form conversation: you describe something, get code back, and figure out the architecture as you go. That works for small things. For anything with multiple users, domain complexity, or a team, the lack of upfront structure creates waste — inconsistent naming, missing permissions, no evaluation plan for the AI parts.
+
+copilot-bootstrap front-loads the thinking. It produces a consistent set of documents that developers, designers, and stakeholders can review before implementation starts. When you hand these to Copilot for actual coding, it has context: the domain model, the RBAC rules, the API contracts. The generated code is more coherent from the start.
+
+For brownfield projects the problem is different: you have a codebase but no clear map of what it does. The discovery pipeline produces that map as a structured artifact, not a vague summary.
+
+---
+
+## When to use
+
+| Situation | Good fit? |
+|-----------|-----------|
+| New app with 3+ user roles or any RBAC | Yes |
+| New agent or AI-powered system | Yes — ADLC workflow activates |
+| Existing codebase you need to understand, document, or modernize | Yes — brownfield mode |
+| Quick prototype, solo, no team coordination | Probably overkill |
+| Adding a feature to an existing well-documented project | Overkill |
+
+---
 
 ## Install
 
@@ -14,9 +42,11 @@ For **agent** and **ai-system** projects, the workflow extends with the Agentic 
 uv tool install copilot-bootstrap --from git+https://github.com/Kit-Kroker/copilot-bootstrap.git
 ```
 
-**Requirements:** `uv`, `jq`
+**Requirements:** `uv`, `jq`, VS Code with GitHub Copilot
 
-## Quick Start
+---
+
+## Quick start
 
 ```sh
 mkdir my-project && cd my-project
@@ -24,172 +54,215 @@ copilot-bootstrap init
 code .
 ```
 
-`init` copies all framework files (`.github/`, `docs/workflow/`, `.vscode/`) into the current directory and creates the initial workflow state. Then open in VS Code and use the **Bootstrap** Copilot agent to drive the workflow step by step.
+In VS Code, open Copilot Chat, select the **Bootstrap** agent, and type:
+
+```
+idea: a helpdesk system for managing customer support tickets
+```
+
+The agent asks one step at a time. When it finishes collecting answers, click the **Generate PRD & Capabilities** handoff button. Continue clicking handoff buttons as each agent completes its phase. When Script finishes, all documents are in `docs/`.
+
+---
+
+## Example workflow
+
+Here is an abbreviated session for a SaaS freelancer invoicing tool.
+
+**Step 1 — Describe the idea**
+
+```
+idea: a SaaS platform where freelancers track time and generate invoices for clients
+```
+
+Bootstrap asks 5-6 targeted questions across these steps: project info, user roles, core features, tech stack, and scale. The questions adapt — if you pick `web-app`, it asks about frontend; if you pick `agent`, it asks about autonomy level.
+
+**Step 2 — Collection complete**
+
+After answering, Bootstrap presents a handoff:
+
+```
+✓ All answers collected.
+
+[Generate PRD & Capabilities →]
+```
+
+Click it. The Analyst agent activates.
+
+**Step 3 — Generation pipeline**
+
+Each agent completes its phase and hands off to the next:
+
+```
+Analyst     → docs/analysis/prd.md, docs/analysis/capabilities.md
+Architect   → docs/domain/model.md, docs/domain/rbac.md, docs/domain/workflows.md
+Designer    → docs/design/overview.md, docs/design/ia.md, docs/design/flows.md
+Spec        → docs/spec/api.md, docs/spec/events.md, docs/spec/permissions.md, docs/spec/state-machines.md
+Script      → .github/skills/ (dev scaffolding)
+```
+
+Total: 5 handoff clicks, ~12 generated documents.
+
+**Step 4 — Start building**
+
+```
+/status        # confirm all files exist
+/review-spec   # check spec consistency before coding
+```
+
+Open Copilot Chat, use the generated skills (`/scaffold-project`, `/generate-models`, etc.) to start implementation with full context loaded.
+
+---
+
+## Example project
+
+**Project:** `invoiceflow` — SaaS invoicing for freelancers
+**Type:** `web-app`, **Domain:** `finance`, **Complexity:** `saas`
+**Stack:** FastAPI + React + PostgreSQL
+
+After the pipeline, `docs/domain/model.md` contains:
+
+```markdown
+## Entities
+
+### Invoice
+Aggregate root. Owned by Freelancer.
+States: draft → sent → paid | void
+
+Fields: id, freelancer_id, client_id, line_items[], issued_date, due_date,
+        total_amount, currency, status
+
+Domain events: InvoiceCreated, InvoiceSent, InvoicePaid, InvoiceVoided
+
+### Client
+Aggregate root. Managed by Freelancer.
+Fields: id, freelancer_id, name, email, address, default_currency
+
+### TimeEntry
+Owned by Freelancer. References Project.
+Fields: id, freelancer_id, project_id, date, hours, description, billable, invoice_id?
+```
+
+And `docs/spec/api.md` has entries like:
+
+```markdown
+### POST /invoices
+Auth: Bearer (freelancer scope)
+Body: { client_id, line_items[], due_date, currency }
+Response 201: Invoice object
+Response 422: Validation error
+
+### GET /invoices/{id}
+Auth: Bearer (invoice:read scope)
+Response 200: Invoice with line_items
+Response 403: Not invoice owner
+Response 404: Invoice not found
+```
+
+These feed directly into Copilot for implementation — the model, field names, status transitions, and permission rules are already defined.
+
+---
+
+## Brownfield example
+
+If you have an existing codebase, use brownfield mode. The `scan` command detects the stack automatically:
+
+```sh
+cd /path/to/existing-project
+copilot-bootstrap init
+copilot-bootstrap scan    # detects language, framework, DB, tools
+copilot-bootstrap discover
+```
+
+`scan` writes `.discovery/context.json`:
+
+```json
+{
+  "stack": { "languages": ["typescript"], "backend": "express", "db": "postgres" },
+  "tools": { "test_runner": "jest", "linter": "eslint", "bundler": "vite" },
+  "arch": { "style": "layered", "monorepo": false }
+}
+```
+
+The Discovery agent then runs the 7-step capability extraction pipeline against your codebase, producing `docs/discovery/l1-capabilities.md` with entries like:
+
+```markdown
+## BC-001 — Order Management
+Confidence: HIGH (appears in 4 signal sources)
+Evidence: OrderController, orders/ package, ORDERS table, /orders routes
+
+## BC-002 — Customer Management
+Confidence: HIGH
+Evidence: CustomerService, customers/ package, CUSTOMERS table
+```
+
+After discovery, `copilot-bootstrap generate` produces project-specific Copilot config:
+
+```
+.github/copilot-instructions.md    project-wide context (stack, conventions)
+.github/instructions/              language + framework + architecture rules
+.github/agents/                    backend, frontend, test, refactor agents
+.github/skills/                    build, test, lint, deploy skills
+.github/prompts/                   /new-feature, /fix-bug, /write-tests, /review-pr
+.vscode/mcp.json                   MCP server config (postgres, filesystem)
+```
+
+---
 
 ## Commands
 
 ```sh
-copilot-bootstrap init     # set up a new project (copies agents, prompts, skills)
-copilot-bootstrap sync     # update framework files from the latest package version
-copilot-bootstrap step     # show current step
-copilot-bootstrap next     # advance to the next step
-copilot-bootstrap ask      # print questions for the current step
-copilot-bootstrap validate # validate state files
+copilot-bootstrap init              # initialise a new project
+copilot-bootstrap scan              # detect stack and write .discovery/context.json
+copilot-bootstrap discover          # initialise the brownfield discovery pipeline
+copilot-bootstrap discovery-status  # show discovery pipeline progress
+copilot-bootstrap generate          # generate Copilot config from discovery outputs
+copilot-bootstrap generate-status   # show generator progress
+copilot-bootstrap sync              # update framework files to latest version
+copilot-bootstrap step              # show current workflow step
+copilot-bootstrap next              # advance to next step
+copilot-bootstrap ask               # print questions for the current step
+copilot-bootstrap validate          # validate state file integrity
 ```
 
-## Updating
+---
 
-To get the latest agents, prompts, and skills in an existing project:
+## Project types
+
+| Type | ADLC |
+|------|------|
+| `web-app` | No |
+| `mobile` | No |
+| `api` | No |
+| `cli` | No |
+| `agent` | Yes |
+| `ai-system` | Yes |
+
+When type is `agent` or `ai-system`, the pipeline extends with KPIs, human-agent responsibility mapping, evaluation framework, Proof of Value plan, monitoring spec, and governance policy.
+
+---
+
+## Approaches
+
+| Approach | When to use |
+|----------|-------------|
+| `greenfield` | Building from scratch |
+| `brownfield` | Existing codebase to understand, document, or modernize |
+
+Brownfield replaces the users/features/tech/complexity steps with a 7-step codebase analysis. Both approaches support ADLC.
+
+---
+
+## Updating
 
 ```sh
 uv tool install copilot-bootstrap --from git+https://github.com/Kit-Kroker/copilot-bootstrap.git --force
 copilot-bootstrap sync
 ```
 
-`sync` overwrites `.github/` and `docs/workflow/` from the updated package. It never touches `.project/state/` or `project.json`.
+`sync` overwrites `.github/` and `docs/workflow/` from the updated package. It never touches `.project/state/`, `project.json`, or any generated documents.
 
-## Project Types
-
-| Type | Description |
-|------|-------------|
-| `web-app` | Traditional UI-driven application |
-| `mobile` | Native or hybrid mobile application |
-| `api` | Headless API service or backend |
-| `cli` | Command-line tool |
-| `agent` | Single LLM-driven agent with tool use |
-| `ai-system` | Multi-agent or LLM-core product |
-
-When type is `agent` or `ai-system`, the ADLC extended workflow activates automatically after the standard bootstrap.
-
-## Project Approach
-
-| Approach | Description |
-|----------|-------------|
-| `greenfield` | Building from scratch — user provides idea, features, tech stack |
-| `brownfield` | Modernizing existing code — 7-step capability extraction pipeline analyzes the codebase first |
-
-Set during the `project_info` step. Greenfield is the default.
-
-## Workflow Steps
-
-### Standard Bootstrap (Greenfield)
-
-| Step | Description |
-|------|-------------|
-| `idea` | Capture the project idea and pain points |
-| `project_info` | Name, type, domain |
-| `users` | User roles and target audience |
-| `features` | Core features |
-| `tech` | Backend, frontend, infrastructure |
-| `complexity` | simple / saas / enterprise (+ autonomy level for agents) |
-| `prd` | Generate Product Requirements Document |
-| `capabilities` | System capabilities |
-| `domain` | Domain model |
-| `design_workflow` | Design artifacts |
-| `skills` | Copilot skill definitions |
-| `scripts` | Dev scaffolding scripts |
-| `done` | Standard bootstrap complete |
-
-### ADLC Extended Steps (agent / ai-system only)
-
-| Step | Description |
-|------|-------------|
-| `constraints` | Regulatory, error tolerance, and autonomy boundaries |
-| `kpis` | Business and technical KPIs with measurable thresholds |
-| `human_agent_map` | Human vs agent responsibility matrix |
-| `agent_pattern` | Agent architecture pattern, tool inventory, memory design |
-| `cost_model` | Token economics, monthly cost estimates |
-| `eval_framework` | Evaluation framework, golden dataset spec, regression strategy |
-| `pov` | Proof of Value plan with go/no-go criteria |
-| `monitoring` | Observability dashboards, alert thresholds, rollback criteria |
-| `governance` | Model versioning, feedback loops, drift monitoring, audit policy |
-| `adlc_done` | Full ADLC lifecycle complete |
-
-### Brownfield Discovery Steps (replaces steps 3-6 of greenfield)
-
-When approach is `brownfield`, these steps replace `users`, `features`, `tech`, `complexity`:
-
-| Step | Description |
-|------|-------------|
-| `codebase_setup` | Codebase path, language, architecture style, DB access, pre-generated reports |
-| `seed_candidates` | A1: Extract capability candidates from package structure, DB schema, entry points |
-| `analyze_candidates` | A2: Cohesion/coupling/boundary analysis — confirm, split, merge, de-scope, or flag |
-| `verify_coverage` | A3: Map all files to capabilities, target >90% coverage, resolve orphans |
-| `lock_l1` | A4: Finalize Level 1 capability list with stable IDs (BC-001, BC-002...) |
-| `define_l2` | A5: Define Level 2 sub-capabilities mapped to code locations and entities |
-| `discovery_domain` | A6: Generate consolidated domain model with full code traceability |
-| `blueprint_comparison` | A7: Compare against industry reference (BIAN, TM Forum, APQC) |
-
-After discovery, the workflow merges back into `prd` → `capabilities` → `domain` → ... using discovery outputs as input.
-
-## Agent Pipeline
-
-```
-Greenfield:
-  Bootstrap → Analyst → Architect → Designer → Spec → Script
-
-Brownfield:
-  Bootstrap → Discovery → Analyst → Architect → Designer → Spec → Script
-
-ADLC extension (appends to either pipeline when type = agent / ai-system):
-  ... → Evaluator → Script → Ops
-```
-
-| Agent | Responsibility |
-|-------|----------------|
-| Bootstrap | Collect project answers, route to Discovery (brownfield) or Analyst (greenfield) |
-| Discovery | Extract capabilities from existing codebase using 7-step pipeline (brownfield only) |
-| Analyst | PRD, capability map, + KPIs and human-agent map (ADLC) |
-| Architect | Domain model, RBAC, workflows, + agent pattern and cost model (ADLC) |
-| Designer | Design overview, IA, user flows |
-| Spec | API, events, permissions, state machines |
-| Evaluator | Eval framework and PoV plan (ADLC only) |
-| Script | Dev skill stubs and operational scripts |
-| Ops | Monitoring spec and governance doc (ADLC only) |
-
-## Slash Commands
-
-| Command | Purpose |
-|---------|---------|
-| `/bootstrap` | Start or resume the workflow |
-| `/status` | Show current step, answers, and generated files |
-| `/adlc-status` | Show ADLC-specific output status |
-| `/pov` | Print PoV plan and go/no-go thresholds |
-| `/review-spec` | Validate consistency across spec files |
-| `/review-agent` | Cross-check ADLC document consistency |
-| `/discovery-status` | Show brownfield discovery pipeline progress |
-| `/reset` | Jump workflow to a specific step |
-| `/stitch` | Generate or regenerate UI screens via Google Stitch |
-
-## File Structure
-
-```
-.github/
-  agents/          # Copilot agent definitions (9 agents)
-  prompts/         # Slash command prompts (9 commands)
-  skills/          # Copilot skill definitions (32 skills)
-  copilot-instructions.md
-.project/state/
-  workflow.json    # Current step and status
-  answers.json     # Collected answers per step
-docs/
-  workflow/        # Workflow definitions (bootstrap, brownfield, design, adlc, agents)
-  discovery/       # Brownfield extraction outputs** (candidates, analysis, coverage, L1, L2, domain model, blueprint)
-  analysis/        # PRD, capabilities, kpis*, human-agent-map*
-  domain/          # Model, RBAC, workflows, agent-pattern*, cost-model*
-  design/          # Overview, IA, flows, screens
-  spec/            # API, events, permissions, state-machines, eval*, pov-plan*
-  ops/             # monitoring*, governance*
-project.json       # Project metadata (includes approach and adlc flag)
-scripts/           # Shell scripts for state management
-```
-
-*Files marked with `*` are generated only when ADLC is active. Files marked with `**` are generated only when approach is brownfield.*
-
-## VS Code Setup
-
-The `.vscode/` directory includes pre-configured MCP and settings. Open the project folder directly in VS Code — no additional setup required.
+---
 
 ## Manual
 
-See [MANUAL.md](MANUAL.md) for full documentation including agents, slash commands, skills, and troubleshooting.
+See [MANUAL.md](MANUAL.md) for full documentation: all agents, slash commands, skills, the brownfield discovery pipeline, the ADLC extended workflow, and troubleshooting.

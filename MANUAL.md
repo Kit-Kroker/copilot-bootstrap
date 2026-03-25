@@ -1,10 +1,8 @@
 # Copilot Bootstrap — Manual
 
-A multi-agent workflow that takes a project idea and produces a full implementation-ready specification: PRD, domain model, RBAC, API spec, design artifacts, and dev scaffolding scripts — all driven by GitHub Copilot agents in VS Code.
+A structured workflow that takes a project idea — or an existing codebase — and produces a complete, implementation-ready specification through a chain of GitHub Copilot agents in VS Code.
 
-Supports **greenfield** (build from scratch) and **brownfield** (modernize existing code) approaches. Brownfield uses a 7-step capability extraction pipeline to analyze the existing codebase before generating specifications.
-
-For **agent** and **ai-system** projects, the workflow extends with the Agentic Development Lifecycle (ADLC): KPIs, human-agent responsibility mapping, agent architecture patterns, cost modelling, evaluation frameworks, Proof of Value plans, monitoring, and governance. ADLC composes with both greenfield and brownfield approaches.
+Supports **greenfield** (build from scratch) and **brownfield** (modernize existing code) approaches. For **agent** and **ai-system** projects, the Agentic Development Lifecycle (ADLC) extends the workflow with KPIs, evaluation frameworks, PoV plans, monitoring, and governance. All three modes compose.
 
 ---
 
@@ -18,115 +16,117 @@ For **agent** and **ai-system** projects, the workflow extends with the Agentic 
 6. [Agents](#6-agents)
 7. [Slash Commands](#7-slash-commands)
 8. [Skills](#8-skills)
-9. [Scripts](#9-scripts)
+9. [CLI Commands](#9-cli-commands)
 10. [File Structure](#10-file-structure)
-11. [Google Stitch Integration](#11-google-stitch-integration)
-12. [ADLC Extended Workflow](#12-adlc-extended-workflow)
-13. [Brownfield Discovery Pipeline](#13-brownfield-discovery-pipeline)
-14. [Extending the Framework](#14-extending-the-framework)
-15. [Troubleshooting](#15-troubleshooting)
+11. [Brownfield Discovery Pipeline](#11-brownfield-discovery-pipeline)
+12. [Generator Orchestrator](#12-generator-orchestrator)
+13. [Google Stitch Integration](#13-google-stitch-integration)
+14. [ADLC Extended Workflow](#14-adlc-extended-workflow)
+15. [Extending the Framework](#15-extending-the-framework)
+16. [Troubleshooting](#16-troubleshooting)
 
 ---
 
 ## 1. Prerequisites
 
-- **VS Code** with the **GitHub Copilot** extension installed and signed in
-- **jq** installed (used by shell scripts): `apt install jq` / `brew install jq`
-- VS Code setting enabled for hooks (optional):
-  ```json
-  "chat.useCustomAgentHooks": true
-  ```
+- **VS Code** with the **GitHub Copilot** extension (signed in)
+- **`uv`** — Python package installer: `curl -LsSf https://astral.sh/uv/install.sh | sh`
+- **`jq`** — JSON processor: `apt install jq` / `brew install jq`
+
+Optional but recommended:
+- VS Code setting for agent hooks: `"chat.useCustomAgentHooks": true`
 
 ---
 
 ## 2. Quick Start
 
-### Step 1 — Copy this repository into your new project
+### Install
 
 ```sh
-cp -r copilot-bootstrap/. my-project/
-cd my-project
+uv tool install copilot-bootstrap --from git+https://github.com/Kit-Kroker/copilot-bootstrap.git
 ```
 
-Or use it as-is by opening this folder in VS Code.
-
-### Step 2 — Initialise state
+### Greenfield — new project from scratch
 
 ```sh
-./scripts/init.sh
+mkdir my-project && cd my-project
+copilot-bootstrap init
+code .
 ```
 
-This creates `.project/state/workflow.json` and `.project/state/answers.json` if they do not exist.
-
-### Step 3 — Open Copilot Chat
-
-In VS Code, open the Copilot Chat panel (`Ctrl+Alt+I` / `Cmd+Alt+I`).
-
-### Step 4 — Select the Bootstrap agent
-
-Click the agent selector in the chat input and choose **Bootstrap**.
-
-### Step 5 — Start
-
-Type your idea:
+In VS Code, open Copilot Chat, select **Bootstrap**, and type your idea:
 
 ```
-idea: a helpdesk system for managing customer support tickets
+idea: a SaaS platform where freelancers track time and invoice clients
 ```
 
-The agent will ask you questions one step at a time. When all answers are collected, click the **Generate PRD & Capabilities** handoff button to pass control to the next agent. Continue clicking handoff buttons as each phase completes.
+The Bootstrap agent collects answers across 5-6 steps. When finished, click **Generate PRD & Capabilities** and follow the handoff chain through Analyst → Architect → Designer → Spec → Script.
 
-### Done
+### Brownfield — existing codebase
 
-When the Script agent finishes, all documents are generated and the workflow state is `done`. Open Copilot Chat and use `/scaffold-project` to start development.
+```sh
+cd /path/to/existing-project
+copilot-bootstrap init
+copilot-bootstrap scan          # detect stack → .discovery/context.json
+copilot-bootstrap discover      # initialise discovery pipeline
+code .
+```
 
-If the project type is `agent` or `ai-system`, the ADLC extended workflow activates automatically — the pipeline continues through Evaluator and Ops agents until `adlc_done`.
+In VS Code, select **Bootstrap** and say:
+
+```
+idea: understand and document this codebase before modernizing it
+```
+
+Bootstrap collects `codebase_setup` answers, then routes to the **Discovery** agent, which runs the 7-step capability extraction pipeline. After discovery completes, run:
+
+```sh
+copilot-bootstrap generate      # produce project-specific Copilot config
+```
 
 ---
 
 ## 3. How It Works
 
-### Customization Layers
+### Customization layers
 
 This framework uses all VS Code Copilot customization types:
 
 | Layer | Location | Purpose |
 |-------|----------|---------|
 | Custom Instructions | `.github/copilot-instructions.md` | Always-on project context, loaded in every request |
+| File Instructions | `.github/instructions/*.instructions.md` | Language/framework-specific rules with `applyTo` globs |
 | Prompt Files | `.github/prompts/*.prompt.md` | User-facing slash commands (`/status`, `/reset`, etc.) |
 | Agent Skills | `.github/skills/*/SKILL.md` | Multi-step reusable workflows used by agents |
 | Custom Agents | `.github/agents/*.agent.md` | Specialized personas with tools, models, and handoffs |
-| Hooks | `PostToolUse` in agent frontmatter | Auto-validate state files after every agent edit |
+| Hooks | Defined in agent frontmatter | Auto-validate state files after every agent edit |
+| MCP Servers | `.vscode/mcp.json` | External tool integrations (databases, filesystem, Stitch) |
 
-### Agent Pipeline
+### Agent pipeline
 
-Agents are chained via **handoff buttons**. Each agent completes its phase and presents a button that passes context to the next agent.
+Agents are chained via **handoff buttons**. Each agent completes its phase and presents a button that passes context to the next.
 
-**Greenfield pipeline** (default):
 ```
-Bootstrap → Analyst → Architect → Designer → Spec → Script
-```
+Greenfield:
+  Bootstrap → Analyst → Architect → Designer → Spec → Script
 
-**Brownfield pipeline** (when approach is `brownfield`):
-```
-Bootstrap → Discovery → Analyst → Architect → Designer → Spec → Script
-```
+Brownfield:
+  Bootstrap → Discovery → Analyst → Architect → Designer → Spec → Script
 
-**ADLC extension** (appends when type is `agent` or `ai-system`):
-```
-... → Evaluator → Script → Ops
+ADLC extension (appends when type = agent / ai-system):
+  ... → Evaluator → Script → Ops
 ```
 
-### State Machine
+### State machine
 
 Workflow progress is tracked in two files:
 
 - `.project/state/workflow.json` — current step and status
 - `.project/state/answers.json` — all collected answers
 
-Both files are updated by agents after each step. The `project.json` root file mirrors the current step and includes the `approach` and `adlc` flags for quick reference.
+Both are updated by agents after each step. `project.json` at the root mirrors the current step and includes `approach` and `adlc` flags.
 
-### Dependency Chain
+### Dependency chain
 
 Each document depends on the previous phase:
 
@@ -155,7 +155,7 @@ answers.json (codebase_setup)
                                             └─► docs/analysis/prd.md (brownfield mode)
 ```
 
-ADLC extends this chain:
+ADLC extends with:
 
 ```
 answers.json (constraints, kpis)
@@ -169,15 +169,13 @@ answers.json (constraints, kpis)
                                             └─► docs/ops/governance.md
 ```
 
-If a required input file is missing, the agent will report what needs to run first.
+If a required input is missing, the agent reports what needs to run first.
 
 ---
 
 ## 4. Project Types & Approach
 
-### Project Types
-
-Valid project types are set during the `project_info` step:
+### Project types
 
 | Type | Description | ADLC |
 |------|-------------|------|
@@ -188,63 +186,45 @@ Valid project types are set during the `project_info` step:
 | `agent` | Single LLM-driven agent with tool use | Yes |
 | `ai-system` | Multi-agent or LLM-core product | Yes |
 
-When type is `agent` or `ai-system`:
-- `project.json → adlc` is set to `true`
-- The `complexity` step also asks for **autonomy level** (`reactive` / `assistive` / `autonomous`)
-- Two additional bootstrap steps are added: `constraints` and `kpis`
-- After the standard bootstrap completes, the ADLC extended workflow activates
+When type is `agent` or `ai-system`: `project.json → adlc` is set to `true`, an additional `constraints` + `kpis` step is added, and the ADLC pipeline activates after the standard bootstrap completes.
 
-### Project Approach
-
-The approach is also set during the `project_info` step:
+### Approach
 
 | Approach | Description |
 |----------|-------------|
-| `greenfield` | Building from scratch — user provides idea, features, tech stack (default) |
-| `brownfield` | Modernizing existing code — 7-step capability extraction pipeline analyzes the codebase first |
+| `greenfield` | Building from scratch — user provides idea, features, tech stack |
+| `brownfield` | Modernizing existing code — 7-step pipeline analyzes the codebase first |
 
-When approach is `brownfield`:
-- `project.json → approach` is set to `"brownfield"`
-- `.project/state/workflow.json → approach` is set to `"brownfield"`
-- The workflow switches to `docs/workflow/brownfield.md`
-- Steps `users`, `features`, `tech`, `complexity` are replaced by `codebase_setup` + 7 discovery steps
-- A new `codebase_setup` step collects: codebase path, primary language, architecture style, DB access, pre-generated reports
-- The Discovery agent runs the 7-step capability extraction pipeline
-- After discovery, the pipeline merges back into `prd` → `capabilities` → `domain` with discovery outputs as primary input
-- ADLC extension still applies if type is `agent` or `ai-system` (approach and type are orthogonal)
+When `brownfield`: the `users`, `features`, `tech`, `complexity` steps are replaced by `codebase_setup` + 7 discovery steps. ADLC still applies if type is `agent` or `ai-system`.
 
 ---
 
 ## 5. Workflow Steps
 
-### Standard Bootstrap — Greenfield (13 steps)
-
-Defined in `docs/workflow/bootstrap.md`.
+### Standard bootstrap — greenfield (13 steps)
 
 | # | Step | Agent | Output |
 |---|------|-------|--------|
-| 1 | `idea` | Bootstrap | answers.json: idea, pain_points |
-| 2 | `project_info` | Bootstrap | answers.json: project_info; project.json updated |
-| 3 | `users` | Bootstrap | answers.json: users |
-| 4 | `features` | Bootstrap | answers.json: features |
-| 5 | `tech` | Bootstrap | answers.json: tech |
-| 6 | `complexity` | Bootstrap | answers.json: complexity (+ autonomy_level for agents) |
+| 1 | `idea` | Bootstrap | answers: idea, pain_points |
+| 2 | `project_info` | Bootstrap | answers: project_info; project.json updated |
+| 3 | `users` | Bootstrap | answers: users |
+| 4 | `features` | Bootstrap | answers: features |
+| 5 | `tech` | Bootstrap | answers: tech |
+| 6 | `complexity` | Bootstrap | answers: complexity (+ autonomy_level for agents) |
 | 7 | `prd` | Analyst | docs/analysis/prd.md |
 | 8 | `capabilities` | Analyst | docs/analysis/capabilities.md |
 | 9 | `domain` | Architect | docs/domain/model.md, rbac.md, workflows.md |
 | 10 | `design_workflow` | Designer | docs/design/overview.md, ia.md, flows.md |
-| 11 | `skills` | Script | .github/skills/ (dev skill stubs) |
+| 11 | `skills` | Script | .github/skills/ (dev stubs) |
 | 12 | `scripts` | Script | scripts/*.sh |
 | 13 | `done` | — | Standard bootstrap complete |
 
-### ADLC Extended Steps (10 steps, agent/ai-system only)
-
-Defined in `docs/workflow/adlc.md`. Activate after `done` when `adlc = true`.
+### ADLC extended steps (10 steps, agent/ai-system only)
 
 | # | Step | Agent | Output |
 |---|------|-------|--------|
-| 14 | `constraints` | Bootstrap | answers.json: constraints |
-| 15 | `kpis` | Bootstrap | answers.json: kpis |
+| 14 | `constraints` | Bootstrap | answers: constraints |
+| 15 | `kpis` | Bootstrap | answers: kpis |
 | 16 | `human_agent_map` | Analyst | docs/analysis/human-agent-map.md |
 | 17 | `agent_pattern` | Architect | docs/domain/agent-pattern.md |
 | 18 | `cost_model` | Architect | docs/domain/cost-model.md |
@@ -254,13 +234,11 @@ Defined in `docs/workflow/adlc.md`. Activate after `done` when `adlc = true`.
 | 22 | `governance` | Ops | docs/ops/governance.md |
 | 23 | `adlc_done` | — | Full ADLC lifecycle complete |
 
-### Brownfield Discovery Steps (replaces greenfield steps 3-6)
-
-Defined in `docs/workflow/brownfield.md`. Active when `approach = brownfield`.
+### Brownfield discovery steps (replaces greenfield steps 3-6)
 
 | # | Step | Agent | Output |
 |---|------|-------|--------|
-| 3 | `codebase_setup` | Bootstrap | answers.json: codebase_setup |
+| 3 | `codebase_setup` | Bootstrap | answers: codebase_setup |
 | 4 | `seed_candidates` | Discovery | docs/discovery/candidates.md |
 | 5 | `analyze_candidates` | Discovery | docs/discovery/analysis.md |
 | 6 | `verify_coverage` | Discovery | docs/discovery/coverage.md |
@@ -269,49 +247,39 @@ Defined in `docs/workflow/brownfield.md`. Active when `approach = brownfield`.
 | 9 | `discovery_domain` | Discovery | docs/discovery/domain-model.md |
 | 10 | `blueprint_comparison` | Discovery | docs/discovery/blueprint-comparison.md |
 
-After discovery, the workflow continues with `prd` (step 11) → `capabilities` → `domain` → ... using discovery outputs as input. The generation skills (generate-prd, generate-capabilities, generate-domain) switch to brownfield mode automatically, reading from `docs/discovery/` instead of user-supplied answers.
+After discovery, the workflow continues from `prd` (step 11) onward, using discovery outputs as primary inputs.
 
-### Questions Asked Per Step
+### Questions asked per step
 
 | Step | Questions |
 |------|-----------|
-| `idea` | Describe your project idea; What is currently manual, slow, or error-prone?; Why is a human doing this today? |
-| `project_info` | Name; type (`web-app` / `mobile` / `api` / `cli` / `agent` / `ai-system`); domain; approach (`greenfield` / `brownfield`) |
-| `codebase_setup` | Codebase path; primary language; architecture style; DB access; pre-generated reports; has frontend *(brownfield only)* |
+| `idea` | Describe your project; what is currently manual or slow; why is a human doing it today |
+| `project_info` | Name; type; domain; approach |
+| `codebase_setup` | Codebase path; primary language; architecture style; DB access; pre-generated reports; has frontend |
 | `users` | Who are the users; what roles do they have |
-| `features` | List 3–10 core features |
-| `tech` | Backend, frontend, database/infra preferences |
+| `features` | List 3-10 core features |
+| `tech` | Backend, frontend, database preferences |
 | `complexity` | `simple` / `saas` / `enterprise`; autonomy level (agent/ai-system only) |
-| `constraints` | Regulatory requirements; max error rate; forbidden actions; latency tolerance; data sources *(ADLC only)* |
+| `constraints` | Regulatory requirements; max error rate; forbidden actions; latency tolerance *(ADLC only)* |
 | `kpis` | Primary business metric; 30-day success criteria; minimum accuracy; kill-switch criteria *(ADLC only)* |
 
 ---
 
 ## 6. Agents
 
-Agents are defined in `.github/agents/`. Select an agent in the Copilot Chat panel before typing.
+Agents live in `.github/agents/`. Select an agent in the Copilot Chat panel.
 
 ### Bootstrap
-**File:** `.github/agents/bootstrap.agent.md`
-**Tools:** `read`, `edit`, `agent`
-**Visible in chat:** Yes
+**File:** `.github/agents/bootstrap.agent.md` | **Visible in chat:** Yes
 
-Collects all project answers step by step. Asks only missing questions. Saves answers to `answers.json` after each step. When all answer steps are complete, presents the **Generate PRD & Capabilities** handoff button.
-
-For ADLC projects, also collects `constraints` and `kpis` answers, and sets `project.json → adlc = true`.
-
-For brownfield projects, also collects `codebase_setup` answers. When complete, routes to the **Discovery** agent instead of Analyst.
-
-**Hook:** Runs `./scripts/validate-state.sh` after every file edit to ensure `workflow.json` and `answers.json` remain valid JSON.
+Collects all project answers step by step. Asks only missing questions. Saves to `answers.json` after each step. Routes to Discovery (brownfield) or Analyst (greenfield) when collection is complete. Validates state after every file edit via a `PostToolUse` hook.
 
 ---
 
 ### Discovery *(brownfield only)*
-**File:** `.github/agents/discovery.agent.md`
-**Tools:** `read`, `edit`, `search/codebase`
-**Visible in chat:** No (called via handoff from Bootstrap)
+**File:** `.github/agents/discovery.agent.md` | **Visible in chat:** No
 
-Analyzes an existing codebase using the 7-step capability extraction pipeline:
+Analyzes an existing codebase using the 7-step capability extraction pipeline. Each step reads one input, produces one output, and feeds the next. Adaptive: skips unavailable signal sources (no DB, no frontend). Accepts pre-generated inputs — if an output file already exists in `docs/discovery/`, uses it as-is.
 
 | Step | Skill | Output |
 |------|-------|--------|
@@ -323,140 +291,69 @@ Analyzes an existing codebase using the 7-step capability extraction pipeline:
 | `discovery_domain` | `generate-discovery-domain` | docs/discovery/domain-model.md |
 | `blueprint_comparison` | `compare-blueprint` | docs/discovery/blueprint-comparison.md |
 
-Each step reads one input, produces one output, and feeds the next. The pipeline is adaptive — it skips unavailable signal sources (no DB, no frontend). Each step also accepts pre-generated inputs (if its output file already exists in `docs/discovery/`, it uses that instead of regenerating).
-
-When done, presents the **Generate PRD from Discovery** handoff button.
-
 ---
 
 ### Analyst
-**File:** `.github/agents/analyst.agent.md`
-**Tools:** `read`, `edit`
-**Visible in chat:** No (called via handoff from Bootstrap)
+**File:** `.github/agents/analyst.agent.md` | **Visible in chat:** No
 
-Generates analysis documents from `answers.json`:
-1. `docs/analysis/prd.md` — Product Requirements Document (includes agentic sections for ADLC)
-2. `docs/analysis/capabilities.md` — Capability map with dependencies and feature traceability
-
-For ADLC projects, also generates:
-3. `docs/analysis/kpis.md` — Business and technical KPIs with thresholds
-4. `docs/analysis/human-agent-map.md` — Human vs agent responsibility matrix
-
-When done, presents the **Model Domain & Architecture** handoff button.
+Generates: `docs/analysis/prd.md`, `docs/analysis/capabilities.md`. In brownfield mode, reads from `docs/discovery/` instead of user-supplied answers. For ADLC: also generates `docs/analysis/kpis.md` and `docs/analysis/human-agent-map.md`.
 
 ---
 
 ### Architect
-**File:** `.github/agents/architect.agent.md`
-**Tools:** `read`, `edit`
-**Visible in chat:** No (called via handoff from Analyst)
+**File:** `.github/agents/architect.agent.md` | **Visible in chat:** No
 
-Generates domain architecture documents in order:
-1. `docs/domain/model.md` — Entities, aggregates, bounded contexts, domain events
-2. `docs/domain/rbac.md` — Roles, permission matrix, scope rules
-3. `docs/domain/workflows.md` — Business workflows, state transitions, capability traceability
-
-For ADLC projects, also generates:
-4. `docs/domain/agent-pattern.md` — Agent architecture pattern, tool inventory, orchestration framework, context/memory design
-5. `docs/domain/cost-model.md` — Token economics, monthly cost estimates at three usage tiers, cost optimisation options
-
-When done, presents the **Design Workflow & IA** handoff button.
+Generates: `docs/domain/model.md`, `docs/domain/rbac.md`, `docs/domain/workflows.md`. For ADLC: also generates `docs/domain/agent-pattern.md` and `docs/domain/cost-model.md`.
 
 ---
 
 ### Designer
-**File:** `.github/agents/designer.agent.md`
-**Tools:** `read`, `edit`
-**Visible in chat:** No (called via handoff from Architect)
+**File:** `.github/agents/designer.agent.md` | **Visible in chat:** No
 
-Generates three design documents in order:
-1. `docs/design/overview.md` — Design phases, deliverables, entry/exit criteria
-2. `docs/design/ia.md` — Sitemap, navigation model, screen inventory, access rules
-3. `docs/design/flows.md` — User flows with happy path, alternate paths, failure paths
-
-When done, presents the **Generate Spec** handoff button.
+Generates: `docs/design/overview.md`, `docs/design/ia.md`, `docs/design/flows.md`. Optionally generates UI screens via Google Stitch MCP.
 
 ---
 
 ### Spec
-**File:** `.github/agents/spec.agent.md`
-**Tools:** `read`, `edit`
-**Visible in chat:** No (called via handoff from Designer)
+**File:** `.github/agents/spec.agent.md` | **Visible in chat:** No
 
-Generates four specification files in a single pass:
-1. `docs/spec/api.md` — REST API endpoints with auth, params, and responses
-2. `docs/spec/events.md` — Domain event catalogue with payloads
-3. `docs/spec/permissions.md` — Permission list and role assignments (`resource:action` format)
-4. `docs/spec/state-machines.md` — State machines for all stateful entities
-
-Uses consistent naming across all four files.
-
-When done:
-- **ADLC active:** presents the **Generate Eval Framework & PoV Plan** handoff button (routes to Evaluator)
-- **ADLC inactive:** presents the **Generate Scripts & Dev Skills** handoff button (routes to Script)
+Generates in a single pass: `docs/spec/api.md`, `docs/spec/events.md`, `docs/spec/permissions.md`, `docs/spec/state-machines.md`. Uses consistent naming across all four. Routes to Evaluator (ADLC) or Script (standard).
 
 ---
 
 ### Evaluator *(ADLC only)*
-**File:** `.github/agents/evaluator.agent.md`
-**Tools:** `read`, `edit`
-**Visible in chat:** No (called via handoff from Spec)
+**File:** `.github/agents/evaluator.agent.md` | **Visible in chat:** No
 
-Generates two evaluation documents:
-1. `docs/spec/eval.md` — Evaluation framework: success metrics, evaluation methods per output type, golden dataset spec, regression testing strategy, tooling recommendation
-2. `docs/spec/pov-plan.md` — Proof of Value plan: highest-risk assumption, PoV scope, golden dataset requirements, baseline metrics, go/no-go gate criteria
-
-When done, presents the **Generate Scripts & Dev Skills** handoff button.
+Generates: `docs/spec/eval.md` (evaluation framework, golden dataset spec, regression strategy) and `docs/spec/pov-plan.md` (highest-risk assumption, PoV scope, go/no-go gate criteria).
 
 ---
 
 ### Script
-**File:** `.github/agents/script.agent.md`
-**Tools:** `read`, `edit`, `run`
-**Visible in chat:** No (called via handoff from Spec or Evaluator)
+**File:** `.github/agents/script.agent.md` | **Visible in chat:** No
 
-Generates two things:
+Generates dev skill stubs under `.github/skills/` tailored to the project's stack:
+- Always: `scaffold-project`, `generate-models`, `generate-api`, `generate-tests`
+- If frontend: `generate-components`, `generate-pages`
+- If complexity is `saas`: `generate-auth`, `generate-tenant`
+- If complexity is `enterprise`: `generate-rbac-impl`, `generate-audit-log`
 
-**Dev skill stubs** under `.github/skills/` — tailored to the project's tech stack:
-- `scaffold-project` — always generated
-- `generate-models` — always generated
-- `generate-api` — always generated
-- `generate-tests` — always generated
-- `generate-components` + `generate-pages` — if frontend is not `none`
-- `generate-auth` + `generate-tenant` — if complexity is `saas`
-- `generate-rbac-impl` + `generate-audit-log` — if complexity is `enterprise`
-
-**Operational scripts** — verifies `scripts/*.sh` exist and are executable.
-
-When done:
-- **ADLC active:** presents the **Generate Monitoring & Governance** handoff button (routes to Ops)
-- **ADLC inactive:** sets workflow to `done` and `project.json` stage to `ready`
-
-**Hook:** Runs `./scripts/validate-state.sh` after every file edit.
+Also verifies `scripts/*.sh` are executable. Routes to Ops (ADLC) or sets workflow to `done`.
 
 ---
 
 ### Ops *(ADLC only)*
-**File:** `.github/agents/ops.agent.md`
-**Tools:** `read`, `edit`
-**Visible in chat:** No (called via handoff from Script)
+**File:** `.github/agents/ops.agent.md` | **Visible in chat:** No
 
-Generates two operational documents:
-1. `docs/ops/monitoring.md` — Observability dashboards, alert thresholds (tied to KPIs), escalation paths, rollback trigger criteria, logging requirements
-2. `docs/ops/governance.md` — Model versioning policy, feedback loop setup, concept drift monitoring, knowledge base refresh schedule, audit log requirements
-
-Sets workflow to `adlc_done` and `project.json` stage to `ready`.
+Generates: `docs/ops/monitoring.md` (dashboards, alert thresholds tied to KPIs, rollback criteria) and `docs/ops/governance.md` (model versioning, feedback loops, drift monitoring, audit log policy). Sets workflow to `adlc_done`.
 
 ---
 
 ## 7. Slash Commands
 
-Type `/` in the Copilot Chat input to access these commands.
+Type `/` in Copilot Chat to access these commands.
 
 ### `/bootstrap`
-**File:** `.github/prompts/bootstrap.prompt.md`
-
-Start or resume the bootstrap workflow. Routes to the Bootstrap agent from the current step.
+Start or resume the workflow. Routes to Bootstrap from the current step.
 
 ```
 /bootstrap
@@ -466,70 +363,16 @@ Start or resume the bootstrap workflow. Routes to the Bootstrap agent from the c
 ---
 
 ### `/status`
-**File:** `.github/prompts/status.prompt.md`
-
-Print a dashboard showing current step, answers collected, and which output files exist. When ADLC is active, also shows ADLC-specific files.
+Show current step, collected answers, and which output files exist.
 
 ```
 /status
 ```
 
-Example output:
-```
-Bootstrap Status
-────────────────
-Step:    prd (in_progress)
-Type:    agent
-ADLC:    true
-
-Answers collected:
-  idea          ✅
-  project_info  ✅
-  users         ✅
-  features      ✅
-  tech          ✅
-  complexity    ✅
-
-Generated files:
-  docs/analysis/prd.md           ❌ missing
-  docs/analysis/capabilities.md  ❌ missing
-  docs/domain/model.md           ❌ missing
-  ...
-
-ADLC files:
-  docs/analysis/kpis.md              ❌ missing
-  docs/analysis/human-agent-map.md   ❌ missing
-  ...
-```
-
----
-
-### `/adlc-status`
-**File:** `.github/prompts/adlc-status.prompt.md`
-
-Extended status view organised by ADLC phase. Shows standard bootstrap status plus all ADLC-specific documents grouped by phase (Scope & KPIs, Architecture, PoV, Ops).
-
-```
-/adlc-status
-```
-
----
-
-### `/pov`
-**File:** `.github/prompts/pov.prompt.md`
-
-Print the Proof of Value plan and go/no-go criteria from `docs/spec/pov-plan.md`. Useful during PoV execution to keep the team aligned on what is being validated and what the thresholds are.
-
-```
-/pov
-```
-
 ---
 
 ### `/discovery-status`
-**File:** `.github/prompts/discovery-status.prompt.md`
-
-Show the brownfield discovery pipeline progress. Lists each of the 7 discovery output files with completion status, candidate counts, coverage percentage, and summary statistics. Only available when approach is `brownfield`.
+Show brownfield discovery pipeline progress: which of the 7 steps are complete, counts, and coverage stats.
 
 ```
 /discovery-status
@@ -537,59 +380,38 @@ Show the brownfield discovery pipeline progress. Lists each of the 7 discovery o
 
 ---
 
-### `/reset`
-**File:** `.github/prompts/reset.prompt.md`
+### `/adlc-status`
+Extended status view for ADLC projects. Shows all ADLC documents grouped by phase.
 
-Jump the workflow to a specific step without deleting existing output files. Useful for re-running a phase after editing answers.
+---
+
+### `/pov`
+Print the Proof of Value plan and go/no-go thresholds from `docs/spec/pov-plan.md`. Use during PoV execution to stay aligned on the experiment scope and pass/fail criteria.
+
+---
+
+### `/reset`
+Jump the workflow to a specific step without deleting output files. Use when re-running a phase after editing answers.
 
 ```
 /reset prd
 /reset domain
-/reset spec
 /reset constraints
 ```
-
-Valid step names depend on the approach. For greenfield: `idea`, `project_info`, `users`, `features`, `tech`, `complexity`, `prd`, `capabilities`, `domain`, `design_workflow`, `skills`, `scripts`, `done` (+ ADLC steps). For brownfield: `idea`, `project_info`, `codebase_setup`, `seed_candidates`, `analyze_candidates`, `verify_coverage`, `lock_l1`, `define_l2`, `discovery_domain`, `blueprint_comparison`, `prd`, `capabilities`, `domain`, `design_workflow`, `skills`, `scripts`, `done` (+ ADLC steps).
 
 ---
 
 ### `/review-spec`
-**File:** `.github/prompts/review-spec.prompt.md`
-
-Cross-check all four spec files for consistency issues:
-- Resource naming across `api.md`, `permissions.md`, `events.md`
-- Permission coverage for every API endpoint
-- Event coverage for every state transition
-- Role name consistency with `rbac.md`
-- State machine completeness for all stateful entities
-
-```
-/review-spec
-```
+Cross-check all four spec files for consistency: resource naming, permission coverage for every API endpoint, event coverage for every state transition, role name consistency with `rbac.md`.
 
 ---
 
 ### `/review-agent`
-**File:** `.github/prompts/review-agent.prompt.md`
-
-Cross-check all ADLC documents for consistency:
-- KPIs in `kpis.md` have corresponding metrics in `eval.md`
-- Human-agent map tasks map to capabilities in `capabilities.md`
-- PoV go/no-go thresholds match KPI thresholds
-- Agent pattern tools match integrations
-- Cost model references the correct model
-- Monitoring alerts reference KPI thresholds
-- Governance addresses all compliance requirements from constraints
-
-```
-/review-agent
-```
+Cross-check all ADLC documents: KPI thresholds match eval thresholds, human-agent map tasks map to capabilities, PoV criteria match KPIs, monitoring alerts reference the correct thresholds.
 
 ---
 
 ### `/stitch`
-**File:** `.github/prompts/stitch.prompt.md`
-
 Generate or regenerate UI screens via Google Stitch MCP.
 
 ```
@@ -601,39 +423,39 @@ Generate or regenerate UI screens via Google Stitch MCP.
 
 ## 8. Skills
 
-Skills are reusable prompt workflows in `.github/skills/`. They are invoked by agents or directly via `/skill-name` in chat.
+Skills live in `.github/skills/`. Agents call them directly; some can also be invoked by name in chat.
 
-### Workflow Skills (internal)
+### Workflow skills (internal)
 
 | Skill | Purpose |
 |-------|---------|
 | `workflow-read` | Read current step and status from `workflow.json` |
 | `workflow-update` | Update `workflow.json` and `project.json` after a step |
 | `bootstrap-ask` | Ask only missing questions for the current step |
-| `bootstrap-next` | Advance to the next step in `bootstrap.md` |
+| `bootstrap-next` | Advance to the next step |
 
-### Standard Generation Skills
+### Standard generation skills
 
-| Skill | Triggered at step | Output |
-|-------|------------------|--------|
+| Skill | Step | Output |
+|-------|------|--------|
 | `generate-prd` | `prd` | `docs/analysis/prd.md` |
 | `generate-capabilities` | `capabilities` | `docs/analysis/capabilities.md` |
 | `generate-domain` | `domain` | `docs/domain/model.md` |
 | `generate-rbac` | `rbac` | `docs/domain/rbac.md` |
 | `generate-workflows` | `workflow` | `docs/domain/workflows.md` |
-| `generate-design-workflow` | `design_workflow` | `docs/workflow/design.md`, `docs/design/overview.md` |
+| `generate-design-workflow` | `design_workflow` | `docs/design/overview.md` |
 | `generate-ia` | `ia` | `docs/design/ia.md` |
 | `generate-flows` | `flows` | `docs/design/flows.md` |
 | `generate-spec` | `spec` | `docs/spec/*.md` |
 | `generate-skills` | `skills` | `.github/skills/` (dev stubs) |
 | `generate-scripts` | `scripts` | `scripts/*.sh` |
 
-### Brownfield Discovery Skills
+### Brownfield discovery skills
 
-These skills are only used when `project.json → approach = "brownfield"`. They are run by the Discovery agent.
+Used by the Discovery agent when `approach = brownfield`.
 
-| Skill | Triggered at step | Output |
-|-------|------------------|--------|
+| Skill | Step | Output |
+|-------|------|--------|
 | `discover-candidates` | `seed_candidates` | `docs/discovery/candidates.md` |
 | `analyze-candidates` | `analyze_candidates` | `docs/discovery/analysis.md` |
 | `verify-coverage` | `verify_coverage` | `docs/discovery/coverage.md` |
@@ -642,124 +464,173 @@ These skills are only used when `project.json → approach = "brownfield"`. They
 | `generate-discovery-domain` | `discovery_domain` | `docs/discovery/domain-model.md` |
 | `compare-blueprint` | `blueprint_comparison` | `docs/discovery/blueprint-comparison.md` |
 
-### What Each Discovery Skill Produces
+### ADLC generation skills
 
-**`discover-candidates`** — Extracts capability candidates from 4 signal sources: package structure, database schema, backend entry points (REST, jobs, consumers), frontend entry points (pages, routes). Cross-references signals and assigns HIGH/MEDIUM/LOW confidence. Produces 15-25 raw candidates with evidence trails. Adaptive: skips DB analysis if no access, skips frontend if API-only.
+Used when `adlc = true`.
 
-**`analyze-candidates`** — Deep analysis of each candidate: cohesion, coupling, boundary clarity. Forces each into a decision: confirm as capability, split into smaller ones, merge into broader domain, de-scope as non-business (infrastructure/cross-cutting), or flag for architect review. Key heuristic: deployment boundaries do not define business capabilities.
-
-**`verify-coverage`** — Maps all significant source files to capabilities. Targets >90% code coverage. Identifies orphan code and recommends: assign to existing capability, create new capability, mark as infrastructure, or mark as dead code.
-
-**`lock-l1`** — Finalizes the Level 1 capability list from confirmed, split, and merged candidates. Assigns stable IDs (BC-001, BC-002...) in logical domain order. Documents merge trace and excluded items.
-
-**`define-l2`** — For each L1 capability, defines Level 2 sub-capabilities as executable units of work. Maps each L2 to specific code locations, entities (with ownership: OWNS/MANAGES/READS/CREATES), operations (with endpoints), and external dependencies. Calculates migration complexity indicators.
-
-**`generate-discovery-domain`** — Consolidated domain model with capability hierarchy (L1→L2), entity catalog with ownership matrix, cross-capability dependencies, bounded context candidates, and infrastructure/cross-cutting concerns. Every entity, operation, and boundary is mapped to specific files.
-
-**`compare-blueprint`** — Compares code-derived capabilities against industry reference frameworks (BIAN for banking, TM Forum for telecom, APQC cross-industry). Classifies each as aligned, org-specific, or missing-from-code. Code remains source of truth; comparison adds context for modernization planning.
-
-### ADLC Generation Skills
-
-These skills are only used when `project.json → adlc = true`.
-
-| Skill | Triggered at step | Agent | Output |
-|-------|------------------|-------|--------|
-| `generate-kpis` | `kpis` | Analyst | `docs/analysis/kpis.md` |
-| `generate-human-agent-map` | `human_agent_map` | Analyst | `docs/analysis/human-agent-map.md` |
-| `generate-agent-pattern` | `agent_pattern` | Architect | `docs/domain/agent-pattern.md` |
-| `generate-cost-model` | `cost_model` | Architect | `docs/domain/cost-model.md` |
-| `generate-eval-framework` | `eval_framework` | Evaluator | `docs/spec/eval.md` |
-| `generate-pov-plan` | `pov` | Evaluator | `docs/spec/pov-plan.md` |
-| `generate-monitoring-spec` | `monitoring` | Ops | `docs/ops/monitoring.md` |
-| `generate-governance` | `governance` | Ops | `docs/ops/governance.md` |
-
-### What Each ADLC Skill Produces
-
-**`generate-kpis`** — Business KPIs (cycle time, accuracy, cost per outcome, escalation rate), technical KPIs (hallucination rate, latency, token cost, tool call success rate), quality thresholds, 30-day success definition, kill-switch criteria, go/no-go gate.
-
-**`generate-human-agent-map`** — Responsibility matrix mapping every task/decision to agent-can-do, human-must-do, or approval-required. Covers all features, failure modes, data access, and external system interactions. Includes hard boundaries, escalation rules, and risk assessment.
-
-**`generate-agent-pattern`** — Recommended architecture pattern (ReAct / Plan-and-Execute / Multi-agent) with justification. Tool inventory with read-only/mutates flags. Orchestration framework recommendation. Context and memory design (static, dynamic, session, ephemeral). Model selection per component.
-
-**`generate-cost-model`** — Token usage breakdown per request. Monthly cost estimates at three tiers (100 / 1,000 / 10,000 requests per day). Cost optimisation options (prompt caching, model tiering, batching, token reduction). Infrastructure costs (hosting, vector DB, external APIs, monitoring).
-
-**`generate-eval-framework`** — Success metrics with thresholds from KPIs. Evaluation methods by output type (deterministic, NL, actions, multi-step). Golden dataset spec (size, coverage, governance). Regression testing strategy (per commit, pre-release, on model update). Tooling recommendation.
-
-**`generate-pov-plan`** — PoV objective (highest-risk assumption, experiment, success criteria). PoV scope (included/excluded capabilities, timeboxed effort). Golden dataset for PoV. Baseline vs target metrics. Go/no-go gate criteria with proceed/investigate/stop thresholds.
-
-**`generate-monitoring-spec`** — Agent health dashboard (request volume, success rate, latency, token usage, cost, tool call success, escalation rate). Quality dashboard (accuracy, hallucination rate, user satisfaction, drift). Alert thresholds tied to KPIs. Escalation paths. Rollback trigger criteria. Logging requirements.
-
-**`generate-governance`** — Model versioning policy (when to test, how to test, decision criteria, rollout strategy). Feedback loop setup (collection, processing, improvement pipeline). Concept drift monitoring (signals, thresholds, response). Knowledge base refresh policy. Audit log requirements with compliance mapping.
+| Skill | Step | Output |
+|-------|------|--------|
+| `generate-kpis` | `kpis` | `docs/analysis/kpis.md` |
+| `generate-human-agent-map` | `human_agent_map` | `docs/analysis/human-agent-map.md` |
+| `generate-agent-pattern` | `agent_pattern` | `docs/domain/agent-pattern.md` |
+| `generate-cost-model` | `cost_model` | `docs/domain/cost-model.md` |
+| `generate-eval-framework` | `eval_framework` | `docs/spec/eval.md` |
+| `generate-pov-plan` | `pov` | `docs/spec/pov-plan.md` |
+| `generate-monitoring-spec` | `monitoring` | `docs/ops/monitoring.md` |
+| `generate-governance` | `governance` | `docs/ops/governance.md` |
 
 ---
 
-## 9. Scripts
+## 9. CLI Commands
 
-Shell scripts in `scripts/`. All require `jq`. Run `chmod +x scripts/*.sh` if needed.
+All commands require `jq`. Run `copilot-bootstrap <command> --help` for full options.
 
-### `init.sh`
+### `init`
 
-Initialise a fresh project state. Safe — exits with an error if state already exists.
+Initialise a fresh project. Safe — exits if state already exists.
 
 ```sh
-./scripts/init.sh
+copilot-bootstrap init
 ```
 
-Creates:
-- `.project/state/workflow.json` — step: `idea`, status: `in_progress`
-- `.project/state/answers.json` — empty `{}`
-- `project.json` — blank project metadata (includes `approach`, `codebase_path`, `autonomy_level`, and `adlc` fields)
-- All output folders (including `docs/discovery/`)
+Creates `.project/state/workflow.json`, `.project/state/answers.json`, `project.json`, and all output folders.
 
 ---
 
-### `next.sh`
+### `scan`
 
-Advance the workflow to the next step. Reads `workflow.json → approach` to determine which workflow file to use (`bootstrap.md` for greenfield, `brownfield.md` for brownfield).
+Scan the codebase and write `.discovery/context.json`. Run this before `discover` or `generate` on a brownfield project.
 
 ```sh
-./scripts/next.sh
-# Advanced: idea → project_info
+copilot-bootstrap scan
+```
+
+Detects: languages, frontend framework, backend framework, database, package manager, linter, test runner, bundler, container tool, architecture style, monorepo flag, entry points. Writes detection confidence scores to `.discovery/confidence.json`. Produces a unified context at `.discovery/context.json`.
+
+Output example:
+```json
+{
+  "stack": { "languages": ["typescript"], "backend": "express", "frontend": "react", "db": "postgres" },
+  "tools": { "package_manager": "npm", "test_runner": "jest", "linter": "eslint", "bundler": "vite", "container": "docker" },
+  "arch": { "style": "layered", "monorepo": false, "services": 1 },
+  "paths": { "src": "src/", "tests": "tests/" }
+}
 ```
 
 ---
 
-### `step.sh`
+### `discover`
+
+Initialise or resume the brownfield discovery pipeline. Validates prerequisites, creates `.discovery/pipeline.lock.json`, and reports step status.
+
+```sh
+copilot-bootstrap discover
+```
+
+The pipeline itself runs via the Discovery agent in Copilot Chat. Re-run `discover` after the agent completes steps to see updated status and auto-trigger `generate` when all 7 steps are done.
+
+---
+
+### `discovery-status`
+
+Print current discovery pipeline progress.
+
+```sh
+copilot-bootstrap discovery-status
+```
+
+---
+
+### `generate`
+
+Produce project-specific Copilot configuration from `.discovery/context.json` and `docs/discovery/*.md`. Runs all 8 generators in order and writes to `.github/` and `.vscode/`.
+
+```sh
+copilot-bootstrap generate              # run all generators
+copilot-bootstrap generate instructions # run one generator
+copilot-bootstrap generate status       # show progress
+copilot-bootstrap generate --force      # re-run completed generators
+```
+
+Generators and their output:
+
+| Generator | Output |
+|-----------|--------|
+| `instructions` | `.github/copilot-instructions.md`, `.github/instructions/*.instructions.md` |
+| `agents` | `.github/agents/*.agent.md` (backend, frontend, test, refactor, devops) |
+| `skills` | `.github/skills/*/SKILL.md` (build, test, lint, format, deploy) |
+| `prompts` | `.github/prompts/*.prompt.md` (/new-feature, /fix-bug, /write-tests, /review-pr) |
+| `mcp` | `.vscode/mcp.json` (DB server, filesystem server) |
+| `hooks` | `.github/hooks/*.json` (session-start, pre-tool-use, post-tool-use) |
+| `plugins` | `.github/plugins/project.plugin.json` |
+| `docs` | `.github/docs/` (stack, architecture, agents, skills, prompts summaries) |
+
+Generator progress is tracked in `.discovery/generators.lock.json` for resumability. If a generator fails, fix the issue and re-run `generate` — completed generators are skipped.
+
+---
+
+### `generate-status`
+
+Print current generator progress.
+
+```sh
+copilot-bootstrap generate-status
+```
+
+---
+
+### `sync`
+
+Overwrite `.github/` and `docs/workflow/` with the latest package version. Never touches `.project/state/`, `project.json`, or generated documents.
+
+```sh
+copilot-bootstrap sync
+```
+
+---
+
+### `step`
 
 Read or set the current workflow step.
 
 ```sh
-./scripts/step.sh              # Print current step and status
-./scripts/step.sh --list       # List all valid steps
-./scripts/step.sh prd          # Jump to step "prd"
+copilot-bootstrap step              # print current step
+copilot-bootstrap step --list       # list all valid steps
+copilot-bootstrap step prd          # jump to step "prd"
 ```
 
 ---
 
-### `ask.sh`
+### `next`
+
+Advance to the next step in the active workflow.
+
+```sh
+copilot-bootstrap next
+```
+
+---
+
+### `ask`
 
 Print the questions for the current or a specific step.
 
 ```sh
-./scripts/ask.sh               # Questions for the current step
-./scripts/ask.sh features      # Questions for the "features" step
+copilot-bootstrap ask               # questions for the current step
+copilot-bootstrap ask features      # questions for a specific step
 ```
 
 ---
 
-### `validate-state.sh`
+### `validate`
 
-Validate `workflow.json` and `answers.json`. Called automatically by agent hooks after every file edit. Can also be run manually.
+Validate `workflow.json` and `answers.json` integrity. Called automatically by agent hooks; also useful to run manually after editing state files.
 
 ```sh
-./scripts/validate-state.sh
+copilot-bootstrap validate
 ```
 
-Checks:
-- Both files are valid JSON
-- `workflow.json` has required fields: `workflow`, `step`, `status`
-- `status` is one of: `in_progress`, `completed`, `blocked`
-- `project.json` step matches `workflow.json` step
+Checks: valid JSON, required fields present, `status` is a valid value, `project.json` step matches `workflow.json`.
 
 ---
 
@@ -767,7 +638,7 @@ Checks:
 
 ```
 .github/
-  copilot-instructions.md         Always-on project context
+  copilot-instructions.md         Always-on project context (generated by `generate`)
 
   agents/
     bootstrap.agent.md            Collects answers, routes to Discovery or Analyst
@@ -780,80 +651,113 @@ Checks:
     script.agent.md               Generates dev skills and operational scripts
     ops.agent.md                  Generates monitoring spec, governance doc*
 
+  instructions/                   File-scoped instructions (generated by `generate`)**
+    {language}.instructions.md    Language coding standards with applyTo glob
+    {framework}.instructions.md   Framework-specific conventions
+    architecture.instructions.md  Architectural layer rules
+
   prompts/
-    bootstrap.prompt.md           /bootstrap    — start or resume
-    status.prompt.md              /status       — show current state
-    discovery-status.prompt.md    /discovery-status — show discovery pipeline progress**
-    adlc-status.prompt.md         /adlc-status  — show ADLC-specific state*
-    pov.prompt.md                 /pov          — print PoV plan*
-    reset.prompt.md               /reset        — jump to a step
-    review-spec.prompt.md         /review-spec  — validate spec consistency
-    review-agent.prompt.md        /review-agent — validate ADLC doc consistency*
-    stitch.prompt.md              /stitch       — generate UI screens
+    bootstrap.prompt.md           /bootstrap
+    status.prompt.md              /status
+    discovery-status.prompt.md    /discovery-status**
+    adlc-status.prompt.md         /adlc-status*
+    pov.prompt.md                 /pov*
+    reset.prompt.md               /reset
+    review-spec.prompt.md         /review-spec
+    review-agent.prompt.md        /review-agent*
+    stitch.prompt.md              /stitch
 
   skills/
-    workflow-read/SKILL.md        Read workflow state
-    workflow-update/SKILL.md      Update workflow state
-    bootstrap-ask/SKILL.md        Ask missing questions
-    bootstrap-next/SKILL.md       Advance to next step
-    generate-prd/SKILL.md         Generate PRD
-    generate-capabilities/SKILL.md Generate capability map
-    generate-kpis/SKILL.md        Generate KPIs and thresholds*
-    generate-human-agent-map/SKILL.md Generate human-agent responsibility map*
-    generate-domain/SKILL.md      Generate domain model
-    generate-rbac/SKILL.md        Generate RBAC policy
-    generate-workflows/SKILL.md   Generate business workflows
-    generate-agent-pattern/SKILL.md Generate agent architecture pattern*
-    generate-cost-model/SKILL.md  Generate token economics and cost model*
-    generate-design-workflow/SKILL.md Generate design plan
-    generate-ia/SKILL.md          Generate information architecture
-    generate-flows/SKILL.md       Generate user flows
-    generate-spec/SKILL.md        Generate implementation spec
-    generate-eval-framework/SKILL.md Generate evaluation framework*
-    generate-pov-plan/SKILL.md    Generate Proof of Value plan*
-    generate-skills/SKILL.md      Generate dev skill stubs
-    generate-scripts/SKILL.md     Generate operational scripts
-    generate-monitoring-spec/SKILL.md Generate monitoring spec*
-    generate-governance/SKILL.md  Generate governance doc*
-    discover-candidates/SKILL.md  Extract capability candidates from codebase**
-    analyze-candidates/SKILL.md   Deep analysis of each candidate**
-    verify-coverage/SKILL.md      Verify >90% code coverage by capabilities**
-    lock-l1/SKILL.md              Finalize L1 capability list**
-    define-l2/SKILL.md            Define L2 sub-capabilities**
-    generate-discovery-domain/SKILL.md  Generate domain model from code**
-    compare-blueprint/SKILL.md    Industry blueprint comparison**
+    workflow-read/SKILL.md
+    workflow-update/SKILL.md
+    bootstrap-ask/SKILL.md
+    bootstrap-next/SKILL.md
+    generate-prd/SKILL.md
+    generate-capabilities/SKILL.md
+    generate-kpis/SKILL.md*
+    generate-human-agent-map/SKILL.md*
+    generate-domain/SKILL.md
+    generate-rbac/SKILL.md
+    generate-workflows/SKILL.md
+    generate-agent-pattern/SKILL.md*
+    generate-cost-model/SKILL.md*
+    generate-design-workflow/SKILL.md
+    generate-ia/SKILL.md
+    generate-flows/SKILL.md
+    generate-spec/SKILL.md
+    generate-eval-framework/SKILL.md*
+    generate-pov-plan/SKILL.md*
+    generate-skills/SKILL.md
+    generate-scripts/SKILL.md
+    generate-monitoring-spec/SKILL.md*
+    generate-governance/SKILL.md*
+    discover-candidates/SKILL.md**
+    analyze-candidates/SKILL.md**
+    verify-coverage/SKILL.md**
+    lock-l1/SKILL.md**
+    define-l2/SKILL.md**
+    generate-discovery-domain/SKILL.md**
+    compare-blueprint/SKILL.md**
+
+  hooks/                          Generated lifecycle hooks**
+    session-start.json
+    pre-tool-use.json
+    post-tool-use.json
+
+  plugins/                        Generated plugin bundle**
+    project.plugin.json
+
+  docs/                           Generated docs summaries**
+    stack.md
+    architecture.md
+    agents.md
+    skills.md
+    prompts.md
 
 .project/
   state/
     workflow.json                 { workflow, approach, step, status }
-    answers.json                  { idea, pain_points, project_info, codebase_setup**, users, features, tech, complexity, autonomy_level, constraints*, kpis* }
+    answers.json                  { idea, project_info, codebase_setup**, users, features, tech, complexity, constraints*, kpis* }
+
+.discovery/                       Machine-readable detection and generation state**
+  context.json                    Unified detected stack (written by `scan`)
+  confidence.json                 Detection confidence scores per field
+  fs.json                         Raw filesystem scan
+  stack.json                      Raw stack detection
+  tools.json                      Raw tools detection
+  arch.json                       Raw architecture detection
+  pipeline.lock.json              Discovery pipeline step progress
+  generators.lock.json            Generator orchestrator progress
+  context.schema.json             Schema for context.json
+  pipeline.lock.schema.json       Schema for pipeline.lock.json
+  generators.lock.schema.json     Schema for generators.lock.json
 
 docs/
   workflow/
-    bootstrap.md                  Greenfield bootstrap sequence (13 standard + 10 ADLC)
-    brownfield.md                 Brownfield bootstrap sequence (17 standard + 10 ADLC)**
-    design.md                     13-step design sub-workflow
+    bootstrap.md                  Greenfield workflow definition
+    brownfield.md                 Brownfield workflow definition**
+    design.md                     Design sub-workflow
     adlc.md                       ADLC extended workflow definition*
-    agents.md                     Routing table: step → agent → skill
+    agents.md                     Step → agent → skill routing table
   discovery/
-    candidates.md                 Raw capability candidates with confidence ratings**
-    analysis.md                   Candidate analysis (confirm/split/merge/de-scope)**
-    coverage.md                   Code coverage verification**
-    l1-capabilities.md            Locked L1 capability list with stable IDs**
-    l2-capabilities.md            L2 sub-capabilities mapped to code**
-    domain-model.md               Code-derived domain model with traceability**
-    blueprint-comparison.md       Industry reference comparison**
+    candidates.md**               Raw capability candidates
+    analysis.md**                 Candidate analysis
+    coverage.md**                 Code coverage verification
+    l1-capabilities.md**          Locked L1 capability list
+    l2-capabilities.md**          L2 sub-capabilities
+    domain-model.md**             Code-derived domain model
+    blueprint-comparison.md**     Industry reference comparison
   analysis/
     prd.md                        Product Requirements Document
     capabilities.md               Capability map
-    kpis.md                       Business and technical KPIs*
-    human-agent-map.md            Human-agent responsibility matrix*
+    kpis.md*                      KPIs and thresholds
+    human-agent-map.md*           Human-agent responsibility matrix
   domain/
     model.md                      Entities, aggregates, domain events
     rbac.md                       Roles, permission matrix
     workflows.md                  Business workflows
-    agent-pattern.md              Agent architecture, tools, memory design*
-    cost-model.md                 Token economics, cost estimates*
+    agent-pattern.md*             Agent architecture, tools, memory design
+    cost-model.md*                Token economics, cost estimates
   design/
     overview.md                   Design phases and deliverables
     ia.md                         Sitemap, navigation, screen inventory
@@ -864,29 +768,159 @@ docs/
     events.md                     Domain event catalogue
     permissions.md                Permission list and role assignments
     state-machines.md             State machines for stateful entities
-    eval.md                       Evaluation framework and golden dataset*
-    pov-plan.md                   Proof of Value plan and go/no-go criteria*
+    eval.md*                      Evaluation framework and golden dataset
+    pov-plan.md*                  Proof of Value plan and go/no-go criteria
   ops/
-    monitoring.md                 Observability, alerts, rollback criteria*
-    governance.md                 Model versioning, feedback loops, audit*
+    monitoring.md*                Observability, alerts, rollback criteria
+    governance.md*                Model versioning, feedback loops, audit
 
-scripts/
-  init.sh                         Initialise project state
-  next.sh                         Advance to next step
-  step.sh                         Read or set current step
-  ask.sh                          Print questions for a step
-  validate-state.sh               Validate state file integrity
+templates/                        Source templates for `generate` command
+  instructions/                   Language, framework, architecture templates
+  agents/                         Agent persona templates
+  skills/                         Skill definition templates
+  prompts/                        Prompt file templates
+  hooks/                          Hook configuration templates
 
-project.json                      Project metadata (name, type, domain, approach, codebase_path, step, autonomy_level, adlc)
+project.json                      Project metadata (name, type, domain, approach, step, adlc)
 ```
 
-*Files and entries marked with `*` are ADLC-specific — only generated/used when type is `agent` or `ai-system`. Files marked with `**` are brownfield-specific — only generated/used when approach is `brownfield`.*
+`*` = ADLC only (type is `agent` or `ai-system`)
+`**` = brownfield only (approach is `brownfield`) or generated by `generate` command
 
 ---
 
-## 11. Google Stitch Integration
+## 11. Brownfield Discovery Pipeline
 
-Google Stitch is an AI UI design tool from Google Labs. It generates high-fidelity HTML + TailwindCSS screens from natural language prompts via an MCP server. It replaces the manual wireframe and hi-fi phases.
+The brownfield discovery pipeline extracts a complete business capability map from an existing codebase in 7 steps. Each step reads one input, produces one output, and feeds the next.
+
+### When it activates
+
+Set `approach = brownfield` during the `project_info` step (or answer "existing" when Bootstrap asks). This switches the workflow to `docs/workflow/brownfield.md`.
+
+### Before running the pipeline
+
+```sh
+copilot-bootstrap scan
+```
+
+`scan` reads the codebase at the current directory and writes:
+- `.discovery/context.json` — unified stack/tools/architecture context
+- `.discovery/confidence.json` — detection confidence per field
+- `.discovery/fs.json`, `stack.json`, `tools.json`, `arch.json` — raw detection outputs
+
+Review `.discovery/context.json` before proceeding. Correct any misdetections manually.
+
+### Running the pipeline
+
+```sh
+copilot-bootstrap discover
+```
+
+This validates prerequisites, initialises `.discovery/pipeline.lock.json`, and reports step status. The actual pipeline runs via the **Discovery agent** in Copilot Chat. Use the `run-discovery-pipeline` skill for a fully automatic run, or execute steps individually.
+
+### Pipeline steps
+
+| Step | What the agent does | Output |
+|------|---------------------|--------|
+| A1: Seed candidates | Extract signals from package structure, DB schema, backend entry points, frontend routes | `docs/discovery/candidates.md` — 15-25 raw candidates with HIGH/MEDIUM/LOW confidence |
+| A2: Analyze candidates | Per candidate: assess cohesion, coupling, boundary clarity; decide confirm/split/merge/de-scope/flag | `docs/discovery/analysis.md` |
+| A3: Verify coverage | Map all source files to capabilities; target >90% coverage; resolve orphan code | `docs/discovery/coverage.md` |
+| A4: Lock L1 | Finalize L1 list with stable IDs (BC-001, BC-002...) | `docs/discovery/l1-capabilities.md` |
+| A5: Define L2 | Per L1: define executable sub-capabilities mapped to code locations and entities | `docs/discovery/l2-capabilities.md` |
+| A6: Domain model | Consolidated model with capability hierarchy, entity ownership, cross-capability dependencies, code traceability | `docs/discovery/domain-model.md` |
+| A7: Blueprint comparison | Compare against industry reference (BIAN, TM Forum, APQC): aligned / org-specific / missing-from-code | `docs/discovery/blueprint-comparison.md` |
+
+### Design principles
+
+- **Adaptive** — Skips unavailable signal sources. No DB access → skip schema. API-only → skip frontend routes. Extraction continues with fewer signals.
+- **Pre-generated inputs accepted** — Each step checks if its output file already exists. Feed it nDepend exports, SonarQube analysis, or DBA reports to anchor the AI analysis in higher-quality signals.
+- **Confidence-driven** — Every candidate carries HIGH/MEDIUM/LOW confidence. Ambiguous candidates are flagged for human review, not silently resolved. HIGH = appears in 3+ signal sources; LOW = 1 source, weak evidence.
+- **Code is truth** — Industry blueprint comparison adds context but does not override code-derived capabilities. Missing capabilities prompt questions, not assumptions.
+- **Traceable** — Every capability, entity, and operation is mapped to specific files and code locations.
+
+### Key concepts
+
+**Capability vs Feature** — A capability is what the business does (e.g. "Payments"). Features are how capabilities are accessed ("scheduled payments" is a feature of Payments, not a separate capability).
+
+**L1 vs L2** — L1 tells you what exists at a functional level. L2 tells you what can be acted on, migrated, extended, or replaced — it's where modernization plans become executable.
+
+**Pre-generated inputs** — If you have better tooling (nDepend, SonarQube, JetBrains analysis), export results to `docs/discovery/` before running the pipeline. The skills use those files instead of regenerating.
+
+### After pipeline complete
+
+When `copilot-bootstrap discover` detects all 7 steps complete, it automatically runs `copilot-bootstrap generate` to produce project-specific Copilot configuration from the discovered stack and capabilities.
+
+---
+
+## 12. Generator Orchestrator
+
+The generator orchestrator (`copilot-bootstrap generate`) reads `.discovery/context.json` and produces project-specific Copilot configuration artifacts: instructions, agents, skills, prompts, MCP config, hooks, plugins, and docs. It runs automatically after the discovery pipeline completes, or on demand.
+
+### Inputs
+
+| File | Required | Purpose |
+|------|----------|---------|
+| `.discovery/context.json` | Yes | Stack, tools, architecture |
+| `docs/discovery/l1-capabilities.md` | No | Capability list for agent descriptions |
+| `docs/discovery/domain-model.md` | No | Domain context for prompts |
+| `project.json` | No | Project name |
+
+Generators work with `context.json` alone. Discovery outputs enhance them when present.
+
+### Generator order and rationale
+
+```
+1. instructions  — foundational; all other generators respect these conventions
+2. agents        — uses instructions + stack to define agent personas
+3. skills        — uses tools detection to create runnable skill definitions
+4. prompts       — uses skills + agents to create reusable slash commands
+5. mcp           — uses stack detection for external tool integrations
+6. hooks         — uses skills + prompts to wire lifecycle automation
+7. plugins       — bundles agents/skills/hooks into a project manifest
+8. docs          — documents everything generated above
+```
+
+### Template system
+
+Generators use templates from the `templates/` directory. Variables use `{{UPPER_CASE}}` syntax resolved from `context.json` fields:
+
+| Variable | Source |
+|----------|--------|
+| `{{LANGUAGE}}` | `stack.languages[0]` |
+| `{{FRONTEND}}` | `stack.frontend` |
+| `{{BACKEND}}` | `stack.backend` |
+| `{{DB}}` | `stack.db` |
+| `{{PKG_MANAGER}}` | `tools.package_manager` |
+| `{{LINTER}}` | `tools.linter` |
+| `{{TEST_RUNNER}}` | `tools.test_runner` |
+| `{{BUNDLER}}` | `tools.bundler` |
+| `{{CONTAINER}}` | `tools.container` |
+| `{{ARCH_STYLE}}` | `arch.style` |
+| `{{SRC_PATH}}` | `paths.src` |
+| `{{TESTS_PATH}}` | `paths.tests` |
+| `{{PROJECT_NAME}}` | `project.json → name` |
+
+Template coverage:
+
+| Category | Templates |
+|----------|-----------|
+| Languages | TypeScript, JavaScript, Python, Go, Java, Rust |
+| Frameworks | React, Vue, Next.js, Express, FastAPI, Django |
+| Architectures | Layered, Hexagonal, Microservices, Monolith, Serverless |
+| Agents | backend, frontend, test, refactor, devops |
+| Skills | build, test, lint, format, deploy |
+| Prompts | new-feature, fix-bug, write-tests, review-pr |
+| Hooks | session-start, pre-tool-use, post-tool-use |
+
+### Resumability
+
+Generator progress is tracked in `.discovery/generators.lock.json`. Each generator has a status: `pending`, `in_progress`, `completed`, `skipped`, or `failed`. Re-running `copilot-bootstrap generate` skips completed generators and resumes from the first incomplete one. Use `--force` to re-run everything.
+
+---
+
+## 13. Google Stitch Integration
+
+Google Stitch generates high-fidelity HTML + TailwindCSS screens from natural language prompts via an MCP server.
 
 ### Where it fits
 
@@ -894,143 +928,78 @@ Google Stitch is an AI UI design tool from Google Labs. It generates high-fideli
 flows.md  →  Stitch MCP  →  docs/design/screens/*.html  →  spec
 ```
 
-The Designer agent calls Stitch after `flows.md` is complete. It generates screens for every entry in the IA screen inventory — default, empty, and error states.
+The Designer agent generates screens after `flows.md` is complete, covering every entry in the IA screen inventory.
 
-### Setup (required before first use)
+### Setup
 
-Full instructions: `docs/design/stitch-setup.md`
-
-**Quick setup:**
 ```sh
 # 1. Get an API key at stitch.withgoogle.com → account settings
 # 2. Install the SDK
 npm install @google/stitch-sdk
-
-# 3. Set your API key
+# 3. Set the key
 export STITCH_API_KEY=your-key-here
 ```
 
-`.vscode/mcp.json` is already included — it runs `scripts/stitch-mcp.js` as the MCP server.
-Restart VS Code, then type `#` in Copilot Chat and verify `stitch` tools appear.
+`.vscode/mcp.json` already includes the Stitch MCP server configuration. Restart VS Code and verify `stitch` tools appear when you type `#` in Copilot Chat.
 
-Full instructions: `docs/design/stitch-setup.md`
+Full setup guide: `docs/design/stitch-setup.md`
 
 ### Usage
-
-Stitch runs automatically in the Designer agent pipeline after flows are generated. To run it manually:
 
 ```
 /stitch                      Generate all screens from ia.md
 /stitch dashboard screen     Regenerate one specific screen
 ```
 
-### Outputs
-
-| File | Contents |
-|------|----------|
-| `docs/design/screens/{name}.html` | HTML + TailwindCSS screen |
-| `docs/design/screens/index.md` | Screen inventory with states generated |
-
 ### Graceful fallback
 
-If the Stitch MCP server is not configured, the Designer agent logs a warning in `screens/index.md` and continues to the spec phase. You can run `/stitch` later once setup is complete.
+If Stitch is not configured, Designer logs a warning in `screens/index.md` and continues. Run `/stitch` later once setup is complete.
 
 ### Free tier limits
 
 | Plan | Model | Generations/month |
 |------|-------|------------------|
 | Standard | Gemini 2.5 Flash | 350 |
-| Experimental | Gemini 2.5 Pro | 50 (accepts image inputs) |
+| Experimental | Gemini 2.5 Pro | 50 |
 
 ---
 
-## 12. ADLC Extended Workflow
+## 14. ADLC Extended Workflow
 
-The Agentic Development Lifecycle (ADLC) extends the standard bootstrap with phases designed specifically for building and operating AI agent systems in production.
+The Agentic Development Lifecycle (ADLC) extends the standard bootstrap with phases designed for building and operating AI systems in production.
 
-### When It Activates
+### When it activates
 
-ADLC activates automatically when `project_info → type` is set to `agent` or `ai-system`. This sets `project.json → adlc = true`.
+ADLC activates when `project_info → type` is `agent` or `ai-system`. Sets `project.json → adlc = true`. The extended pipeline appends to either greenfield or brownfield.
 
-### ADLC Phases Mapped to Steps
+### ADLC phases
 
-| ADLC Phase | Bootstrap Steps | What Gets Produced |
-|------------|----------------|-------------------|
-| Phase 0 — Preparation & Hypotheses | `idea` (pain points) | Pain point framing alongside the project idea |
-| Phase 1 — Scope Framing & Problem Definition | `constraints`, `kpis`, `prd` (agentic sections) | Regulatory constraints, error tolerance, KPI thresholds, agent role, failure modes |
-| Phase 2 — Agent Definition & Architecture | `human_agent_map`, `agent_pattern`, `cost_model` | Autonomy boundaries, architecture pattern, tool inventory, token economics |
-| Phase 3 — Simulation & Proof of Value | `eval_framework`, `pov` | Evaluation framework, golden dataset spec, PoV plan with go/no-go gate |
-| Phase 4 — Implementation & Evals | `eval_framework` (regression strategy) | Per-commit and pre-release eval strategy |
-| Phase 5 — Testing | `eval_framework` (golden dataset, tooling) | Dataset requirements, tooling recommendations |
-| Phase 6 — Agent Activation & Deployment | `monitoring` | Observability dashboards, alert thresholds, rollback criteria |
-| Phase 7 — Continuous Learning & Governance | `governance` | Model versioning, feedback loops, drift monitoring, audit policy |
+| Phase | Steps | Output |
+|-------|-------|--------|
+| Scope & Problem | `constraints`, `kpis` + PRD agentic sections | Regulatory constraints, error tolerance, KPI thresholds, failure modes |
+| Agent Definition | `human_agent_map`, `agent_pattern`, `cost_model` | Autonomy boundaries, architecture pattern, tool inventory, token economics |
+| Proof of Value | `eval_framework`, `pov` | Evaluation framework, golden dataset spec, PoV plan with go/no-go gate |
+| Deployment | `monitoring` | Dashboards, alert thresholds tied to KPIs, rollback criteria |
+| Governance | `governance` | Model versioning, feedback loops, drift monitoring, audit policy |
 
-### Key Concepts
+### Key concepts
 
-**Human-Agent Responsibility Map** — Maps every task and decision to agent-can-do, human-must-do, or approval-required. This is the core ADLC concept with no equivalent in traditional SDLC. It defines the agent's autonomy boundaries.
+**Human-Agent Responsibility Map** — Maps every task and decision to agent-can-do, human-must-do, or approval-required. This is the core ADLC artifact. It defines the agent's autonomy boundaries before any code is written.
 
-**Autonomy Levels** — Set during the `complexity` step:
+**Autonomy levels** (set during `complexity` step):
 - `reactive` — responds to requests, no background action
 - `assistive` — takes actions on user request within a defined scope
 - `autonomous` — initiates tasks, makes decisions, acts without per-request approval
 
-**Proof of Value (PoV)** — A hard validation gate. Before building the full system, test the highest-risk assumption with a minimal prototype against a golden dataset. The go/no-go criteria are derived from KPIs.
+**Proof of Value** — A hard validation gate before full implementation. Test the highest-risk assumption with a minimal prototype against a golden dataset. Go/no-go criteria derive from KPIs.
 
-**ADLC Rules** — When `adlc = true`, these rules are enforced:
+**ADLC rules** (enforced when `adlc = true`):
 - Development and evaluation are inseparable — never build first and test later
 - Every prompt change, model change, or tool addition requires a re-run of the eval suite
-- Human-agent boundaries in `human-agent-map.md` are hard constraints
+- Human-agent boundaries in `human-agent-map.md` are hard constraints, not guidelines
 - Go/no-go thresholds in `pov-plan.md` are not negotiable
-- Deployment is activation, not completion — `monitoring.md` defines what to watch
+- Deployment is activation, not completion — `monitoring.md` defines what to watch after launch
 - Model updates from providers are not safe by default — always run evals first
-
-### ADLC-Specific Slash Commands
-
-| Command | Purpose |
-|---------|---------|
-| `/adlc-status` | Show all ADLC documents grouped by phase |
-| `/pov` | Print the PoV plan and go/no-go thresholds |
-| `/review-agent` | Cross-check all ADLC documents for consistency |
-
----
-
-## 13. Brownfield Discovery Pipeline
-
-The brownfield discovery pipeline extracts a complete business capability map from an existing codebase in 7 steps.
-
-### When It Activates
-
-Brownfield activates when `project_info → approach` is set to `brownfield`. This sets `project.json → approach = "brownfield"` and switches the workflow to `docs/workflow/brownfield.md`.
-
-### Pipeline Steps
-
-| Step | Phase | What Happens |
-|------|-----------|-------------|
-| A1: Seed Candidates | `seed_candidates` | Extract signals from 4 sources: package structure, DB schema, backend entry points, frontend entry points. Cross-reference and assign confidence. Produce 15-25 raw candidates. |
-| A2: Analyze Candidates | `analyze_candidates` | Per candidate: assess cohesion, coupling, boundary clarity. Determine action: confirm/split/merge/de-scope/flag. |
-| A3: Verify Coverage | `verify_coverage` | Map all source files to capabilities. Target >90% coverage. Resolve orphan code. |
-| A4: Lock L1 | `lock_l1` | Finalize L1 capability list with stable IDs (BC-001, BC-002...). |
-| A5: Define L2 | `define_l2` | Per L1: define L2 sub-capabilities mapped to code locations, entities, operations. L2 = executable units of work. |
-| A6: Domain Model | `discovery_domain` | Consolidated domain model with capability hierarchy, entity ownership, cross-capability dependencies, code traceability. |
-| A7: Blueprint Comparison | `blueprint_comparison` | Compare against industry reference (BIAN, TM Forum, APQC). Flag: aligned / org-specific / missing-from-code. |
-
-### Design Principles
-
-- **Adaptive by default** — Skips unavailable signals (no DB → skip schema, API-only → skip frontend). Extraction continues with fewer signals.
-- **Pre-generated inputs accepted** — Each skill checks if its output file already exists. Feed it nDepend exports, JetBrains analysis, DBA reports, or architecture notes to anchor the analysis.
-- **Confidence-driven** — Every candidate carries HIGH/MEDIUM/LOW confidence. Ambiguous candidates are flagged for human review, not silently resolved.
-- **Code is truth** — Industry comparison adds context but does not override code-derived capabilities. Missing capabilities drive targeted questions, not assumptions.
-- **Traceable throughout** — Every capability, entity, and operation is mapped to specific files and code locations.
-
-### Key Concepts
-
-**Capability vs Feature** — A capability is what the business does (e.g. "Payments"). Features are how capabilities are accessed or configured (e.g. "scheduled payments" is a feature of the Payments capability, not a separate capability).
-
-**L1 vs L2** — L1 tells you what exists at a functional level. L2 tells you what can be acted on, migrated, extended, or replaced. L2 is where modernization plans become executable.
-
-**Confidence Ratings** — HIGH means the candidate appears across 3+ signal sources. MEDIUM means 2 sources or strong in 1. LOW means 1 source with weak evidence. These guide architect review — HIGH candidates are almost certainly real capabilities, LOW ones need human judgment.
-
-**Pre-Generated Inputs** — If you have better tooling (nDepend, SonarQube, JetBrains code analysis), export results to `docs/discovery/` before running the pipeline. The skills will use these files instead of regenerating. This anchors the AI analysis in higher-quality signals.
 
 ### Brownfield + ADLC
 
@@ -1038,33 +1007,25 @@ A brownfield project with type `agent` or `ai-system` gets both pipelines:
 
 ```
 Bootstrap → Discovery → Analyst → Architect → Designer → Spec → Evaluator → Script → Ops
-(answers)   (codebase)  (PRD+caps) (domain)   (design)  (spec) (eval+pov)  (scripts) (monitoring+governance)
+(answers)   (codebase)  (PRD)     (domain)    (design)   (spec) (eval+pov)  (dev)    (monitoring+governance)
 ```
-
-Total steps: 3 (bootstrap) + 7 (discovery) + 7 (generation) + 10 (ADLC) = 27 steps.
-
-### Brownfield-Specific Slash Commands
-
-| Command | Purpose |
-|---------|---------|
-| `/discovery-status` | Show all 7 discovery pipeline outputs with statistics |
 
 ---
 
-## 14. Extending the Framework
+## 15. Extending the Framework
 
 ### Add a new bootstrap step
 
-1. Add the step name to `docs/workflow/bootstrap.md` (and/or `docs/workflow/brownfield.md` if applicable) in the correct position
-2. Add questions for it to `.github/skills/bootstrap-ask/SKILL.md`
+1. Add the step name to `docs/workflow/bootstrap.md` (and `brownfield.md` if applicable)
+2. Add its questions to `.github/skills/bootstrap-ask/SKILL.md`
 3. Add a row to the routing table in `docs/workflow/agents.md`
-4. Add the step's questions to `scripts/ask.sh`
+4. Add the questions to `scripts/ask.sh`
 5. Create a generation skill under `.github/skills/` if the step produces a document
 
 ### Add a new agent
 
-1. Create `.github/agents/my-agent.agent.md` with the correct frontmatter:
-   ```markdown
+1. Create `.github/agents/my-agent.agent.md`:
+   ```yaml
    ---
    name: My Agent
    description: What it does and when to use it
@@ -1077,14 +1038,14 @@ Total steps: 3 (bootstrap) + 7 (discovery) + 7 (generation) + 10 (ADLC) = 27 ste
        send: false
    ---
    ```
-2. Add it to the `agents:` list of whichever agent will call it as a subagent
+2. Add it to the `agents:` list of the agent that will call it
 3. Add it to the routing table in `docs/workflow/agents.md`
-4. Update `copilot-instructions.md`
+4. Update `.github/copilot-instructions.md`
 
 ### Add a new slash command
 
 1. Create `.github/prompts/my-command.prompt.md`:
-   ```markdown
+   ```yaml
    ---
    name: my-command
    description: What this command does
@@ -1092,19 +1053,18 @@ Total steps: 3 (bootstrap) + 7 (discovery) + 7 (generation) + 10 (ADLC) = 27 ste
    ---
    Prompt instructions here.
    ```
-2. It will appear in the `/` menu automatically
+2. It appears in the `/` menu automatically
 
 ### Add a new skill
 
 1. Create `.github/skills/my-skill/SKILL.md`:
-   ```markdown
+   ```yaml
    ---
    name: my-skill
-   description: What this skill does and when to use it
-   argument-hint: "[optional argument hint]"
+   description: What this skill does
+   argument-hint: "[optional hint]"
    ---
-   # Skill Instructions
-   Instructions here.
+   # Instructions
    ```
 2. The directory name must match the `name` field exactly
 
@@ -1120,60 +1080,62 @@ model: ['Claude Opus 4.6', 'GPT-4o']
 
 ---
 
-## 15. Troubleshooting
+## 16. Troubleshooting
 
 ### Agent is not visible in the chat selector
 
-- Check that the file has `.agent.md` extension and is in `.github/agents/`
-- Check that `user-invocable` is not set to `false` (only the Bootstrap agent should be visible)
+Check the file has `.agent.md` extension and is in `.github/agents/`. Check `user-invocable` is not set to `false` (only Bootstrap should be visible).
 
 ### Handoff button is not appearing
 
-- The handoff only appears after the agent finishes its instructions
-- Check that the `handoffs:` block is valid YAML in the agent frontmatter
+The handoff only appears after the agent finishes its instructions. Verify the `handoffs:` block is valid YAML in the frontmatter.
 
 ### ADLC steps are not activating
 
-- Check `project.json → adlc` is `true`
-- Check `project.json → type` is `agent` or `ai-system`
-- If type was set before the ADLC update, manually set `"adlc": true` in `project.json`
+Check `project.json → adlc` is `true` and `project.json → type` is `agent` or `ai-system`. If type was set before the ADLC update, manually add `"adlc": true` to `project.json`.
 
 ### Hooks are not running
 
-- Enable the setting: `"chat.useCustomAgentHooks": true` in VS Code settings
-- Check that `scripts/validate-state.sh` is executable: `chmod +x scripts/validate-state.sh`
-- The hook requires `jq` to be installed
+Enable: `"chat.useCustomAgentHooks": true` in VS Code settings. Verify `scripts/validate-state.sh` is executable (`chmod +x`). The hook requires `jq`.
 
 ### `validate-state.sh` fails with JSON error
 
-The agent edited `workflow.json` or `answers.json` into an invalid state. Run:
+An agent edited state into an invalid form. Run:
 
 ```sh
 cat .project/state/workflow.json
 cat .project/state/answers.json
 ```
 
-Fix manually or reset to a known-good state:
+Fix manually, or jump back to a known-good step:
 
 ```sh
-./scripts/step.sh prd     # jump back to a working step
+copilot-bootstrap step prd
 ```
 
 ### An agent cannot find a required input file
 
-The dependency chain was broken — a required previous step did not run. Use `/status` to see which files are missing, then `/reset <step>` to rerun the missing phase.
+A required earlier step did not run. Use `/status` to see missing files, then `/reset <step>` to re-run the missing phase.
 
-### `next.sh` or `step.sh` says step not found
+### `scan` detected the wrong language or framework
 
-The step name in `workflow.json` does not match any step in the active workflow file. For brownfield projects, the scripts read `docs/workflow/brownfield.md`; for greenfield, `docs/workflow/bootstrap.md`. Check that `workflow.json → approach` matches the correct workflow file. Edit `workflow.json` directly and set `step` to a valid value from `./scripts/step.sh --list`.
+Edit `.discovery/context.json` directly and correct the value. The schema is in `.discovery/context.schema.json`. Re-run `copilot-bootstrap generate` to regenerate config from the corrected context.
+
+### `generate` failed partway through
+
+Check `.discovery/generators.lock.json` to see which generator failed. Fix the issue, then re-run `copilot-bootstrap generate` — completed generators are skipped automatically.
 
 ### Discovery agent cannot read the codebase
 
-Check that `answers.json → codebase_setup.path` is a valid absolute path or relative to the workspace root. If the codebase is in a different workspace, the agent needs the path to be accessible. Verify with `ls <path>`.
+Check `answers.json → codebase_setup.path` is a valid path accessible from the workspace. Verify with `ls <path>`.
 
 ### Brownfield steps are not activating
 
-Check `project.json → approach` is `"brownfield"` and `workflow.json → approach` is `"brownfield"`. If approach was set after workflow initialization, manually update both files.
+Check both `project.json → approach` and `workflow.json → approach` are `"brownfield"`. If set after initialization, update both files manually.
+
+### `next` or `step` says step not found
+
+The step name in `workflow.json` does not match the active workflow file. For brownfield, scripts read `docs/workflow/brownfield.md`; for greenfield, `docs/workflow/bootstrap.md`. Set `step` to a valid value: `copilot-bootstrap step --list`.
 
 ---
 
