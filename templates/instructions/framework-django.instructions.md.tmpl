@@ -1,0 +1,15 @@
+---
+name: Django conventions
+description: Django coding standards for {{PROJECT_NAME}}
+applyTo: '{{SRC_PATH}}**/*.py'
+---
+
+## Django Standards
+
+- Use class-based views (CBV) or Django REST Framework `APIView`/`ViewSet` for new endpoints
+- Keep business logic in service modules (`services.py`), not in models or views
+- Use Django's ORM for all database operations; avoid raw SQL unless profiling justifies it
+- Use `select_related` and `prefetch_related` to avoid N+1 queries
+- Define serializers with explicit field lists; never use `fields = "__all__"` in production
+- Write model migrations for every schema change; never edit existing migrations
+- Use Django's `test.TestCase` with a test database; isolate tests with `@override_settings`

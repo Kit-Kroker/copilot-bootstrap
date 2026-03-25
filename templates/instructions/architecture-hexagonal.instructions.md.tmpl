@@ -1,0 +1,21 @@
+---
+name: Hexagonal architecture
+description: Hexagonal (ports & adapters) architecture conventions for {{PROJECT_NAME}}
+applyTo: '{{SRC_PATH}}**'
+---
+
+## Hexagonal Architecture (Ports & Adapters)
+
+This project uses hexagonal architecture:
+
+- **Core (domain)** — Pure business logic; no framework or I/O dependencies
+- **Ports** — Interfaces (input ports: use cases; output ports: repositories/services)
+- **Adapters** — Concrete implementations: HTTP controllers, database repos, CLI, message queues
+
+### Rules
+
+- The core never imports adapters; adapters import the core
+- Input ports define use cases as interfaces; primary adapters (HTTP, CLI) drive them
+- Output ports define repository/service contracts; secondary adapters (DB, HTTP clients) implement them
+- All adapter code lives outside `domain/`; inject via constructor or DI container
+- Test the core without any adapters using in-memory implementations of output ports

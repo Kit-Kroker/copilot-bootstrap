@@ -1,0 +1,16 @@
+---
+name: Go conventions
+description: Go coding standards for {{PROJECT_NAME}}
+applyTo: '**/*.go'
+---
+
+## Go Standards
+
+- Follow Effective Go and the Go Code Review Comments guidelines
+- Return errors explicitly; never panic in library or service code
+- Use table-driven tests with `t.Run` subtests in `*_test.go` files
+- Define interfaces where they are consumed, not where they are implemented
+- Pass `context.Context` as the first argument to functions that may block or cancel
+- Group imports in three blocks: stdlib, external packages, internal packages (blank-line separated)
+- Run `gofmt -s` and `go vet ./...` before committing
+- Use `errors.Is` and `errors.As` for error inspection; wrap with `fmt.Errorf("...: %w", err)`

@@ -1,0 +1,25 @@
+---
+name: Layered architecture
+description: Layered architecture conventions for {{PROJECT_NAME}}
+applyTo: '{{SRC_PATH}}**'
+---
+
+## Layered Architecture
+
+This project uses a layered (N-tier) architecture:
+
+- **Presentation layer** — HTTP handlers, CLI commands, event consumers
+- **Service / Application layer** — Business logic and use cases
+- **Domain layer** — Core entities, value objects, domain services
+- **Infrastructure layer** — Database adapters, external HTTP clients, file I/O
+
+### Dependency rule
+
+Dependencies flow inward only: `presentation → service → domain ← infrastructure`
+
+### Rules
+
+- The domain layer has no framework dependencies
+- Service functions orchestrate domain objects; they do not query the database directly
+- Infrastructure implementations are injected via interfaces, never imported directly in services
+- Keep each layer in a clearly named package or module directory

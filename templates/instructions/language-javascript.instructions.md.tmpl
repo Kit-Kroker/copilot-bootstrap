@@ -1,0 +1,15 @@
+---
+name: JavaScript conventions
+description: JavaScript coding standards for {{PROJECT_NAME}}
+applyTo: '**/*.js,**/*.mjs,**/*.cjs'
+---
+
+## JavaScript Standards
+
+- Use ES2020+ syntax: optional chaining, nullish coalescing, dynamic imports
+- Use `const` by default; `let` only when reassignment is necessary; never `var`
+- Prefer named exports over default exports
+- Use `async/await` over `.then()` chains; always handle rejections
+- Use strict equality (`===`) throughout
+- Avoid mutating function arguments; return new values instead
+- Run `{{LINTER}}` before committing

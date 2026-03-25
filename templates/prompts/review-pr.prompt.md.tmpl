@@ -1,0 +1,42 @@
+---
+name: review-pr
+description: Review a pull request against {{PROJECT_NAME}} conventions
+agent: ask
+tools:
+  - codebase
+argument-hint: "PR number or diff"
+---
+
+# Review PR
+
+Review a pull request for **{{PROJECT_NAME}}** against project conventions.
+
+## Review checklist
+
+### Correctness
+- [ ] Does the change do what the PR description says?
+- [ ] Are edge cases handled?
+- [ ] Are error paths handled?
+
+### Tests
+- [ ] Are new behaviors covered by tests?
+- [ ] Do tests follow the project's testing patterns in `{{TESTS_PATH}}`?
+- [ ] Would `{{TEST_RUNNER}}` pass with this change?
+
+### Code quality
+- [ ] Does the code follow `.github/instructions/{{LANGUAGE}}.instructions.md`?
+- [ ] Is the change minimal — no unrelated modifications?
+- [ ] Are variable and function names clear and consistent with the codebase?
+
+### Architecture
+- [ ] Does the change respect layer boundaries (`.github/instructions/architecture.instructions.md`)?
+- [ ] Are new abstractions justified, or could existing code be reused?
+
+### Security
+- [ ] No secrets or credentials in the diff
+- [ ] No new SQL injection, XSS, or injection surface
+- [ ] Inputs validated at system boundaries
+
+## PR to review
+
+**PR / diff**: ${input:prRef:PR number, branch name, or paste the diff}

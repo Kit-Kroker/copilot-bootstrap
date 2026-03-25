@@ -1,0 +1,33 @@
+---
+name: test
+description: Run {{PROJECT_NAME}} tests using {{TEST_RUNNER}}
+argument-hint: "[test file or pattern]"
+---
+
+# Test Skill
+
+Run the **{{PROJECT_NAME}}** test suite using **{{TEST_RUNNER}}**.
+
+## Usage
+
+```sh
+{{TEST_RUNNER}}
+```
+
+## Common commands
+
+| Task | Command |
+|------|---------|
+| Run all tests | `{{TEST_RUNNER}}` |
+| Run specific file | `{{TEST_RUNNER}} {{TESTS_PATH}}<file>` |
+| Watch mode | `{{TEST_RUNNER}} --watch` |
+| Coverage report | `{{TEST_RUNNER}} --coverage` |
+
+## Test location
+
+Tests are in `{{TESTS_PATH}}`.
+
+## Notes
+
+- Tests must pass before opening a PR
+- Mirror source structure: `{{SRC_PATH}}foo/bar.ts` → `{{TESTS_PATH}}foo/bar.test.ts`

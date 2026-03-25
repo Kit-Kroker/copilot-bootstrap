@@ -1,0 +1,36 @@
+---
+name: write-tests
+description: Write tests for a module in {{PROJECT_NAME}}
+agent: agent
+tools:
+  - terminal
+  - codebase
+argument-hint: "module or file path to test"
+---
+
+# Write Tests
+
+Write tests for a module in **{{PROJECT_NAME}}** using **{{TEST_RUNNER}}**.
+
+## Steps
+
+1. Read `.github/copilot-instructions.md` for project-wide conventions
+2. Read the module to be tested — understand its public interface and behavior
+3. Survey existing tests in `{{TESTS_PATH}}` to understand test patterns and helpers
+4. Write tests covering:
+   - Happy path (expected inputs, expected outputs)
+   - Edge cases (empty, null, boundary values)
+   - Error paths (invalid inputs, failure conditions)
+5. Run `{{TEST_RUNNER}}` — all tests must pass
+6. Report coverage improvement (before vs after if measurable)
+
+## Testing principles
+
+- Test behavior, not implementation
+- Each test has one clear assertion or related group
+- Test names describe the scenario: `"should return 404 when user not found"`
+- Mock only at system boundaries: network calls, database, file I/O, time
+
+## Target module
+
+**Module**: ${input:modulePath:Path to the module to test (e.g. src/users/service.ts)}

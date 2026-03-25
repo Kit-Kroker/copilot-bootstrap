@@ -16,6 +16,8 @@ COMMANDS = {
     "validate": "validate-state.sh",
     "discover": "discover.sh",
     "discovery-status": "discovery-status.sh",
+    "generate": "generate.sh",
+    "generate-status": "generate-status.sh",
 }
 
 

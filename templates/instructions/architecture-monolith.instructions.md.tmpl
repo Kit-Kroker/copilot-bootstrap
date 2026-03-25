@@ -1,0 +1,21 @@
+---
+name: Monolith conventions
+description: Modular monolith architecture conventions for {{PROJECT_NAME}}
+applyTo: '{{SRC_PATH}}**'
+---
+
+## Modular Monolith Architecture
+
+This project is a modular monolith: a single deployable unit with well-defined internal module boundaries.
+
+### Module rules
+
+- Each module owns its own business logic and data access; no reaching into another module's internals
+- Modules communicate via public interfaces or events — never by calling internal functions of another module
+- Keep `shared/` or `common/` packages minimal; prefer duplicating small utilities over coupling modules
+
+### Adding new features
+
+- Identify which module owns the feature; add code there
+- If a feature spans modules, introduce a new module or a thin orchestration layer
+- Resist the temptation to add generic abstractions until the same pattern appears three times

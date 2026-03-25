@@ -1,0 +1,12 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "WriteFile",
+        "type": "command",
+        "command": "echo '{\"systemMessage\": \"Reminder: run {{LINTER}} after editing source files in {{SRC_PATH}}\"}'",
+        "timeout": 5
+      }
+    ]
+  }
+}

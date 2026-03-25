@@ -1,0 +1,27 @@
+---
+name: Microservices conventions
+description: Microservices architecture conventions for {{PROJECT_NAME}}
+applyTo: '{{SRC_PATH}}**'
+---
+
+## Microservices Architecture
+
+This project uses a microservices architecture.
+
+### Service boundaries
+
+- Each service owns its own data store; no direct cross-service database queries
+- Cross-service communication via async events (preferred) or synchronous HTTP/gRPC
+- Each service is independently deployable; changes to one service must not require coordinated deploys
+
+### API design
+
+- Version all public APIs; never break existing consumers without a migration path
+- Return consistent error shapes: `{ code, message, details }` or equivalent
+- Use OpenAPI/Protobuf specs as the source of truth for service contracts
+
+### Observability
+
+- Propagate trace context (`traceparent`) across all outbound calls
+- Log with structured JSON; include `service`, `trace_id`, `span_id` on every log line
+- Expose `/health` and `/ready` endpoints on every service

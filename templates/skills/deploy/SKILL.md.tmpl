@@ -1,0 +1,36 @@
+---
+name: deploy
+description: Build and deploy {{PROJECT_NAME}} containers using {{CONTAINER}}
+argument-hint: "[service name | --prod]"
+---
+
+# Deploy Skill
+
+Build and deploy **{{PROJECT_NAME}}** using **{{CONTAINER}}**.
+
+## Usage
+
+```sh
+{{CONTAINER}} compose up --build
+```
+
+## Common commands
+
+| Task | Command |
+|------|---------|
+| Start all services | `{{CONTAINER}} compose up -d` |
+| Rebuild and start | `{{CONTAINER}} compose up --build` |
+| Stop services | `{{CONTAINER}} compose down` |
+| View logs | `{{CONTAINER}} compose logs -f` |
+| Build image only | `{{CONTAINER}} build -t {{PROJECT_NAME}} .` |
+
+## Before deploying
+
+1. Run `{{TEST_RUNNER}}` — all tests must pass
+2. Run `{{LINTER}}` — no lint errors
+3. Verify environment variables are set (never hardcode secrets)
+
+## Notes
+
+- Use `.env` files for local development; never commit `.env` with real credentials
+- Production deployments require explicit approval

@@ -183,6 +183,14 @@ fi
 
 if [ "$PENDING" -eq 0 ]; then
   echo "All discovery steps complete ($DONE/7)."
+  echo ""
+  GENERATE_SCRIPT="${COPILOT_BOOTSTRAP_HOME}/scripts/generate.sh"
+  if [ -f "$GENERATE_SCRIPT" ]; then
+    echo "Running generators..."
+    sh "$GENERATE_SCRIPT"
+  else
+    echo "Run 'copilot-bootstrap generate' to produce project-specific Copilot configuration."
+  fi
   exit 0
 fi
 

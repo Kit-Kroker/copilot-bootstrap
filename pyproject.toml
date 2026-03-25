@@ -19,3 +19,4 @@ packages = ["src/copilot_bootstrap"]
 "docs" = "copilot_bootstrap/docs"
 ".github" = "copilot_bootstrap/.github"
 ".vscode" = "copilot_bootstrap/.vscode"
+"templates" = "copilot_bootstrap/templates"

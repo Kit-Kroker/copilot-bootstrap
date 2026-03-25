@@ -1,0 +1,29 @@
+---
+name: format
+description: Format {{PROJECT_NAME}} source code
+argument-hint: "[path]"
+---
+
+# Format Skill
+
+Format **{{PROJECT_NAME}}** source code using the project's configured formatter.
+
+## Usage
+
+Run the formatter (check for a `format` script in your package config first):
+
+```sh
+{{PKG_MANAGER}} run format
+```
+
+Or directly with the linter's format mode:
+
+```sh
+{{LINTER}} --fix
+```
+
+## Notes
+
+- Format before committing; CI may enforce formatting
+- Formatting is separate from linting — format first, then lint
+- Configure your editor to format on save using the project's config file

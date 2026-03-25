@@ -1,0 +1,15 @@
+---
+name: Rust conventions
+description: Rust coding standards for {{PROJECT_NAME}}
+applyTo: '**/*.rs'
+---
+
+## Rust Standards
+
+- Prefer `Result<T, E>` and `Option<T>` over panics in library code; use `?` operator to propagate
+- Define errors with `thiserror`; expose `anyhow::Error` only at application boundaries
+- Minimize `clone()` calls; prefer borrowing and lifetime annotations
+- Use `#[derive(Debug, Clone, PartialEq)]` on domain structs where sensible
+- Keep `unsafe` blocks to an absolute minimum and document the invariants that make them safe
+- Run `cargo fmt` and `cargo clippy -- -D warnings` before committing
+- Write doc-tests for public API functions

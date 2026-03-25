@@ -1,0 +1,16 @@
+---
+name: Java conventions
+description: Java coding standards for {{PROJECT_NAME}}
+applyTo: '**/*.java'
+---
+
+## Java Standards
+
+- Use Java 17+ features: records, sealed classes, pattern matching, text blocks
+- Follow SOLID principles; prefer composition and constructor injection over inheritance
+- Keep methods under 20 lines; extract private helper methods freely
+- Use `Optional<T>` instead of returning or checking `null`
+- Write unit tests for all public methods using JUnit 5
+- Validate inputs at service boundaries; trust internal code
+- Use `var` for local variables where the type is obvious from the right-hand side
+- Run `{{LINTER}}` (checkstyle/spotbugs) before committing

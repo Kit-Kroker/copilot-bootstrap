@@ -1,0 +1,15 @@
+---
+name: Vue conventions
+description: Vue coding standards for {{PROJECT_NAME}}
+applyTo: '**/*.vue'
+---
+
+## Vue Standards
+
+- Use Composition API with `<script setup>` syntax; no Options API in new code
+- Extract reusable logic into composables (`use` prefix) in a `composables/` directory
+- Use `defineProps` with runtime validation; prefer typed props via `withDefaults`
+- Keep components under 200 lines; split into smaller components freely
+- Use `v-model` for two-way bindings; emit `update:modelValue` from child components
+- Prefer `computed` over methods for derived values
+- Test with Vue Test Utils and Vitest; assert on rendered output and emitted events

@@ -1,0 +1,15 @@
+---
+name: Next.js conventions
+description: Next.js coding standards for {{PROJECT_NAME}}
+applyTo: 'app/**,pages/**'
+---
+
+## Next.js Standards
+
+- Use the App Router (`app/`) for new routes; prefer Server Components by default
+- Add `"use client"` only when browser APIs, event listeners, or React state are needed
+- Co-locate route-specific components, hooks, and utilities within the route segment
+- Use `next/image` for all images; never raw `<img>` tags
+- Use `next/link` for internal navigation; never raw `<a>` tags
+- Fetch data in Server Components using `fetch` with appropriate cache directives
+- Use Route Handlers (`route.ts`) for API endpoints; validate input with Zod

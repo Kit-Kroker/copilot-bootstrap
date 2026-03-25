@@ -1,0 +1,15 @@
+---
+name: FastAPI conventions
+description: FastAPI coding standards for {{PROJECT_NAME}}
+applyTo: '{{SRC_PATH}}**/*.py'
+---
+
+## FastAPI Standards
+
+- Define request/response models with Pydantic v2; annotate all fields
+- Use dependency injection (`Depends`) for database sessions, authentication, and shared services
+- Group related endpoints in `APIRouter` instances; mount in `main.py`
+- Return domain objects from service functions; convert to response models in route handlers
+- Use `HTTPException` with specific status codes; never expose raw exception messages
+- Write async route handlers (`async def`) for I/O-bound operations
+- Validate path and query parameters using FastAPI's native type annotations

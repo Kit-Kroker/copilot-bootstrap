@@ -1,0 +1,27 @@
+---
+name: Serverless conventions
+description: Serverless architecture conventions for {{PROJECT_NAME}}
+applyTo: '{{SRC_PATH}}**'
+---
+
+## Serverless Architecture
+
+This project uses a serverless / FaaS architecture.
+
+### Function design
+
+- Keep functions small and focused: one event trigger, one responsibility
+- Minimize cold start time: lazy-initialize heavy dependencies outside the handler
+- Avoid shared mutable state between invocations; treat each invocation as stateless
+- Use environment variables for configuration; never hardcode service endpoints or secrets
+
+### Error handling
+
+- Always return structured errors with HTTP status codes for API triggers
+- Use dead-letter queues (DLQ) for async event handlers
+- Log with structured JSON including the event source and invocation ID
+
+### Observability
+
+- Use distributed tracing to correlate logs across function invocations
+- Set appropriate timeouts and memory limits per function based on measured usage

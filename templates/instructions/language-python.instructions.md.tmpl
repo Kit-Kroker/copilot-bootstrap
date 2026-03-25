@@ -1,0 +1,16 @@
+---
+name: Python conventions
+description: Python coding standards for {{PROJECT_NAME}}
+applyTo: '**/*.py'
+---
+
+## Python Standards
+
+- Target Python 3.10+ features where applicable
+- Add type hints to all public functions, methods, and module-level variables
+- Follow PEP 8 for style and PEP 257 for docstrings
+- Use dataclasses or Pydantic models for structured data; avoid plain dicts for domain objects
+- Prefer `pathlib.Path` over `os.path` string manipulation
+- Use `logging` over `print` for any application output
+- Raise specific exception types; never `except Exception: pass`
+- Run `{{LINTER}}` before committing

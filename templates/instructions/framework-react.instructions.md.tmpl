@@ -1,0 +1,15 @@
+---
+name: React conventions
+description: React coding standards for {{PROJECT_NAME}}
+applyTo: '**/*.tsx,**/*.jsx'
+---
+
+## React Standards
+
+- Use functional components with hooks; no class components in new code
+- Extract reusable logic into custom hooks (`use` prefix)
+- Keep components focused: one responsibility, one reason to change
+- Lift state only as high as necessary; co-locate state with the component that owns it
+- Use `React.memo` only when profiling confirms a performance problem
+- Prefer controlled components for forms
+- Test with React Testing Library; assert on user-visible behavior, not implementation details

@@ -1,0 +1,29 @@
+---
+name: lint
+description: Lint {{PROJECT_NAME}} using {{LINTER}}
+argument-hint: "[--fix | path]"
+---
+
+# Lint Skill
+
+Run the **{{PROJECT_NAME}}** linter using **{{LINTER}}**.
+
+## Usage
+
+```sh
+{{LINTER}}
+```
+
+## Common commands
+
+| Task | Command |
+|------|---------|
+| Check only | `{{LINTER}}` |
+| Auto-fix | `{{LINTER}} --fix` |
+| Specific path | `{{LINTER}} {{SRC_PATH}}` |
+
+## Notes
+
+- Run before every commit
+- Fix all errors; warnings should be addressed when encountered
+- Never disable lint rules inline without a comment explaining why

@@ -1,0 +1,33 @@
+---
+name: build
+description: Build {{PROJECT_NAME}} using {{BUNDLER}}
+argument-hint: "[--watch | --prod]"
+---
+
+# Build Skill
+
+Build **{{PROJECT_NAME}}** using **{{BUNDLER}}**.
+
+## Usage
+
+```sh
+{{BUNDLER}} build
+```
+
+## Common commands
+
+| Task | Command |
+|------|---------|
+| Development build | `{{BUNDLER}} build` |
+| Production build | `{{BUNDLER}} build --mode production` |
+| Watch mode | `{{BUNDLER}} build --watch` |
+| Clean | Remove `dist/` or `build/` output directory |
+
+## Output
+
+Build artifacts are written to the `dist/` or `build/` directory.
+
+## Notes
+
+- Run `{{LINTER}}` before building to catch issues early
+- Production builds should always pass `{{TEST_RUNNER}}` before deployment

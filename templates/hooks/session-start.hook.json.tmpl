@@ -1,0 +1,11 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "type": "command",
+        "command": "echo '{\"systemMessage\": \"Project: {{PROJECT_NAME}} | Stack: {{LANGUAGE}}/{{BACKEND}} | Tests: {{TEST_RUNNER}} | Lint: {{LINTER}}\"}'",
+        "timeout": 5
+      }
+    ]
+  }
+}

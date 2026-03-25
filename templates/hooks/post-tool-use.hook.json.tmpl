@@ -1,0 +1,12 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "RunTerminalCommand",
+        "type": "command",
+        "command": "echo '{\"systemMessage\": \"Reminder: run {{TEST_RUNNER}} to verify changes have not broken existing tests\"}'",
+        "timeout": 5
+      }
+    ]
+  }
+}

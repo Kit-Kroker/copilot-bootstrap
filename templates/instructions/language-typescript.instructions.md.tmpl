@@ -1,0 +1,16 @@
+---
+name: TypeScript conventions
+description: TypeScript coding standards for {{PROJECT_NAME}}
+applyTo: '**/*.ts,**/*.tsx'
+---
+
+## TypeScript Standards
+
+- Enable strict mode (`"strict": true` in tsconfig.json)
+- Prefer `interface` over `type` for object shapes that can be extended
+- Avoid `any`; use `unknown` and narrow types with guards
+- Use `const` by default; `let` only when reassignment is necessary
+- Prefer named exports over default exports for better refactoring support
+- Use `async/await` over `.then()` chains
+- Co-locate types with the code that uses them; avoid a single global `types.ts`
+- Use `satisfies` for type-safe object literals where inference is desired

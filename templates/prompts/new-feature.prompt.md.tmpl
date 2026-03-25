@@ -1,0 +1,30 @@
+---
+name: new-feature
+description: Scaffold a new feature following {{PROJECT_NAME}} conventions
+agent: agent
+tools:
+  - terminal
+  - codebase
+argument-hint: "feature name and description"
+---
+
+# New Feature
+
+Scaffold a new feature for **{{PROJECT_NAME}}** following established patterns.
+
+## Steps
+
+1. Read `.github/copilot-instructions.md` for project-wide conventions
+2. Read `.github/instructions/{{LANGUAGE}}.instructions.md` for language standards
+3. Review existing features in `{{SRC_PATH}}` to identify the correct pattern to follow
+4. Implement the feature in the appropriate module
+5. Write tests in `{{TESTS_PATH}}` mirroring the source structure
+6. Run `{{LINTER}}` — fix all issues
+7. Run `{{TEST_RUNNER}}` — all tests must pass
+8. Report a summary of what was created and why
+
+## Feature request
+
+**Name**: ${input:featureName:Feature name (e.g. user-notifications)}
+
+**Description**: ${input:featureDescription:Describe what this feature should do and why}

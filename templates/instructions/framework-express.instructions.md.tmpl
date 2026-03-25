@@ -1,0 +1,15 @@
+---
+name: Express conventions
+description: Express.js coding standards for {{PROJECT_NAME}}
+applyTo: '{{SRC_PATH}}**'
+---
+
+## Express Standards
+
+- Use `Router` instances to group related routes; mount them in `app.ts`
+- Validate request bodies and params with a schema library (Zod, Joi) before processing
+- Use typed request/response via `Request<Params, ResBody, ReqBody, Query>` generics
+- Handle errors in a centralized error middleware; never `res.send(err)` inline
+- Use `next(err)` to propagate errors to the error handler
+- Keep route handlers thin: delegate business logic to service functions
+- Return consistent JSON shapes: `{ data, error, meta }` pattern
