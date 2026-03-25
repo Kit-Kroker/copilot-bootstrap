@@ -18,12 +18,13 @@ Supports **greenfield** (build from scratch) and **brownfield** (modernize exist
 8. [Skills](#8-skills)
 9. [CLI Commands](#9-cli-commands)
 10. [File Structure](#10-file-structure)
-11. [Brownfield Discovery Pipeline](#11-brownfield-discovery-pipeline)
-12. [Generator Orchestrator](#12-generator-orchestrator)
-13. [Google Stitch Integration](#13-google-stitch-integration)
-14. [ADLC Extended Workflow](#14-adlc-extended-workflow)
-15. [Extending the Framework](#15-extending-the-framework)
-16. [Troubleshooting](#16-troubleshooting)
+11. [Greenfield Pipeline](#11-greenfield-pipeline)
+13. [Brownfield Discovery Pipeline](#13-brownfield-discovery-pipeline)
+14. [Generator Orchestrator](#14-generator-orchestrator)
+15. [Google Stitch Integration](#15-google-stitch-integration)
+16. [ADLC Extended Workflow](#16-adlc-extended-workflow)
+17. [Extending the Framework](#17-extending-the-framework)
+18. [Troubleshooting](#18-troubleshooting)
 
 ---
 
@@ -51,16 +52,27 @@ uv tool install copilot-bootstrap --from git+https://github.com/Kit-Kroker/copil
 ```sh
 mkdir my-project && cd my-project
 copilot-bootstrap init
+copilot-bootstrap interview         # 6-step interview: idea → project_info → users → features → tech → complexity
+copilot-bootstrap build-context     # derive context.json, decisions.json, scope.json from answers
+copilot-bootstrap spec              # initialize spec pipeline (creates pipeline.lock.json)
 code .
 ```
 
-In VS Code, open Copilot Chat, select **Bootstrap**, and type your idea:
+In VS Code, use the `#run-spec-pipeline` skill in Copilot Chat. The pipeline runs all spec steps automatically. When complete, `copilot-bootstrap spec` auto-triggers `copilot-bootstrap generate`, which writes project-specific Copilot config to `.github/`.
 
-```
-idea: a SaaS platform where freelancers track time and invoice clients
+**Smart defaults**: pick React → Vite + ESLint + Prettier + Vitest are set automatically. Pick Python → Poetry + Ruff + Black + Pytest. Toolchain derivations are tracked in `.greenfield/decisions.json` so generators know why each choice was made.
+
+**Resumable**: both the spec pipeline and generators track progress in lock files. Re-run `copilot-bootstrap spec` or `copilot-bootstrap generate` after an interruption — completed steps are skipped.
+
+#### Legacy greenfield (manual navigation)
+
+```sh
+mkdir my-project && cd my-project
+copilot-bootstrap init
+code .
 ```
 
-The Bootstrap agent collects answers across 5-6 steps. When finished, click **Generate PRD & Capabilities** and follow the handoff chain through Analyst → Architect → Designer → Spec → Script.
+Select the **Bootstrap** agent in Copilot Chat and type your idea. Bootstrap asks one step at a time; click handoff buttons to advance through Analyst → Architect → Designer → Spec → Script.
 
 ### Brownfield — existing codebase
 
@@ -104,18 +116,40 @@ This framework uses all VS Code Copilot customization types:
 
 ### Agent pipeline
 
-Agents are chained via **handoff buttons**. Each agent completes its phase and presents a button that passes context to the next.
+**Greenfield pipeline (single-command)**:
 
 ```
-Greenfield:
-  Bootstrap → Analyst → Architect → Designer → Spec → Script
-
-Brownfield:
-  Bootstrap → Discovery → Analyst → Architect → Designer → Spec → Script
-
-ADLC extension (appends when type = agent / ai-system):
-  ... → Evaluator → Script → Ops
+copilot-bootstrap interview         → .greenfield/answers.json
+copilot-bootstrap build-context     → .greenfield/context.json + decisions.json + scope.json
+copilot-bootstrap spec              → initializes pipeline.lock.json
+  #run-spec-pipeline skill:
+    Analyst  → docs/analysis/prd.md, capabilities.md
+    Architect→ docs/domain/model.md, rbac.md, workflows.md
+    Designer → docs/design/overview.md, ia.md, flows.md
+    Spec     → docs/spec/api.md
+    Script   → .github/skills/ (dev skills)
+copilot-bootstrap generate          → .github/ (runtime Copilot config) — runs automatically
 ```
+
+**Greenfield (legacy, manual navigation)**:
+
+```
+Bootstrap → Analyst → Architect → Designer → Spec → Script
+```
+
+**Brownfield**:
+
+```
+Bootstrap → Discovery → Analyst → Architect → Designer → Spec → Script
+```
+
+**ADLC extension** (appends when type = `agent` or `ai-system`):
+
+```
+... → Evaluator → Script → Ops
+```
+
+For manual navigation, agents are chained via **handoff buttons**. Each agent completes its phase and presents a button that passes context to the next.
 
 ### State machine
 
@@ -201,7 +235,60 @@ When `brownfield`: the `users`, `features`, `tech`, `complexity` steps are repla
 
 ## 5. Workflow Steps
 
-### Standard bootstrap — greenfield (13 steps)
+### Greenfield pipeline (single-command)
+
+The pipeline approach replaces manual step navigation with CLI commands and a single skill invocation.
+
+| Phase | Command / Skill | Output |
+|-------|----------------|--------|
+| Interview | `copilot-bootstrap interview` + `#bootstrap-ask` | `.greenfield/answers.json` |
+| Context build | `copilot-bootstrap build-context` | `.greenfield/context.json`, `decisions.json`, `scope.json` |
+| Spec pipeline | `copilot-bootstrap spec` + `#run-spec-pipeline` | `docs/analysis/`, `docs/domain/`, `docs/design/`, `docs/spec/`, `.github/skills/` |
+| Generators | auto-runs when spec completes (or `copilot-bootstrap generate`) | `.github/instructions/`, `agents/`, `skills/`, `prompts/`, hooks, MCP, docs |
+
+#### Interview steps (6 steps)
+
+| # | Step | Collected |
+|---|------|-----------|
+| 1 | `idea` | description, pain_points |
+| 2 | `project_info` | name, type, domain |
+| 3 | `users` | user roles and descriptions |
+| 4 | `features` | feature list with priority (must-have / should-have / nice-to-have) |
+| 5 | `tech` | language, frontend, backend, db, container |
+| 6 | `complexity` | level (mvp / startup / saas / enterprise), autonomy, adlc |
+
+#### Spec pipeline steps (11 steps)
+
+| Step | Output |
+|------|--------|
+| `generate_prd` | `docs/analysis/prd.md` |
+| `generate_capabilities` | `docs/analysis/capabilities.md` |
+| `generate_domain` | `docs/domain/model.md` |
+| `generate_rbac` | `docs/domain/rbac.md` |
+| `generate_workflows` | `docs/domain/workflows.md` |
+| `generate_design_workflow` | `docs/design/overview.md` |
+| `generate_ia` | `docs/design/ia.md` |
+| `generate_flows` | `docs/design/flows.md` |
+| `generate_spec` | `docs/spec/api.md` |
+| `generate_skills` | `.github/skills/` (dev skills) |
+| `generate_scripts` | `scripts/` |
+
+Steps that already have output files are automatically skipped (resumable from any point).
+
+#### Generator steps (8 generators — run after spec pipeline)
+
+| Generator | Output |
+|-----------|--------|
+| `instructions` | `.github/copilot-instructions.md`, `.github/instructions/*.instructions.md` |
+| `agents` | `.github/agents/*.agent.md` (includes scaffold agent — greenfield only) |
+| `skills` | `.github/skills/*/SKILL.md` (runtime skills: build, test, lint, format, deploy) |
+| `prompts` | `.github/prompts/*.prompt.md` (includes implement-feature, scaffold-project — greenfield only) |
+| `mcp` | `.vscode/mcp.json` |
+| `hooks` | `.github/hooks/*.json` |
+| `plugins` | `.github/plugins/project.plugin.json` |
+| `docs` | `.github/docs/` (includes getting-started.md — greenfield only) |
+
+### Standard bootstrap — greenfield (legacy, 13 steps)
 
 | # | Step | Agent | Output |
 |---|------|-------|--------|
@@ -497,6 +584,76 @@ Creates `.project/state/workflow.json`, `.project/state/answers.json`, `project.
 
 ---
 
+### `interview`
+
+Start or resume the greenfield interview. Initialises `.greenfield/answers.json`, shows progress, and guides you to use the `#bootstrap-ask` skill in Copilot Chat.
+
+```sh
+copilot-bootstrap interview
+```
+
+Tracks 6 steps: `idea`, `project_info`, `users`, `features`, `tech`, `complexity`. Shows which steps are complete and which remain. Re-running is safe — completed steps are not overwritten.
+
+---
+
+### `build-context`
+
+Build structured context files from `.greenfield/answers.json`. Applies derivation rules and smart defaults.
+
+```sh
+copilot-bootstrap build-context
+```
+
+**Outputs:**
+
+| File | Purpose |
+|------|---------|
+| `.greenfield/context.json` | Unified stack, tools, architecture, paths, project metadata |
+| `.greenfield/decisions.json` | Why each choice was made: user / default / derived |
+| `.greenfield/scope.json` | Features, users, complexity, autonomy level |
+
+**Derivation rules** (automatic, no user input):
+- Runtime from language: `typescript` → `node`, `python` → `python`, `go` → `go`
+- Architecture from project type: `web` → `layered`, `cli` → `monolith`
+- Monorepo: always `false` for greenfield
+
+**Smart defaults** (applied when not provided by user):
+
+| Language | Defaults |
+|----------|---------|
+| TypeScript / JavaScript | npm, eslint, prettier, vitest (React+Vite) or jest (Next.js) |
+| Python | poetry, ruff, black, pytest |
+| Go | go mod, golangci-lint, gofmt, go test |
+| Java | maven, checkstyle, spotless, junit |
+
+All defaults are recorded in `decisions.json` with `source: "default"` so generators know what was chosen automatically vs explicitly.
+
+---
+
+### `spec`
+
+Initialise or resume the greenfield spec pipeline. Validates prerequisites, creates `.greenfield/pipeline.lock.json`, and reports step status.
+
+```sh
+copilot-bootstrap spec
+```
+
+When all spec steps are complete (all 11 show `completed` or `skipped`), `spec` automatically runs `copilot-bootstrap generate`.
+
+Use the `#run-spec-pipeline` skill in Copilot Chat to execute the pipeline steps. Re-run `copilot-bootstrap spec` after the skill completes to update the lock and trigger generators.
+
+---
+
+### `spec-status`
+
+Print current spec pipeline progress.
+
+```sh
+copilot-bootstrap spec-status
+```
+
+---
+
 ### `scan`
 
 Scan the codebase and write `.discovery/context.json`. Run this before `discover` or `generate` on a brownfield project.
@@ -543,7 +700,7 @@ copilot-bootstrap discovery-status
 
 ### `generate`
 
-Produce project-specific Copilot configuration from `.discovery/context.json` and `docs/discovery/*.md`. Runs all 8 generators in order and writes to `.github/` and `.vscode/`.
+Produce project-specific Copilot configuration from context outputs. **Automatically detects** whether to use `.greenfield/context.json` (greenfield) or `.discovery/context.json` (brownfield). Runs all 8 generators in order and writes to `.github/` and `.vscode/`.
 
 ```sh
 copilot-bootstrap generate              # run all generators
@@ -554,18 +711,31 @@ copilot-bootstrap generate --force      # re-run completed generators
 
 Generators and their output:
 
-| Generator | Output |
-|-----------|--------|
-| `instructions` | `.github/copilot-instructions.md`, `.github/instructions/*.instructions.md` |
-| `agents` | `.github/agents/*.agent.md` (backend, frontend, test, refactor, devops) |
-| `skills` | `.github/skills/*/SKILL.md` (build, test, lint, format, deploy) |
-| `prompts` | `.github/prompts/*.prompt.md` (/new-feature, /fix-bug, /write-tests, /review-pr) |
-| `mcp` | `.vscode/mcp.json` (DB server, filesystem server) |
-| `hooks` | `.github/hooks/*.json` (session-start, pre-tool-use, post-tool-use) |
-| `plugins` | `.github/plugins/project.plugin.json` |
-| `docs` | `.github/docs/` (stack, architecture, agents, skills, prompts summaries) |
+| Generator | Output | Greenfield extras |
+|-----------|--------|-------------------|
+| `instructions` | `.github/copilot-instructions.md`, `.github/instructions/*.instructions.md` | `decisions.instructions.md` — stack rationale from `decisions.json` |
+| `agents` | `.github/agents/*.agent.md` (backend, frontend, test, refactor, devops) | `scaffold.agent.md` — guides initial project setup from specs |
+| `skills` | `.github/skills/*/SKILL.md` (build, test, lint, format, deploy) | — |
+| `prompts` | `.github/prompts/*.prompt.md` (/new-feature, /fix-bug, /write-tests, /review-pr) | `implement-feature`, `scaffold-project` |
+| `mcp` | `.vscode/mcp.json` (DB server, filesystem server) | — |
+| `hooks` | `.github/hooks/*.json` (session-start, pre-tool-use, post-tool-use) | — |
+| `plugins` | `.github/plugins/project.plugin.json` | — |
+| `docs` | `.github/docs/` (stack, architecture, agents, skills, prompts) | `getting-started.md` — onboarding guide for this project |
 
-Generator progress is tracked in `.discovery/generators.lock.json` for resumability. If a generator fails, fix the issue and re-run `generate` — completed generators are skipped.
+**Generator inputs:**
+
+| File | Required | Used by |
+|------|----------|---------|
+| `.greenfield/context.json` or `.discovery/context.json` | Yes | All generators |
+| `.greenfield/decisions.json` | No (greenfield) | instructions, docs |
+| `.greenfield/scope.json` | No (greenfield) | agents, docs |
+| `docs/analysis/prd.md`, `capabilities.md` | No | agents, prompts |
+| `docs/domain/model.md` | No | agents |
+| `docs/spec/api.md` | No | prompts |
+
+Generators work with `context.json` alone (minimal mode). Spec pipeline outputs enhance them when present.
+
+Generator progress is tracked in `{context-dir}/generators.lock.json` for resumability. If a generator fails, fix the issue and re-run `generate` — completed generators are skipped.
 
 ---
 
@@ -576,6 +746,8 @@ Print current generator progress.
 ```sh
 copilot-bootstrap generate-status
 ```
+
+Equivalent to `copilot-bootstrap generate status`.
 
 ---
 
@@ -651,10 +823,11 @@ Checks: valid JSON, required fields present, `status` is a valid value, `project
     script.agent.md               Generates dev skills and operational scripts
     ops.agent.md                  Generates monitoring spec, governance doc*
 
-  instructions/                   File-scoped instructions (generated by `generate`)**
+  instructions/                   File-scoped instructions (generated by `generate`)
     {language}.instructions.md    Language coding standards with applyTo glob
     {framework}.instructions.md   Framework-specific conventions
     architecture.instructions.md  Architectural layer rules
+    decisions.instructions.md     Stack rationale and smart defaults summary (greenfield only)†
 
   prompts/
     bootstrap.prompt.md           /bootstrap
@@ -666,6 +839,8 @@ Checks: valid JSON, required fields present, `status` is a valid value, `project
     review-spec.prompt.md         /review-spec
     review-agent.prompt.md        /review-agent*
     stitch.prompt.md              /stitch
+    scaffold-project.prompt.md    /scaffold-project (greenfield only)†
+    implement-feature.prompt.md   /implement-feature (greenfield only)†
 
   skills/
     workflow-read/SKILL.md
@@ -707,12 +882,31 @@ Checks: valid JSON, required fields present, `status` is a valid value, `project
   plugins/                        Generated plugin bundle**
     project.plugin.json
 
-  docs/                           Generated docs summaries**
+  agents/
+    ...                           (workflow agents — bootstrap, analyst, etc.)
+    scaffold.agent.md             Guides initial project setup from specs (greenfield only)†
+
+  docs/                           Generated docs summaries
     stack.md
     architecture.md
     agents.md
     skills.md
     prompts.md
+    getting-started.md            Onboarding guide for building this project (greenfield only)†
+
+.greenfield/                      Greenfield pipeline context and state†
+  answers.json                    Interview answers (written by Bootstrap agent)
+  answers.schema.json             Schema for answers.json
+  context.json                    Unified stack, tools, architecture, paths (written by build-context)
+  context.schema.json             Schema for context.json
+  decisions.json                  Why each stack/tool choice was made (user/default/derived)
+  decisions.schema.json           Schema for decisions.json
+  scope.json                      Features, users, complexity, autonomy level
+  scope.schema.json               Schema for scope.json
+  pipeline.lock.json              Spec pipeline step progress (written by spec command)
+  pipeline.lock.schema.json       Schema for pipeline.lock.json
+  generators.lock.json            Generator orchestrator progress (written by generate command)
+  generators.lock.schema.json     Schema for generators.lock.json
 
 .project/
   state/
@@ -786,10 +980,79 @@ project.json                      Project metadata (name, type, domain, approach
 
 `*` = ADLC only (type is `agent` or `ai-system`)
 `**` = brownfield only (approach is `brownfield`) or generated by `generate` command
+`†` = greenfield pipeline only (generated by `generate` when `.greenfield/context.json` is present)
 
 ---
 
-## 11. Brownfield Discovery Pipeline
+## 11. Greenfield Pipeline
+
+The greenfield pipeline transforms a project idea into a complete, implementation-ready Copilot configuration in four phases. The pipeline is resumable at any point via lock files.
+
+### Full flow
+
+```
+copilot-bootstrap init
+copilot-bootstrap interview         → .greenfield/answers.json
+copilot-bootstrap build-context     → .greenfield/context.json + decisions.json + scope.json
+copilot-bootstrap spec              → .greenfield/pipeline.lock.json
+  [run #run-spec-pipeline in Copilot Chat]
+    → docs/analysis/prd.md, capabilities.md
+    → docs/domain/model.md, rbac.md, workflows.md
+    → docs/design/overview.md, ia.md, flows.md
+    → docs/spec/api.md
+    → .github/skills/ (dev skills)
+copilot-bootstrap spec              → detects all steps complete → runs generate automatically
+  → .github/copilot-instructions.md + instructions/
+  → .github/agents/ (backend, frontend, test, refactor, devops, scaffold)
+  → .github/skills/ (build, test, lint, format, deploy)
+  → .github/prompts/ (new-feature, fix-bug, write-tests, review-pr, scaffold-project, implement-feature)
+  → .vscode/mcp.json
+  → .github/docs/getting-started.md
+```
+
+### Smart defaults
+
+When `build-context` runs, it applies smart defaults for any toolchain tools not explicitly chosen. Defaults are selected based on the chosen language and frontend framework:
+
+| Language + Framework | Test runner | Bundler | Linter | Formatter |
+|---------------------|-------------|---------|--------|-----------|
+| TypeScript + React | vitest | vite | eslint | prettier |
+| TypeScript + Next.js | jest | — | eslint | prettier |
+| TypeScript + Express | jest | — | eslint | prettier |
+| Python + FastAPI | pytest | — | ruff | black |
+| Python + Django | pytest | — | ruff | black |
+| Go | go test | — | golangci-lint | gofmt |
+
+All defaults are recorded in `.greenfield/decisions.json` with `source: "default"` and a `reason` field. The instructions generator reads this file and emits `decisions.instructions.md` so Copilot understands why the toolchain was chosen.
+
+### Spec pipeline lock
+
+`.greenfield/pipeline.lock.json` tracks each step's status. Steps whose output files already exist are automatically marked `skipped` when `copilot-bootstrap spec` runs — so you can pre-populate `docs/` with existing content and the pipeline will not overwrite it.
+
+```json
+{
+  "version": "1",
+  "started_at": "2026-03-26T10:00:00Z",
+  "steps": {
+    "generate_prd":          { "status": "completed", "output": "docs/analysis/prd.md" },
+    "generate_capabilities": { "status": "completed", "output": "docs/analysis/capabilities.md" },
+    "generate_domain":       { "status": "pending",   "output": "docs/domain/model.md" },
+    ...
+  }
+}
+```
+
+### Difference: dev skills vs runtime generators
+
+The spec pipeline produces **dev skills** (`.github/skills/scaffold-project`, `generate-models`, etc.) — these tell Copilot *how to build* the project.
+
+`copilot-bootstrap generate` produces **runtime config** (instructions, agents, prompts, hooks) — this tells Copilot *how to behave* while working in the project.
+
+Both are distinct outputs that complement each other. Dev skills are created once during setup; runtime config is regenerated whenever the stack changes.
+
+---
+
+## 13. Brownfield Discovery Pipeline
 
 The brownfield discovery pipeline extracts a complete business capability map from an existing codebase in 7 steps. Each step reads one input, produces one output, and feeds the next.
 
@@ -852,20 +1115,32 @@ When `copilot-bootstrap discover` detects all 7 steps complete, it automatically
 
 ---
 
-## 12. Generator Orchestrator
+## 14. Generator Orchestrator
 
-The generator orchestrator (`copilot-bootstrap generate`) reads `.discovery/context.json` and produces project-specific Copilot configuration artifacts: instructions, agents, skills, prompts, MCP config, hooks, plugins, and docs. It runs automatically after the discovery pipeline completes, or on demand.
+The generator orchestrator (`copilot-bootstrap generate`) reads context from `.greenfield/` (greenfield) or `.discovery/` (brownfield) and produces project-specific Copilot configuration: instructions, agents, skills, prompts, MCP config, hooks, plugins, and docs. It runs automatically after both pipelines complete, or on demand.
+
+### Context detection
+
+`generate` checks for context files in this order:
+
+1. `.greenfield/context.json` → greenfield mode
+2. `.discovery/context.json` → brownfield mode
+
+Both modes run the same 8 generators with the same templates. Greenfield mode additionally reads `decisions.json` and `scope.json`, and emits greenfield-specific artifacts.
 
 ### Inputs
 
-| File | Required | Purpose |
-|------|----------|---------|
-| `.discovery/context.json` | Yes | Stack, tools, architecture |
-| `docs/discovery/l1-capabilities.md` | No | Capability list for agent descriptions |
-| `docs/discovery/domain-model.md` | No | Domain context for prompts |
-| `project.json` | No | Project name |
+| File | Required | Mode | Purpose |
+|------|----------|------|---------|
+| `.greenfield/context.json` or `.discovery/context.json` | Yes | both | Stack, tools, architecture |
+| `.greenfield/decisions.json` | No | greenfield | Stack rationale → `decisions.instructions.md` |
+| `.greenfield/scope.json` | No | greenfield | Complexity → `getting-started.md` |
+| `docs/analysis/prd.md` | No | both | Requirements context |
+| `docs/analysis/capabilities.md` | No | both | Capability list |
+| `docs/domain/model.md` | No | both | Domain context |
+| `docs/spec/api.md` | No | both | API contracts |
 
-Generators work with `context.json` alone. Discovery outputs enhance them when present.
+Generators work with `context.json` alone (minimal mode). Spec pipeline outputs enhance them when present (full mode).
 
 ### Generator order and rationale
 
@@ -880,9 +1155,19 @@ Generators work with `context.json` alone. Discovery outputs enhance them when p
 8. docs          — documents everything generated above
 ```
 
+### Greenfield-specific outputs
+
+| Generator | Extra output | Purpose |
+|-----------|-------------|---------|
+| `instructions` | `.github/instructions/decisions.instructions.md` | Explains stack rationale from `decisions.json`; helps Copilot maintain consistency with chosen conventions |
+| `agents` | `.github/agents/scaffold.agent.md` | Guides initial project setup from spec docs; knows about `docs/analysis/`, `docs/domain/`, `.greenfield/` |
+| `prompts` | `.github/prompts/scaffold-project.prompt.md` | Kick off initial project creation using the scaffold agent |
+| `prompts` | `.github/prompts/implement-feature.prompt.md` | Implement a named capability from `docs/analysis/capabilities.md` |
+| `docs` | `.github/docs/getting-started.md` | Onboarding guide: how to scaffold the project, implement features, run dev tasks |
+
 ### Template system
 
-Generators use templates from the `templates/` directory. Variables use `{{UPPER_CASE}}` syntax resolved from `context.json` fields:
+Generators use templates from the `templates/` directory. Variables use `{{UPPER_CASE}}` syntax resolved from `context.json` fields and additional exports:
 
 | Variable | Source |
 |----------|--------|
@@ -892,13 +1177,16 @@ Generators use templates from the `templates/` directory. Variables use `{{UPPER
 | `{{DB}}` | `stack.db` |
 | `{{PKG_MANAGER}}` | `tools.package_manager` |
 | `{{LINTER}}` | `tools.linter` |
+| `{{FORMATTER}}` | `tools.formatter` |
 | `{{TEST_RUNNER}}` | `tools.test_runner` |
 | `{{BUNDLER}}` | `tools.bundler` |
 | `{{CONTAINER}}` | `tools.container` |
 | `{{ARCH_STYLE}}` | `arch.style` |
 | `{{SRC_PATH}}` | `paths.src` |
 | `{{TESTS_PATH}}` | `paths.tests` |
-| `{{PROJECT_NAME}}` | `project.json → name` |
+| `{{PROJECT_NAME}}` | `context.json → project.name` (fallback: `project.json → name`) |
+| `{{APPROACH}}` | `greenfield` or `brownfield` |
+| `{{COMPLEXITY}}` | `scope.json → complexity` (greenfield only) |
 
 Template coverage:
 
@@ -907,18 +1195,39 @@ Template coverage:
 | Languages | TypeScript, JavaScript, Python, Go, Java, Rust |
 | Frameworks | React, Vue, Next.js, Express, FastAPI, Django |
 | Architectures | Layered, Hexagonal, Microservices, Monolith, Serverless |
-| Agents | backend, frontend, test, refactor, devops |
+| Agents | backend, frontend, test, refactor, devops, **scaffold** (greenfield) |
 | Skills | build, test, lint, format, deploy |
-| Prompts | new-feature, fix-bug, write-tests, review-pr |
+| Prompts | new-feature, fix-bug, write-tests, review-pr, **scaffold-project**, **implement-feature** (greenfield) |
 | Hooks | session-start, pre-tool-use, post-tool-use |
 
 ### Resumability
 
-Generator progress is tracked in `.discovery/generators.lock.json`. Each generator has a status: `pending`, `in_progress`, `completed`, `skipped`, or `failed`. Re-running `copilot-bootstrap generate` skips completed generators and resumes from the first incomplete one. Use `--force` to re-run everything.
+Generator progress is tracked in `{context-dir}/generators.lock.json`:
+- Greenfield: `.greenfield/generators.lock.json`
+- Brownfield: `.discovery/generators.lock.json`
+
+Each generator has a status: `pending`, `in_progress`, `completed`, `skipped`, or `failed`. Re-running `copilot-bootstrap generate` skips completed generators and resumes from the first incomplete one. Use `--force` to re-run everything.
+
+```json
+{
+  "version": "1",
+  "started_at": "2026-03-26T10:15:00Z",
+  "generators": {
+    "instructions": { "status": "completed", "outputs": ["..."], "completed_at": "..." },
+    "agents":       { "status": "completed", "outputs": ["..."], "completed_at": "..." },
+    "skills":       { "status": "in_progress" },
+    "prompts":      { "status": "pending" },
+    "mcp":          { "status": "pending" },
+    "hooks":        { "status": "pending" },
+    "plugins":      { "status": "pending" },
+    "docs":         { "status": "pending" }
+  }
+}
+```
 
 ---
 
-## 13. Google Stitch Integration
+## 15. Google Stitch Integration
 
 Google Stitch generates high-fidelity HTML + TailwindCSS screens from natural language prompts via an MCP server.
 
@@ -964,7 +1273,7 @@ If Stitch is not configured, Designer logs a warning in `screens/index.md` and c
 
 ---
 
-## 14. ADLC Extended Workflow
+## 16. ADLC Extended Workflow
 
 The Agentic Development Lifecycle (ADLC) extends the standard bootstrap with phases designed for building and operating AI systems in production.
 
@@ -1012,7 +1321,7 @@ Bootstrap → Discovery → Analyst → Architect → Designer → Spec → Eval
 
 ---
 
-## 15. Extending the Framework
+## 17. Extending the Framework
 
 ### Add a new bootstrap step
 
@@ -1080,7 +1389,7 @@ model: ['Claude Opus 4.6', 'GPT-4o']
 
 ---
 
-## 16. Troubleshooting
+## 18. Troubleshooting
 
 ### Agent is not visible in the chat selector
 

@@ -1,26 +1,40 @@
 #!/bin/sh
 # generate.sh — Generator orchestrator
 #
-# Reads .discovery/context.json and docs/discovery/*.md to produce
-# project-specific Copilot configuration artifacts.
+# Reads context from .greenfield/ (greenfield) or .discovery/ (brownfield)
+# and produces project-specific Copilot configuration artifacts.
 #
 # Usage: copilot-bootstrap generate [generator] [--force]
 #        copilot-bootstrap generate status
 
 set -e
 
-DISCOVERY_DIR=".discovery"
-CONTEXT_FILE="$DISCOVERY_DIR/context.json"
-LOCK_FILE="$DISCOVERY_DIR/generators.lock.json"
 TEMPLATES_DIR="${COPILOT_BOOTSTRAP_HOME}/templates"
+
+# ── Context directory detection ───────────────────────────────────────────────
+
+CONTEXT_DIR=""
+APPROACH=""
+if [ -f ".greenfield/context.json" ]; then
+  CONTEXT_DIR=".greenfield"
+  APPROACH="greenfield"
+elif [ -f ".discovery/context.json" ]; then
+  CONTEXT_DIR=".discovery"
+  APPROACH="brownfield"
+fi
+
+CONTEXT_FILE="$CONTEXT_DIR/context.json"
+LOCK_FILE="$CONTEXT_DIR/generators.lock.json"
+DECISIONS_FILE="$CONTEXT_DIR/decisions.json"
+SCOPE_FILE="$CONTEXT_DIR/scope.json"
 
 # ── Help ──────────────────────────────────────────────────────────────────────
 
 if [ "$1" = "--help" ]; then
   echo "Usage: copilot-bootstrap generate [generator] [--force]"
   echo ""
-  echo "Produces project-specific Copilot configuration from discovery outputs."
-  echo "Reads .discovery/context.json; must run 'copilot-bootstrap scan' first."
+  echo "Produces project-specific Copilot configuration from context outputs."
+  echo "Reads .greenfield/context.json (greenfield) or .discovery/context.json (brownfield)."
   echo ""
   echo "Generators (run in order):"
   echo "  instructions  → .github/copilot-instructions.md + .github/instructions/"
@@ -55,11 +69,16 @@ fi
 # ── Subcommand: status ────────────────────────────────────────────────────────
 
 if [ "$1" = "status" ]; then
+  if [ -z "$CONTEXT_DIR" ]; then
+    echo "No context found. Run 'copilot-bootstrap scan' (brownfield) or"
+    echo "'copilot-bootstrap build-context' (greenfield) first."
+    exit 1
+  fi
   if [ ! -f "$LOCK_FILE" ]; then
     echo "No generator lock found. Run 'copilot-bootstrap generate' first."
     exit 1
   fi
-  echo "Generator status ($LOCK_FILE):"
+  echo "Generator status ($LOCK_FILE) [$APPROACH]:"
   echo ""
   for gen in instructions agents skills prompts mcp hooks plugins docs; do
     STATUS=$(jq -r --arg g "$gen" '.generators[$g].status // "pending"' "$LOCK_FILE")
@@ -82,9 +101,10 @@ fi
 
 # ── Prerequisite checks ───────────────────────────────────────────────────────
 
-if [ ! -f "$CONTEXT_FILE" ]; then
-  echo "Error: $CONTEXT_FILE not found."
-  echo "Run 'copilot-bootstrap scan' first to generate codebase context."
+if [ -z "$CONTEXT_DIR" ]; then
+  echo "Error: no context found."
+  echo "For brownfield: run 'copilot-bootstrap scan' first."
+  echo "For greenfield: run 'copilot-bootstrap build-context' first."
   exit 1
 fi
 
@@ -108,7 +128,7 @@ done
 
 # ── Setup ─────────────────────────────────────────────────────────────────────
 
-mkdir -p "$DISCOVERY_DIR"
+mkdir -p "$CONTEXT_DIR"
 
 NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
@@ -161,6 +181,7 @@ extract_context() {
   DB=$(jq -r '.stack.db // "none"' "$CONTEXT_FILE")
   PKG_MANAGER=$(jq -r '.tools.package_manager // "none"' "$CONTEXT_FILE")
   LINTER=$(jq -r '.tools.linter // "none"' "$CONTEXT_FILE")
+  FORMATTER=$(jq -r '.tools.formatter // "none"' "$CONTEXT_FILE")
   TEST_RUNNER=$(jq -r '.tools.test_runner // "none"' "$CONTEXT_FILE")
   BUNDLER=$(jq -r '.tools.bundler // "none"' "$CONTEXT_FILE")
   CONTAINER=$(jq -r '.tools.container // "none"' "$CONTEXT_FILE")
@@ -168,13 +189,39 @@ extract_context() {
   ARCH_STYLE=$(jq -r '.arch.style // "unknown"' "$CONTEXT_FILE")
   SRC_PATH=$(jq -r '.paths.src // "src/"' "$CONTEXT_FILE")
   TESTS_PATH=$(jq -r '.paths.tests // "tests/"' "$CONTEXT_FILE")
-  PROJECT_NAME="project"
-  if [ -f "project.json" ]; then
-    N=$(jq -r '.name // ""' "project.json" 2>/dev/null)
-    [ -n "$N" ] && PROJECT_NAME="$N"
+
+  # Project name: prefer context.json → project.name, fallback to project.json
+  PROJECT_NAME=$(jq -r '.project.name // ""' "$CONTEXT_FILE" 2>/dev/null)
+  if [ -z "$PROJECT_NAME" ] || [ "$PROJECT_NAME" = "null" ]; then
+    PROJECT_NAME="project"
+    if [ -f "project.json" ]; then
+      N=$(jq -r '.name // ""' "project.json" 2>/dev/null)
+      [ -n "$N" ] && PROJECT_NAME="$N"
+    fi
   fi
-  export LANGUAGE LANGUAGES FRONTEND BACKEND DB PKG_MANAGER LINTER TEST_RUNNER \
-         BUNDLER CONTAINER ORCHESTRATOR ARCH_STYLE SRC_PATH TESTS_PATH PROJECT_NAME
+
+  # Greenfield-specific: decisions.json rationale
+  STACK_RATIONALE=""
+  ARCH_RATIONALE=""
+  DEFAULTS_APPLIED=""
+  COMPLEXITY=""
+  if [ "$APPROACH" = "greenfield" ]; then
+    if [ -f "$DECISIONS_FILE" ]; then
+      LANG_REASON=$(jq -r '.stack_rationale.language.reason // ""' "$DECISIONS_FILE")
+      ARCH_REASON=$(jq -r '.arch_rationale.style.reason // ""' "$DECISIONS_FILE")
+      DEFAULTS_APPLIED=$(jq -r '.defaults_applied // [] | join(", ")' "$DECISIONS_FILE")
+      STACK_RATIONALE="$LANG_REASON"
+      ARCH_RATIONALE="$ARCH_REASON"
+    fi
+    if [ -f "$SCOPE_FILE" ]; then
+      COMPLEXITY=$(jq -r '.complexity // "unknown"' "$SCOPE_FILE")
+    fi
+  fi
+
+  export LANGUAGE LANGUAGES FRONTEND BACKEND DB PKG_MANAGER LINTER FORMATTER \
+         TEST_RUNNER BUNDLER CONTAINER ORCHESTRATOR ARCH_STYLE \
+         SRC_PATH TESTS_PATH PROJECT_NAME APPROACH \
+         STACK_RATIONALE ARCH_RATIONALE DEFAULTS_APPLIED COMPLEXITY
 }
 
 # ── Template renderer ─────────────────────────────────────────────────────────
@@ -249,6 +296,87 @@ generate_instructions() {
     fi
   fi
 
+  # Greenfield-specific: decisions instructions (explains rationale for chosen stack)
+  if [ "$APPROACH" = "greenfield" ] && [ -f "$DECISIONS_FILE" ]; then
+    OUT=".github/instructions/decisions.instructions.md"
+    python3 - "$DECISIONS_FILE" "$OUT" <<'PYEOF'
+import sys, os, json
+
+decisions_path, out_path = sys.argv[1], sys.argv[2]
+project_name = os.environ.get('PROJECT_NAME', 'project')
+language = os.environ.get('LANGUAGE', 'unknown')
+frontend = os.environ.get('FRONTEND', 'none')
+backend = os.environ.get('BACKEND', 'none')
+arch_style = os.environ.get('ARCH_STYLE', 'unknown')
+defaults_applied = os.environ.get('DEFAULTS_APPLIED', '')
+
+with open(decisions_path) as f:
+    d = json.load(f)
+
+lines = [
+    '---',
+    'name: stack decisions',
+    f'description: Stack rationale and conventions for {project_name}',
+    'applyTo: \'**/*\'',
+    '---',
+    '',
+    '# Stack Decisions',
+    '',
+    f'This file explains why the **{project_name}** stack was chosen.',
+    'Copilot should maintain consistency with these decisions.',
+    '',
+    '## Stack Rationale',
+    '',
+]
+
+sr = d.get('stack_rationale', {})
+for key, val in sr.items():
+    if isinstance(val, dict):
+        choice = val.get('choice', '')
+        source = val.get('source', '')
+        reason = val.get('reason', '')
+        if choice:
+            lines.append(f'- **{key}**: `{choice}` ({source}) — {reason}')
+
+tr = d.get('tools_rationale', {})
+if tr:
+    lines += ['', '## Toolchain Rationale', '']
+    for key, val in tr.items():
+        if isinstance(val, dict):
+            choice = val.get('choice', '')
+            source = val.get('source', '')
+            reason = val.get('reason', '')
+            if choice:
+                lines.append(f'- **{key}**: `{choice}` ({source}) — {reason}')
+
+ar = d.get('arch_rationale', {})
+if ar:
+    lines += ['', '## Architecture Rationale', '']
+    for key, val in ar.items():
+        if isinstance(val, dict):
+            choice = val.get('choice', '')
+            source = val.get('source', '')
+            reason = val.get('reason', '')
+            if choice:
+                lines.append(f'- **{key}**: `{choice}` ({source}) — {reason}')
+
+if defaults_applied:
+    lines += [
+        '',
+        '## Smart Defaults Applied',
+        '',
+        f'The following tools were set automatically based on the chosen stack: {defaults_applied}.',
+        'These can be changed in `.greenfield/context.json` and re-running `copilot-bootstrap generate --force`.',
+    ]
+
+lines.append('')
+os.makedirs(os.path.dirname(out_path) if os.path.dirname(out_path) else '.', exist_ok=True)
+with open(out_path, 'w') as f:
+    f.write('\n'.join(lines))
+PYEOF
+    OUTPUTS="$OUTPUTS $OUT"
+  fi
+
   # shellcheck disable=SC2086
   update_generator "instructions" "completed" $OUTPUTS
 }
@@ -295,6 +423,15 @@ generate_agents() {
     fi
   fi
 
+  # Greenfield-specific: scaffold agent
+  if [ "$APPROACH" = "greenfield" ]; then
+    TMPL="$TEMPLATES_DIR/agents/scaffold.agent.md.tmpl"
+    OUT=".github/agents/scaffold.agent.md"
+    if render_template "$TMPL" "$OUT"; then
+      OUTPUTS="$OUTPUTS $OUT"
+    fi
+  fi
+
   # shellcheck disable=SC2086
   update_generator "agents" "completed" $OUTPUTS
 }
@@ -331,7 +468,7 @@ generate_skills() {
     fi
   fi
 
-  # Format skill (always — use linter as formatter if no dedicated formatter)
+  # Format skill (always — use formatter if present, else linter)
   TMPL="$TEMPLATES_DIR/skills/format/SKILL.md.tmpl"
   OUT=".github/skills/format/SKILL.md"
   if render_template "$TMPL" "$OUT"; then
@@ -364,6 +501,17 @@ generate_prompts() {
       OUTPUTS="$OUTPUTS $OUT"
     fi
   done
+
+  # Greenfield-specific prompts
+  if [ "$APPROACH" = "greenfield" ]; then
+    for prompt in scaffold-project implement-feature; do
+      TMPL="$TEMPLATES_DIR/prompts/${prompt}.prompt.md.tmpl"
+      OUT=".github/prompts/${prompt}.prompt.md"
+      if render_template "$TMPL" "$OUT"; then
+        OUTPUTS="$OUTPUTS $OUT"
+      fi
+    done
+  fi
 
   # shellcheck disable=SC2086
   update_generator "prompts" "completed" $OUTPUTS
@@ -494,12 +642,14 @@ generate_plugins() {
     --arg lang "$LANGUAGE" \
     --arg backend "$BACKEND" \
     --arg frontend "$FRONTEND" \
+    --arg approach "$APPROACH" \
     --argjson agents "$AGENTS" \
     --argjson skills "$SKILLS" \
     --argjson hooks "$HOOKS" \
     '{
       "name": $name,
       "description": ("Project-specific Copilot plugin for " + $name),
+      "approach": $approach,
       "stack": {"language": $lang, "backend": $backend, "frontend": $frontend},
       "agents": $agents,
       "skills": $skills,
@@ -518,10 +668,16 @@ generate_docs() {
 
   # stack.md
   OUT=".github/docs/stack.md"
+  CONTEXT_SOURCE="$CONTEXT_FILE"
+  if [ "$APPROACH" = "greenfield" ]; then
+    STACK_SOURCE="Generated from \`.greenfield/context.json\` (chosen by user + smart defaults)."
+  else
+    STACK_SOURCE="Detected from \`.discovery/context.json\`."
+  fi
   cat > "$OUT" <<STACKEOF
 # Project Stack
 
-Detected from \`.discovery/context.json\`.
+${STACK_SOURCE}
 
 ## Languages
 
@@ -538,6 +694,7 @@ $(jq -r '.stack.languages[]? | "- " + .' "$CONTEXT_FILE")
 - Package manager: ${PKG_MANAGER}
 - Test runner: ${TEST_RUNNER}
 - Linter: ${LINTER}
+- Formatter: ${FORMATTER}
 - Bundler: ${BUNDLER}
 - Container: ${CONTAINER}
 STACKEOF
@@ -547,14 +704,26 @@ STACKEOF
   OUT=".github/docs/architecture.md"
   MONOREPO=$(jq -r '.arch.monorepo // false' "$CONTEXT_FILE")
   SERVICES=$(jq -r '.arch.services // 1' "$CONTEXT_FILE")
+  if [ "$APPROACH" = "greenfield" ]; then
+    ARCH_SOURCE="Chosen from \`.greenfield/context.json\`."
+    ARCH_DETAIL=""
+    if [ -f "$DECISIONS_FILE" ]; then
+      ARCH_DETAIL=$(jq -r '.arch_rationale.style.reason // ""' "$DECISIONS_FILE")
+    fi
+  else
+    ARCH_SOURCE="Detected from \`.discovery/context.json\`."
+    ARCH_DETAIL=""
+  fi
   cat > "$OUT" <<ARCHEOF
 # Architecture
 
-Detected from \`.discovery/context.json\`.
+${ARCH_SOURCE}
 
 ## Style
 
-**${ARCH_STYLE}**
+**${ARCH_STYLE}**${ARCH_DETAIL:+
+
+${ARCH_DETAIL}}
 
 ## Structure
 
@@ -562,10 +731,6 @@ Detected from \`.discovery/context.json\`.
 - Services: ${SERVICES}
 - Source root: \`${SRC_PATH}\`
 - Tests root: \`${TESTS_PATH}\`
-
-## Entry Points
-
-$(jq -r '.entrypoints[]? | "- **" + .type + "**: `" + .path + "`"' "$CONTEXT_FILE")
 ARCHEOF
   OUTPUTS="$OUTPUTS $OUT"
 
@@ -625,6 +790,84 @@ done)
 PROMPTSEOF
   OUTPUTS="$OUTPUTS $OUT"
 
+  # Greenfield-specific: getting-started.md
+  if [ "$APPROACH" = "greenfield" ]; then
+    OUT=".github/docs/getting-started.md"
+    cat > "$OUT" <<GETTINGSTARTEDEOF
+# Getting Started with ${PROJECT_NAME}
+
+This Copilot configuration was generated by \`copilot-bootstrap generate\`
+from your greenfield project specifications.
+
+## Your Generated Configuration
+
+| Artifact | Location | Purpose |
+|---|---|---|
+| Project instructions | \`.github/copilot-instructions.md\` | Project-wide Copilot behavior |
+| Language instructions | \`.github/instructions/${LANGUAGE}.instructions.md\` | Language coding standards |
+| Stack decisions | \`.github/instructions/decisions.instructions.md\` | Why this stack was chosen |
+| Scaffold agent | \`.github/agents/scaffold.agent.md\` | Guides initial project setup |
+| Dev skills | \`.github/skills/\` | Build, test, lint, format commands |
+| Prompts | \`.github/prompts/\` | Reusable task prompts |
+| MCP config | \`.vscode/mcp.json\` | MCP server connections |
+
+## Next Steps
+
+### 1. Scaffold the project
+
+Use the scaffold prompt to create the initial project structure:
+
+\`\`\`
+/scaffold-project
+\`\`\`
+
+Or use the scaffold agent directly in Copilot Chat:
+
+\`\`\`
+@scaffold Set up the initial ${PROJECT_NAME} project structure from the specs
+\`\`\`
+
+### 2. Implement features
+
+Use the implement-feature prompt for each capability:
+
+\`\`\`
+/implement-feature
+\`\`\`
+
+Reference capabilities from \`docs/analysis/capabilities.md\`.
+
+### 3. Run dev tasks
+
+\`\`\`
+#test     — run the test suite
+#build    — build the project
+#lint     — check for lint issues
+#format   — auto-format the codebase
+\`\`\`
+
+## Spec Documents
+
+The following documents were generated during the spec pipeline:
+
+- \`docs/analysis/prd.md\` — requirements
+- \`docs/analysis/capabilities.md\` — capability map
+- \`docs/domain/model.md\` — domain model
+- \`docs/domain/rbac.md\` — roles and permissions
+- \`docs/spec/api.md\` — API contracts
+
+## Stack Summary
+
+- **Language**: ${LANGUAGE}
+- **Frontend**: ${FRONTEND}
+- **Backend**: ${BACKEND}
+- **Database**: ${DB}
+- **Architecture**: ${ARCH_STYLE}
+- **Complexity**: ${COMPLEXITY}
+GETTINGSTARTEDEOF
+    OUTPUTS="$OUTPUTS $OUT"
+  fi
+
   # shellcheck disable=SC2086
   update_generator "docs" "completed" $OUTPUTS
 }
@@ -653,6 +896,9 @@ run_generator() {
 init_lock
 extract_context
 
+echo "Generator mode: $APPROACH ($CONTEXT_FILE)"
+echo ""
+
 case "$TARGET" in
   instructions|agents|skills|prompts|mcp|hooks|plugins|docs)
     echo "Running generator: $TARGET"
@@ -676,6 +922,10 @@ case "$TARGET" in
     fi
     DONE=$(jq '[.generators | to_entries[] | select(.value.status == "completed" or .value.status == "skipped")] | length' "$LOCK_FILE")
     echo "All generators complete ($DONE/8). Copilot configuration written to .github/ and .vscode/."
+    if [ "$APPROACH" = "greenfield" ]; then
+      echo ""
+      echo "See .github/docs/getting-started.md to begin building ${PROJECT_NAME}."
+    fi
     ;;
   *)
     echo "Unknown generator: $TARGET"

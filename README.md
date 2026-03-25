@@ -48,6 +48,21 @@ uv tool install copilot-bootstrap --from git+https://github.com/Kit-Kroker/copil
 
 ## Quick start
 
+### Greenfield — new project from scratch
+
+```sh
+mkdir my-project && cd my-project
+copilot-bootstrap init
+copilot-bootstrap interview      # answer 6 questions about the project
+copilot-bootstrap build-context  # build context.json, decisions.json, scope.json
+copilot-bootstrap spec           # initialize spec pipeline
+code .
+```
+
+In VS Code, open Copilot Chat and use the `#run-spec-pipeline` skill to run the full pipeline automatically. When all spec steps complete, `copilot-bootstrap spec` auto-runs the generators and writes project-specific Copilot config to `.github/`.
+
+### Manual (legacy) greenfield
+
 ```sh
 mkdir my-project && cd my-project
 copilot-bootstrap init
@@ -60,7 +75,7 @@ In VS Code, open Copilot Chat, select the **Bootstrap** agent, and type:
 idea: a helpdesk system for managing customer support tickets
 ```
 
-The agent asks one step at a time. When it finishes collecting answers, click the **Generate PRD & Capabilities** handoff button. Continue clicking handoff buttons as each agent completes its phase. When Script finishes, all documents are in `docs/`.
+The agent asks one step at a time. When it finishes collecting answers, click the **Generate PRD & Capabilities** handoff button. Continue clicking handoff buttons as each agent completes its phase.
 
 ---
 
@@ -68,48 +83,64 @@ The agent asks one step at a time. When it finishes collecting answers, click th
 
 Here is an abbreviated session for a SaaS freelancer invoicing tool.
 
-**Step 1 — Describe the idea**
+**Step 1 — Interview (6 questions)**
 
-```
-idea: a SaaS platform where freelancers track time and generate invoices for clients
-```
-
-Bootstrap asks 5-6 targeted questions across these steps: project info, user roles, core features, tech stack, and scale. The questions adapt — if you pick `web-app`, it asks about frontend; if you pick `agent`, it asks about autonomy level.
-
-**Step 2 — Collection complete**
-
-After answering, Bootstrap presents a handoff:
-
-```
-✓ All answers collected.
-
-[Generate PRD & Capabilities →]
+```sh
+copilot-bootstrap interview
 ```
 
-Click it. The Analyst agent activates.
+Run this, then use the `#bootstrap-ask` skill in Copilot Chat. The agent collects answers across 6 steps: idea, project info, user roles, features, tech stack, complexity. Smart defaults are applied automatically — pick React and get Vite + ESLint + Prettier + Vitest without being asked.
 
-**Step 3 — Generation pipeline**
+**Step 2 — Build context**
 
-Each agent completes its phase and hands off to the next:
+```sh
+copilot-bootstrap build-context
+```
+
+Produces three files from your answers:
+- `.greenfield/context.json` — unified stack and toolchain
+- `.greenfield/decisions.json` — why each choice was made (user/default/derived)
+- `.greenfield/scope.json` — features, users, complexity
+
+**Step 3 — Run spec pipeline**
+
+```sh
+copilot-bootstrap spec
+```
+
+Initializes `.greenfield/pipeline.lock.json` and shows step status. Use `#run-spec-pipeline` in Copilot Chat to run the full pipeline:
 
 ```
 Analyst     → docs/analysis/prd.md, docs/analysis/capabilities.md
 Architect   → docs/domain/model.md, docs/domain/rbac.md, docs/domain/workflows.md
 Designer    → docs/design/overview.md, docs/design/ia.md, docs/design/flows.md
-Spec        → docs/spec/api.md, docs/spec/events.md, docs/spec/permissions.md, docs/spec/state-machines.md
-Script      → .github/skills/ (dev scaffolding)
+Spec        → docs/spec/api.md
+Script      → .github/skills/ (dev scaffolding skills)
 ```
 
-Total: 5 handoff clicks, ~12 generated documents.
+**Step 4 — Generators run automatically**
 
-**Step 4 — Start building**
+When the spec pipeline completes, `copilot-bootstrap spec` auto-triggers `copilot-bootstrap generate`, producing project-specific Copilot config tailored to your chosen stack:
 
 ```
-/status        # confirm all files exist
-/review-spec   # check spec consistency before coding
+.github/copilot-instructions.md         project-wide context
+.github/instructions/                   language + framework + architecture + decisions
+.github/agents/                         backend, frontend, test, refactor, devops, scaffold
+.github/skills/                         build, test, lint, format, deploy
+.github/prompts/                        /new-feature, /fix-bug, /write-tests, /review-pr,
+                                        /scaffold-project, /implement-feature
+.vscode/mcp.json                        MCP server config
+.github/docs/getting-started.md         onboarding guide for this project
 ```
 
-Open Copilot Chat, use the generated skills (`/scaffold-project`, `/generate-models`, etc.) to start implementation with full context loaded.
+**Step 5 — Start building**
+
+```
+/scaffold-project      # set up the initial project structure
+/implement-feature     # implement a feature from the capability map
+```
+
+Or use the scaffold agent: `@scaffold Set up the craft-market project from specs`
 
 ---
 
@@ -206,17 +237,31 @@ After discovery, `copilot-bootstrap generate` produces project-specific Copilot 
 .vscode/mcp.json                   MCP server config (postgres, filesystem)
 ```
 
+`generate` detects whether `.greenfield/` or `.discovery/` is present and reads from the appropriate context automatically — same command for both approaches.
+
 ---
 
 ## Commands
 
 ```sh
+# Greenfield pipeline
 copilot-bootstrap init              # initialise a new project
+copilot-bootstrap interview         # start greenfield interview (6 steps)
+copilot-bootstrap build-context     # build context.json, decisions.json, scope.json
+copilot-bootstrap spec              # initialise spec pipeline; auto-runs generators when complete
+copilot-bootstrap spec-status       # show spec pipeline progress
+
+# Brownfield pipeline
 copilot-bootstrap scan              # detect stack and write .discovery/context.json
 copilot-bootstrap discover          # initialise the brownfield discovery pipeline
 copilot-bootstrap discovery-status  # show discovery pipeline progress
-copilot-bootstrap generate          # generate Copilot config from discovery outputs
-copilot-bootstrap generate-status   # show generator progress
+
+# Generator (both approaches)
+copilot-bootstrap generate          # generate Copilot config (auto-detects greenfield/brownfield)
+copilot-bootstrap generate status   # show generator progress
+copilot-bootstrap generate --force  # re-run all generators
+
+# Navigation (manual / legacy)
 copilot-bootstrap sync              # update framework files to latest version
 copilot-bootstrap step              # show current workflow step
 copilot-bootstrap next              # advance to next step

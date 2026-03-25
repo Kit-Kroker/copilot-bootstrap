@@ -8,6 +8,33 @@ __pycache__/
 .discovery/pipeline.lock.json
 .discovery/generators.lock.json
 
-# .greenfield/ lock files are session state — not committed
+# Generated runtime Copilot config — project-specific, produced by `copilot-bootstrap generate`
+.github/instructions/
+.github/hooks/
+.github/plugins/
+.github/docs/
+.github/agents/backend.agent.md
+.github/agents/frontend.agent.md
+.github/agents/test.agent.md
+.github/agents/refactor.agent.md
+.github/agents/devops.agent.md
+.github/agents/scaffold.agent.md
+.github/prompts/fix-bug.prompt.md
+.github/prompts/new-feature.prompt.md
+.github/prompts/write-tests.prompt.md
+.github/prompts/review-pr.prompt.md
+.github/prompts/implement-feature.prompt.md
+.github/prompts/scaffold-project.prompt.md
+.github/skills/build/
+.github/skills/test/
+.github/skills/lint/
+.github/skills/format/
+.github/skills/deploy/
+
+# .greenfield/ runtime data — project-specific, not part of the framework
+.greenfield/answers.json
+.greenfield/context.json
+.greenfield/decisions.json
+.greenfield/scope.json
 .greenfield/pipeline.lock.json
 .greenfield/generators.lock.json

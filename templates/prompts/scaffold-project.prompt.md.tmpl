@@ -1,0 +1,38 @@
+---
+name: scaffold-project
+description: Kick off initial project creation for {{PROJECT_NAME}} from generated specs
+agent: scaffold
+tools:
+  - terminal
+  - codebase
+---
+
+# Scaffold Project
+
+Set up the initial **{{PROJECT_NAME}}** project structure from the generated specifications.
+
+## Context
+
+- Stack: {{LANGUAGE}} + {{FRONTEND}} + {{BACKEND}} + {{DB}}
+- Architecture: {{ARCH_STYLE}}
+- Package manager: {{PKG_MANAGER}}
+- Source root: `{{SRC_PATH}}`
+
+## Steps
+
+1. Read `.greenfield/context.json` for the full stack configuration
+2. Read `docs/analysis/prd.md` and `docs/analysis/capabilities.md` for scope
+3. Initialize the project using `{{PKG_MANAGER}}`
+4. Create the directory structure matching `{{SRC_PATH}}`, `{{TESTS_PATH}}`
+5. Install dependencies (language runtime, framework, dev tools)
+6. Set up `{{LINTER}}` and `{{BUNDLER}}` configuration
+7. Configure `{{TEST_RUNNER}}`
+8. Create an entry point that compiles and runs without errors
+9. Run `{{TEST_RUNNER}}` — the scaffold tests must pass
+10. Report the created structure and next steps
+
+## Notes
+
+Follow `.github/copilot-instructions.md` for all conventions.
+Do not implement business logic — only create the project scaffold.
+The `#implement-feature` prompt handles feature implementation after scaffolding.

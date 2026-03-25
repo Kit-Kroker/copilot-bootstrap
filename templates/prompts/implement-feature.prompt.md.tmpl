@@ -1,0 +1,37 @@
+---
+name: implement-feature
+description: Implement a feature from the capability map for {{PROJECT_NAME}}
+agent: agent
+tools:
+  - terminal
+  - codebase
+argument-hint: "capability name from docs/analysis/capabilities.md"
+---
+
+# Implement Feature
+
+Implement a feature from the generated capability map for **{{PROJECT_NAME}}**.
+
+## Before starting
+
+1. Read `docs/analysis/capabilities.md` to locate the capability
+2. Read `docs/domain/model.md` for the relevant domain entities
+3. Read `docs/spec/api.md` for the API contract (if applicable)
+4. Read `.github/copilot-instructions.md` for project-wide conventions
+5. Read `.github/instructions/{{LANGUAGE}}.instructions.md` for language standards
+
+## Steps
+
+1. Identify the capability in `docs/analysis/capabilities.md`
+2. Understand its dependencies (what it needs from the domain model)
+3. Implement in `{{SRC_PATH}}` following existing patterns
+4. Write tests in `{{TESTS_PATH}}` covering the capability
+5. Run `{{LINTER}}` — fix all lint issues
+6. Run `{{TEST_RUNNER}}` — all tests must pass
+7. Report what was implemented and reference the capability ID
+
+## Feature request
+
+**Capability**: ${input:capabilityName:Capability name from capabilities.md (e.g. user-registration)}
+
+**Context**: ${input:context:Additional context or constraints for this implementation}

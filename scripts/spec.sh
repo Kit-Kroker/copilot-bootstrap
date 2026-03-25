@@ -244,6 +244,10 @@ fi
 
 if [ "$PENDING" -eq 0 ]; then
   echo "All spec steps complete ($DONE/$TOTAL)."
+  echo ""
+  echo "Running generators..."
+  echo ""
+  copilot-bootstrap generate
   exit 0
 fi
 
