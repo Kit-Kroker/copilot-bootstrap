@@ -403,4 +403,4 @@ fi
 echo "Runtime:      $RUNTIME ($RUNTIME_SOURCE)"
 echo "Architecture: $ARCH_STYLE ($ARCH_SOURCE)"
 echo ""
-echo "Run 'copilot-bootstrap spec-pipeline' to generate specification documents."
+echo "Run 'copilot-bootstrap spec' to generate specification documents."

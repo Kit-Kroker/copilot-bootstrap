@@ -16,6 +16,8 @@ COMMANDS = {
     "validate": "validate-state.sh",
     "interview": "interview.sh",
     "build-context": "build-context.sh",
+    "spec": "spec.sh",
+    "spec-status": "spec-status.sh",
     "discover": "discover.sh",
     "discovery-status": "discovery-status.sh",
     "generate": "generate.sh",

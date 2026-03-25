@@ -237,7 +237,7 @@ Summary:
   Complexity: {level} | Autonomy: {autonomy}
 
 Run 'copilot-bootstrap build-context' to build context.json, decisions.json, and scope.json.
-Then run 'copilot-bootstrap spec-pipeline' to generate specification documents.
+Then run 'copilot-bootstrap spec' to generate specification documents.
 ```
 
 ---
