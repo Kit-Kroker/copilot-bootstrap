@@ -1,0 +1,87 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "scope.schema.json",
+  "title": "Greenfield Project Scope",
+  "description": "Feature scope, user roles, complexity, and pipeline autonomy settings. Input for generate-prd and generate-capabilities steps.",
+  "type": "object",
+  "required": ["features", "users", "complexity", "autonomy_level"],
+  "properties": {
+    "features": {
+      "type": "array",
+      "description": "Core features to be built",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["name", "priority"],
+        "properties": {
+          "name": { "type": "string", "description": "Feature name" },
+          "priority": {
+            "type": "string",
+            "enum": ["must-have", "should-have", "nice-to-have"],
+            "description": "MoSCoW priority"
+          },
+          "complexity": {
+            "type": "string",
+            "enum": ["low", "medium", "high"],
+            "description": "Implementation complexity estimate"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "users": {
+      "type": "array",
+      "description": "User roles and their descriptions",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["role", "description"],
+        "properties": {
+          "role": { "type": "string", "description": "Role name (e.g. customer, admin, moderator)" },
+          "description": { "type": "string", "description": "What this role does in the system" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "complexity": {
+      "type": "string",
+      "enum": ["mvp", "startup", "saas", "enterprise"],
+      "description": "Overall project complexity level. Affects generated spec depth."
+    },
+    "autonomy_level": {
+      "type": "string",
+      "enum": ["full", "semi", "manual"],
+      "description": "How much the pipeline should auto-decide without prompting. full=no prompts, semi=confirm key decisions, manual=prompt at each step."
+    },
+    "adlc": {
+      "type": "boolean",
+      "description": "Enable Agentic Development Lifecycle extension. For agent or AI-system projects.",
+      "default": false
+    },
+    "estimated_capabilities": {
+      "type": ["integer", "null"],
+      "minimum": 1,
+      "description": "Estimated number of capabilities to be generated. Derived by context builder from feature list and complexity."
+    }
+  },
+  "additionalProperties": false,
+  "examples": [
+    {
+      "features": [
+        { "name": "User registration", "priority": "must-have", "complexity": "low" },
+        { "name": "Product catalog", "priority": "must-have", "complexity": "medium" },
+        { "name": "Payment processing", "priority": "must-have", "complexity": "high" },
+        { "name": "Order history", "priority": "should-have", "complexity": "low" },
+        { "name": "Wishlist", "priority": "nice-to-have", "complexity": "low" }
+      ],
+      "users": [
+        { "role": "customer", "description": "End user browsing and purchasing" },
+        { "role": "admin", "description": "Store manager" }
+      ],
+      "complexity": "saas",
+      "autonomy_level": "semi",
+      "adlc": false,
+      "estimated_capabilities": 15
+    }
+  ]
+}

@@ -7,3 +7,7 @@ __pycache__/
 # .discovery/ lock files are session state — not committed
 .discovery/pipeline.lock.json
 .discovery/generators.lock.json
+
+# .greenfield/ lock files are session state — not committed
+.greenfield/pipeline.lock.json
+.greenfield/generators.lock.json

@@ -1,0 +1,154 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "answers.schema.json",
+  "title": "Greenfield Interview Answers",
+  "description": "Normalized interview answers collected from the user. Single source of truth for context builder. Migrated from .project/state/answers.json.",
+  "type": "object",
+  "properties": {
+    "idea": {
+      "type": "object",
+      "description": "Project idea and pain points",
+      "properties": {
+        "description": { "type": "string", "description": "What is the project?" },
+        "pain_points": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Problems this project solves"
+        }
+      },
+      "additionalProperties": false
+    },
+    "project_info": {
+      "type": "object",
+      "description": "Basic project metadata",
+      "properties": {
+        "name": { "type": "string", "description": "Project name (slug-friendly)" },
+        "type": {
+          "type": "string",
+          "enum": ["web", "api", "cli", "mobile", "desktop", "library", "agent", "other"],
+          "description": "Project type"
+        },
+        "domain": { "type": "string", "description": "Business domain (e.g. e-commerce, fintech, healthcare)" }
+      },
+      "additionalProperties": false
+    },
+    "users": {
+      "type": "array",
+      "description": "User roles collected during interview",
+      "items": {
+        "type": "object",
+        "required": ["role", "description"],
+        "properties": {
+          "role": { "type": "string" },
+          "description": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "features": {
+      "type": "array",
+      "description": "Core features collected during interview",
+      "items": {
+        "type": "object",
+        "required": ["name", "priority"],
+        "properties": {
+          "name": { "type": "string" },
+          "priority": {
+            "type": "string",
+            "enum": ["must-have", "should-have", "nice-to-have"]
+          },
+          "complexity": {
+            "type": "string",
+            "enum": ["low", "medium", "high"]
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "tech": {
+      "type": "object",
+      "description": "Technology stack choices made by the user",
+      "properties": {
+        "languages": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "frontend": { "type": ["string", "null"] },
+        "backend": { "type": ["string", "null"] },
+        "db": { "type": ["string", "null"] },
+        "runtime": { "type": ["string", "null"] },
+        "package_manager": { "type": ["string", "null"] },
+        "linter": { "type": ["string", "null"] },
+        "formatter": { "type": ["string", "null"] },
+        "test_runner": { "type": ["string", "null"] },
+        "bundler": { "type": ["string", "null"] },
+        "container": { "type": ["string", "null"] },
+        "orchestrator": { "type": ["string", "null"] }
+      },
+      "additionalProperties": false
+    },
+    "complexity": {
+      "type": "object",
+      "description": "Project complexity and autonomy preferences",
+      "properties": {
+        "level": {
+          "type": "string",
+          "enum": ["mvp", "startup", "saas", "enterprise"],
+          "description": "Overall project complexity"
+        },
+        "autonomy": {
+          "type": "string",
+          "enum": ["full", "semi", "manual"],
+          "description": "How much the pipeline should auto-decide"
+        },
+        "adlc": {
+          "type": "boolean",
+          "description": "Enable Agentic Development Lifecycle (for agent/AI-system projects)"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "examples": [
+    {
+      "idea": {
+        "description": "An e-commerce platform for local artisans",
+        "pain_points": ["No affordable storefront", "Manual inventory tracking"]
+      },
+      "project_info": {
+        "name": "artisan-shop",
+        "type": "web",
+        "domain": "e-commerce"
+      },
+      "users": [
+        { "role": "customer", "description": "End user browsing and purchasing" },
+        { "role": "admin", "description": "Store manager" }
+      ],
+      "features": [
+        { "name": "User registration", "priority": "must-have", "complexity": "low" },
+        { "name": "Product catalog", "priority": "must-have", "complexity": "medium" },
+        { "name": "Payment processing", "priority": "must-have", "complexity": "high" }
+      ],
+      "tech": {
+        "languages": ["typescript"],
+        "frontend": "react",
+        "backend": "node",
+        "db": "postgres",
+        "runtime": "node",
+        "package_manager": "npm",
+        "linter": null,
+        "formatter": null,
+        "test_runner": null,
+        "bundler": null,
+        "container": "docker",
+        "orchestrator": null
+      },
+      "complexity": {
+        "level": "saas",
+        "autonomy": "semi",
+        "adlc": false
+      }
+    }
+  ]
+}

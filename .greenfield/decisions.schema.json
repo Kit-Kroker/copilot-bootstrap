@@ -1,0 +1,78 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "decisions.schema.json",
+  "title": "Greenfield Technology Decisions",
+  "description": "Technology and architecture decisions with rationale. Captures what was chosen, why, and which fields were defaulted. Input for instructions and configuration generators.",
+  "type": "object",
+  "required": ["stack_rationale", "arch_rationale", "defaults_applied"],
+  "properties": {
+    "stack_rationale": {
+      "type": "object",
+      "description": "Rationale for technology stack choices",
+      "properties": {
+        "frontend": {
+          "$ref": "#/definitions/decision_entry"
+        },
+        "backend": {
+          "$ref": "#/definitions/decision_entry"
+        },
+        "db": {
+          "$ref": "#/definitions/decision_entry"
+        },
+        "runtime": {
+          "$ref": "#/definitions/decision_entry"
+        }
+      },
+      "additionalProperties": false
+    },
+    "arch_rationale": {
+      "type": "object",
+      "description": "Rationale for architecture decisions",
+      "properties": {
+        "style": {
+          "$ref": "#/definitions/decision_entry"
+        },
+        "auth": {
+          "$ref": "#/definitions/decision_entry"
+        },
+        "monorepo": {
+          "$ref": "#/definitions/decision_entry"
+        }
+      },
+      "additionalProperties": false
+    },
+    "defaults_applied": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Fields where smart defaults were applied (user did not explicitly choose). Used by instructions generator to explain toolchain choices."
+    }
+  },
+  "definitions": {
+    "decision_entry": {
+      "type": "object",
+      "required": ["choice", "reason"],
+      "properties": {
+        "choice": { "type": "string", "description": "The value chosen" },
+        "reason": { "type": "string", "description": "Why this choice was made" },
+        "defaulted": { "type": "boolean", "description": "True if this was a smart default, not an explicit user choice" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "examples": [
+    {
+      "stack_rationale": {
+        "frontend": { "choice": "react", "reason": "Team familiarity, ecosystem maturity" },
+        "backend": { "choice": "node", "reason": "Full-stack TypeScript, async I/O" },
+        "db": { "choice": "postgres", "reason": "Relational data, JSONB support" },
+        "runtime": { "choice": "node", "reason": "Inferred from backend choice", "defaulted": true }
+      },
+      "arch_rationale": {
+        "style": { "choice": "layered", "reason": "Small team, single service, clear separation" },
+        "auth": { "choice": "jwt", "reason": "Stateless, SaaS multi-tenancy" }
+      },
+      "defaults_applied": ["linter", "formatter", "test_runner", "bundler", "runtime"]
+    }
+  ]
+}

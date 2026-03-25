@@ -1,0 +1,64 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "pipeline.lock.schema.json",
+  "title": "Greenfield Spec Pipeline Lock",
+  "description": "Session state tracking progress of the spec pipeline steps. Not committed to git. Enables resumability.",
+  "type": "object",
+  "required": ["version", "steps"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "Schema version"
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when the pipeline was started"
+    },
+    "steps": {
+      "type": "object",
+      "description": "Map of step ID to completion status",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["status"],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["pending", "in_progress", "completed", "failed", "skipped"]
+          },
+          "completed_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "output": {
+            "type": "string",
+            "description": "Path to the output file produced by this step"
+          },
+          "error": {
+            "type": "string",
+            "description": "Error message if status is failed"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false,
+  "examples": [
+    {
+      "version": "1",
+      "started_at": "2024-01-01T12:00:00Z",
+      "steps": {
+        "generate-prd": { "status": "completed", "completed_at": "2024-01-01T12:01:00Z", "output": "docs/analysis/prd.md" },
+        "generate-capabilities": { "status": "completed", "completed_at": "2024-01-01T12:03:00Z", "output": "docs/analysis/capabilities.md" },
+        "generate-domain": { "status": "completed", "completed_at": "2024-01-01T12:05:00Z", "output": "docs/domain/model.md" },
+        "generate-rbac": { "status": "completed", "completed_at": "2024-01-01T12:06:00Z", "output": "docs/domain/rbac.md" },
+        "generate-workflows": { "status": "in_progress" },
+        "generate-design-workflow": { "status": "pending" },
+        "generate-ia": { "status": "pending" },
+        "generate-flows": { "status": "pending" },
+        "generate-spec": { "status": "pending" }
+      }
+    }
+  ]
+}

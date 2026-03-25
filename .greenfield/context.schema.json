@@ -1,0 +1,179 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "context.schema.json",
+  "title": "Greenfield Context",
+  "description": "Unified project context derived from user answers and applied defaults. Single structured input for all spec pipeline steps and generators.",
+  "type": "object",
+  "required": ["stack", "tools", "arch", "paths", "project"],
+  "properties": {
+    "stack": {
+      "type": "object",
+      "description": "Technology stack chosen by the user (not auto-detected)",
+      "required": ["languages"],
+      "properties": {
+        "languages": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1,
+          "description": "Primary programming languages (e.g. [\"typescript\", \"python\"])"
+        },
+        "frontend": {
+          "type": ["string", "null"],
+          "description": "Frontend framework (e.g. \"react\", \"vue\", \"angular\", null)"
+        },
+        "backend": {
+          "type": ["string", "null"],
+          "description": "Backend runtime or framework (e.g. \"node\", \"fastapi\", \"django\", null)"
+        },
+        "db": {
+          "type": ["string", "null"],
+          "description": "Primary database (e.g. \"postgres\", \"mysql\", \"mongodb\", null)"
+        },
+        "runtime": {
+          "type": ["string", "null"],
+          "description": "Runtime environment (e.g. \"node\", \"deno\", \"bun\", \"python\", null)"
+        }
+      },
+      "additionalProperties": false
+    },
+    "tools": {
+      "type": "object",
+      "description": "Toolchain — user-chosen or defaulted based on stack",
+      "properties": {
+        "package_manager": {
+          "type": ["string", "null"],
+          "description": "e.g. \"npm\", \"yarn\", \"pnpm\", \"pip\", \"poetry\""
+        },
+        "linter": {
+          "type": ["string", "null"],
+          "description": "e.g. \"eslint\", \"ruff\", \"pylint\""
+        },
+        "formatter": {
+          "type": ["string", "null"],
+          "description": "e.g. \"prettier\", \"black\", \"ruff\""
+        },
+        "test_runner": {
+          "type": ["string", "null"],
+          "description": "e.g. \"jest\", \"vitest\", \"pytest\""
+        },
+        "bundler": {
+          "type": ["string", "null"],
+          "description": "e.g. \"vite\", \"webpack\", \"esbuild\""
+        },
+        "container": {
+          "type": ["string", "null"],
+          "description": "e.g. \"docker\", \"podman\""
+        },
+        "orchestrator": {
+          "type": ["string", "null"],
+          "description": "e.g. \"docker-compose\", \"kubernetes\", null"
+        }
+      },
+      "additionalProperties": false
+    },
+    "arch": {
+      "type": "object",
+      "description": "Architecture decisions chosen by the user",
+      "required": ["style", "monorepo", "services"],
+      "properties": {
+        "style": {
+          "type": "string",
+          "enum": ["layered", "hexagonal", "microservices", "monolith", "serverless", "unknown"],
+          "description": "High-level architecture pattern"
+        },
+        "monorepo": {
+          "type": "boolean",
+          "description": "True if the project uses a monorepo layout"
+        },
+        "services": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Number of distinct services (1 for monolith/layered)"
+        },
+        "patterns": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Design patterns in use (e.g. [\"mvc\", \"repository\", \"cqrs\"])"
+        }
+      },
+      "additionalProperties": false
+    },
+    "paths": {
+      "type": "object",
+      "description": "Key directory paths relative to project root",
+      "required": ["src", "tests", "docs", "config"],
+      "properties": {
+        "src": { "type": "string" },
+        "tests": { "type": "string" },
+        "docs": { "type": "string" },
+        "config": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "project": {
+      "type": "object",
+      "description": "Project-level metadata derived from interview",
+      "required": ["name", "type"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Project name (slug-friendly)"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["web", "api", "cli", "mobile", "desktop", "library", "agent", "other"],
+          "description": "Project type"
+        },
+        "domain": {
+          "type": ["string", "null"],
+          "description": "Business domain (e.g. e-commerce, fintech, healthcare)"
+        },
+        "complexity": {
+          "type": "string",
+          "enum": ["mvp", "startup", "saas", "enterprise"],
+          "description": "Project complexity level"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "examples": [
+    {
+      "stack": {
+        "languages": ["typescript"],
+        "frontend": "react",
+        "backend": "node",
+        "db": "postgres",
+        "runtime": "node"
+      },
+      "tools": {
+        "package_manager": "npm",
+        "linter": "eslint",
+        "formatter": "prettier",
+        "test_runner": "jest",
+        "bundler": "vite",
+        "container": "docker",
+        "orchestrator": "docker-compose"
+      },
+      "arch": {
+        "style": "layered",
+        "monorepo": false,
+        "services": 1,
+        "patterns": ["mvc", "repository"]
+      },
+      "paths": {
+        "src": "src/",
+        "tests": "tests/",
+        "docs": "docs/",
+        "config": "."
+      },
+      "project": {
+        "name": "artisan-shop",
+        "type": "web",
+        "domain": "e-commerce",
+        "complexity": "saas"
+      }
+    }
+  ]
+}
