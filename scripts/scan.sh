@@ -425,7 +425,6 @@ echo "done"
 
 printf "  [3/5] Detecting tools... "
 
-pkg_manager="null"
 linter="null"
 formatter="null"
 test_runner="null"
@@ -433,23 +432,42 @@ bundler="null"
 container="null"
 orchestrator="null"
 
-# ── Package manager ───────────────────────────────────────────────────────
+# ── Package managers ──────────────────────────────────────────────────────
+# Detect one manager per language ecosystem (first-match-wins within each),
+# then combine. This handles monorepos with mixed stacks (e.g. uv + npm).
 
-f "pnpm-lock.yaml"      && pkg_manager="pnpm"
-f "yarn.lock"           && [ "$pkg_manager" = "null" ] && pkg_manager="yarn"
-f "package-lock.json"   && [ "$pkg_manager" = "null" ] && pkg_manager="npm"
-f "package.json"        && [ "$pkg_manager" = "null" ] && pkg_manager="npm"
-f "poetry.lock"         && [ "$pkg_manager" = "null" ] && pkg_manager="poetry"
-f "Pipfile.lock"        && [ "$pkg_manager" = "null" ] && pkg_manager="pipenv"
-f "pyproject.toml"      && [ "$pkg_manager" = "null" ] && pkg_manager="pip"
-f "requirements.txt"    && [ "$pkg_manager" = "null" ] && pkg_manager="pip"
-f "go.mod"              && [ "$pkg_manager" = "null" ] && pkg_manager="go"
-f "Cargo.toml"          && [ "$pkg_manager" = "null" ] && pkg_manager="cargo"
-f "pom.xml"             && [ "$pkg_manager" = "null" ] && pkg_manager="maven"
-f "build.gradle"        && [ "$pkg_manager" = "null" ] && pkg_manager="gradle"
-f "build.gradle.kts"    && [ "$pkg_manager" = "null" ] && pkg_manager="gradle"
-f "Gemfile"             && [ "$pkg_manager" = "null" ] && pkg_manager="bundler"
-f "composer.json"       && [ "$pkg_manager" = "null" ] && pkg_manager="composer"
+# JavaScript / Node
+js_pm=""
+f "pnpm-lock.yaml"    && js_pm="pnpm"
+f "yarn.lock"         && [ -z "$js_pm" ] && js_pm="yarn"
+f "package-lock.json" && [ -z "$js_pm" ] && js_pm="npm"
+f "package.json"      && [ -z "$js_pm" ] && js_pm="npm"
+
+# Python
+py_pm=""
+f "uv.lock"                             && py_pm="uv"
+grep_file "\[tool\.uv\]" "pyproject.toml" && [ -z "$py_pm" ] && py_pm="uv"
+f "poetry.lock"                         && [ -z "$py_pm" ] && py_pm="poetry"
+f "Pipfile.lock"                        && [ -z "$py_pm" ] && py_pm="pipenv"
+f "pyproject.toml"                      && [ -z "$py_pm" ] && py_pm="pip"
+f "requirements.txt"                    && [ -z "$py_pm" ] && py_pm="pip"
+
+# Other ecosystems (at most one each)
+other_pms=""
+f "go.mod"          && other_pms="$other_pms go"
+f "Cargo.toml"      && other_pms="$other_pms cargo"
+f "pom.xml"         && other_pms="$other_pms maven"
+{ f "build.gradle" || f "build.gradle.kts"; } && other_pms="$other_pms gradle"
+f "Gemfile"         && other_pms="$other_pms bundler"
+f "composer.json"   && other_pms="$other_pms composer"
+
+# Combine into a single space-separated list, then convert to JSON array
+all_pms=""
+[ -n "$js_pm" ] && all_pms="$all_pms $js_pm"
+[ -n "$py_pm" ] && all_pms="$all_pms $py_pm"
+[ -n "$other_pms" ] && all_pms="$all_pms $other_pms"
+pkg_managers_json=$(words_to_json_array "$all_pms")
+[ "$pkg_managers_json" = "[]" ] && pkg_managers_json="null"
 
 # ── Linter ────────────────────────────────────────────────────────────────
 
@@ -557,21 +575,21 @@ d "charts"              && [ "$orchestrator" = "null" ] && orchestrator="helm"
 # ── Write tools.json ──────────────────────────────────────────────────────
 
 jq -n \
-  --arg pkg_manager  "$pkg_manager" \
-  --arg linter       "$linter" \
-  --arg formatter    "$formatter" \
-  --arg test_runner  "$test_runner" \
-  --arg bundler      "$bundler" \
-  --arg container    "$container" \
-  --arg orchestrator "$orchestrator" \
+  --argjson pkg_managers "$pkg_managers_json" \
+  --arg linter            "$linter" \
+  --arg formatter         "$formatter" \
+  --arg test_runner       "$test_runner" \
+  --arg bundler           "$bundler" \
+  --arg container         "$container" \
+  --arg orchestrator      "$orchestrator" \
   '{
-    package_manager: (if $pkg_manager  == "null" then null else $pkg_manager  end),
-    linter:          (if $linter       == "null" then null else $linter       end),
-    formatter:       (if $formatter    == "null" then null else $formatter    end),
-    test_runner:     (if $test_runner  == "null" then null else $test_runner  end),
-    bundler:         (if $bundler      == "null" then null else $bundler      end),
-    container:       (if $container    == "null" then null else $container    end),
-    orchestrator:    (if $orchestrator == "null" then null else $orchestrator end)
+    package_managers: $pkg_managers,
+    linter:           (if $linter       == "null" then null else $linter       end),
+    formatter:        (if $formatter    == "null" then null else $formatter    end),
+    test_runner:      (if $test_runner  == "null" then null else $test_runner  end),
+    bundler:          (if $bundler      == "null" then null else $bundler      end),
+    container:        (if $container    == "null" then null else $container    end),
+    orchestrator:     (if $orchestrator == "null" then null else $orchestrator end)
   }' > "$DISCOVERY_DIR/tools.json"
 
 echo "done"
@@ -822,22 +840,22 @@ jq -n \
 languages_json=$(words_to_json_array "$languages")
 
 jq -n \
-  --argjson languages    "$languages_json" \
-  --arg     frontend     "$frontend" \
-  --arg     backend      "$backend" \
-  --arg     db           "$db" \
-  --arg     arch_style   "$arch_style" \
-  --argjson monorepo     "$monorepo" \
-  --argjson services     "$services" \
-  --arg     pkg_manager  "$pkg_manager" \
-  --arg     linter       "$linter" \
-  --arg     test_runner  "$test_runner" \
-  --arg     bundler      "$bundler" \
-  --arg     container    "$container" \
-  --arg     src_path     "$src_path" \
-  --arg     tests_path   "$tests_path" \
-  --arg     docs_path    "$docs_path" \
-  --argjson entrypoints  "$entrypoints" \
+  --argjson languages      "$languages_json" \
+  --arg     frontend       "$frontend" \
+  --arg     backend        "$backend" \
+  --arg     db             "$db" \
+  --arg     arch_style     "$arch_style" \
+  --argjson monorepo       "$monorepo" \
+  --argjson services       "$services" \
+  --argjson pkg_managers   "$pkg_managers_json" \
+  --arg     linter         "$linter" \
+  --arg     test_runner    "$test_runner" \
+  --arg     bundler        "$bundler" \
+  --arg     container      "$container" \
+  --arg     src_path       "$src_path" \
+  --arg     tests_path     "$tests_path" \
+  --arg     docs_path      "$docs_path" \
+  --argjson entrypoints    "$entrypoints" \
   '{
     stack: {
       languages: $languages,
@@ -846,11 +864,11 @@ jq -n \
       db:        (if $db       == "null" then null else $db       end)
     },
     tools: {
-      package_manager: (if $pkg_manager == "null" then null else $pkg_manager end),
-      linter:          (if $linter      == "null" then null else $linter      end),
-      test_runner:     (if $test_runner == "null" then null else $test_runner end),
-      bundler:         (if $bundler     == "null" then null else $bundler     end),
-      container:       (if $container   == "null" then null else $container   end)
+      package_managers: $pkg_managers,
+      linter:           (if $linter      == "null" then null else $linter      end),
+      test_runner:      (if $test_runner == "null" then null else $test_runner end),
+      bundler:          (if $bundler     == "null" then null else $bundler     end),
+      container:        (if $container   == "null" then null else $container   end)
     },
     arch: {
       style:    $arch_style,
@@ -879,7 +897,7 @@ printf "  Frontend:     %s\n" "$(jq -r '.stack.frontend // "none"' "$DISCOVERY_D
 printf "  Backend:      %s\n" "$(jq -r '.stack.backend // "none"' "$DISCOVERY_DIR/context.json")"
 printf "  Database:     %s\n" "$(jq -r '.stack.db // "none"' "$DISCOVERY_DIR/context.json")"
 printf "  Architecture: %s\n" "$(jq -r '.arch.style' "$DISCOVERY_DIR/context.json")"
-printf "  Pkg manager:  %s\n" "$(jq -r '.tools.package_manager // "none"' "$DISCOVERY_DIR/context.json")"
+printf "  Pkg managers: %s\n" "$(jq -r '(.tools.package_managers // ["none"]) | join(", ")' "$DISCOVERY_DIR/context.json")"
 echo ""
 echo "Confidence:"
 jq -r 'to_entries | .[] | "  \(.key): \(.value)"' "$DISCOVERY_DIR/confidence.json"

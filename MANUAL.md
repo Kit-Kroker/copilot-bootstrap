@@ -652,7 +652,7 @@ Output example:
 ```json
 {
   "stack": { "languages": ["typescript"], "backend": "express", "frontend": "react", "db": "postgres" },
-  "tools": { "package_manager": "npm", "test_runner": "jest", "linter": "eslint", "bundler": "vite", "container": "docker" },
+  "tools": { "package_managers": ["npm"], "test_runner": "jest", "linter": "eslint", "bundler": "vite", "container": "docker" },
   "arch": { "style": "layered", "monorepo": false, "services": 1 },
   "paths": { "src": "src/", "tests": "tests/" }
 }
@@ -1159,7 +1159,7 @@ Generators use templates from the `templates/` directory. Variables use `{{UPPER
 | `{{FRONTEND}}` | `stack.frontend` |
 | `{{BACKEND}}` | `stack.backend` |
 | `{{DB}}` | `stack.db` |
-| `{{PKG_MANAGER}}` | `tools.package_manager` |
+| `{{PKG_MANAGERS}}` | `tools.package_managers` |
 | `{{LINTER}}` | `tools.linter` |
 | `{{FORMATTER}}` | `tools.formatter` |
 | `{{TEST_RUNNER}}` | `tools.test_runner` |

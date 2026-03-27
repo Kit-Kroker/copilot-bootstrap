@@ -36,9 +36,10 @@
       "type": "object",
       "description": "Detected toolchain",
       "properties": {
-        "package_manager": {
-          "type": ["string", "null"],
-          "description": "e.g. \"npm\", \"yarn\", \"pnpm\", \"pip\", \"poetry\""
+        "package_managers": {
+          "type": ["array", "null"],
+          "items": { "type": "string" },
+          "description": "All detected package managers, one per language ecosystem (e.g. [\"npm\", \"uv\"] for a JS+Python monorepo)"
         },
         "linter": {
           "type": ["string", "null"],
@@ -66,7 +67,7 @@
       "properties": {
         "style": {
           "type": "string",
-          "enum": ["layered", "hexagonal", "microservices", "monolith", "serverless", "unknown"],
+          "enum": ["layered", "hexagonal", "microservices", "monolith", "monorepo", "serverless", "unknown"],
           "description": "High-level architecture pattern"
         },
         "monorepo": {
@@ -124,7 +125,7 @@
         "db": "postgres"
       },
       "tools": {
-        "package_manager": "npm",
+        "package_managers": ["npm"],
         "linter": "eslint",
         "test_runner": "jest",
         "bundler": "vite",
