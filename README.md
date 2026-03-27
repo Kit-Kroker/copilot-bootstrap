@@ -61,22 +61,6 @@ code .
 
 In VS Code, open Copilot Chat and use the `#run-spec-pipeline` skill to run the full pipeline automatically. When all spec steps complete, `copilot-bootstrap spec` auto-runs the generators and writes project-specific Copilot config to `.github/`.
 
-### Manual (legacy) greenfield
-
-```sh
-mkdir my-project && cd my-project
-copilot-bootstrap init
-code .
-```
-
-In VS Code, open Copilot Chat, select the **Bootstrap** agent, and type:
-
-```
-idea: a helpdesk system for managing customer support tickets
-```
-
-The agent asks one step at a time. When it finishes collecting answers, click the **Generate PRD & Capabilities** handoff button. Continue clicking handoff buttons as each agent completes its phase.
-
 ---
 
 ## Example workflow

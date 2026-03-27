@@ -25,6 +25,9 @@ if [ "$1" = "--help" ]; then
   echo "  confidence.json detection confidence scores (0.0–1.0)"
   echo ""
   echo "If codebase_path is not provided, reads project.json → codebase_path."
+  echo ""
+  echo "Also sets project.json → approach = \"brownfield\" and codebase_path automatically."
+  echo "Run 'copilot-bootstrap discover' after scanning."
   exit 0
 fi
 
@@ -892,4 +895,19 @@ if [ -n "$low_conf" ]; then
   echo ""
 fi
 
+# ── Update project.json ───────────────────────────────────────────────────────
+
+if [ -f "$PROJECT_FILE" ]; then
+  jq --arg path "$CODEBASE" \
+    '.approach = "brownfield" | .codebase_path = $path' \
+    "$PROJECT_FILE" > /tmp/scan_project_tmp.json && mv /tmp/scan_project_tmp.json "$PROJECT_FILE"
+fi
+
+WORKFLOW_FILE=".project/state/workflow.json"
+if [ -f "$WORKFLOW_FILE" ]; then
+  jq '.approach = "brownfield"' \
+    "$WORKFLOW_FILE" > /tmp/scan_workflow_tmp.json && mv /tmp/scan_workflow_tmp.json "$WORKFLOW_FILE"
+fi
+
 echo "Scan complete. Output written to $DISCOVERY_DIR/"
+echo "Run 'copilot-bootstrap discover' to start the brownfield discovery pipeline."

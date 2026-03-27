@@ -64,16 +64,6 @@ In VS Code, use the `#run-spec-pipeline` skill in Copilot Chat. The pipeline run
 
 **Resumable**: both the spec pipeline and generators track progress in lock files. Re-run `copilot-bootstrap spec` or `copilot-bootstrap generate` after an interruption — completed steps are skipped.
 
-#### Legacy greenfield (manual navigation)
-
-```sh
-mkdir my-project && cd my-project
-copilot-bootstrap init
-code .
-```
-
-Select the **Bootstrap** agent in Copilot Chat and type your idea. Bootstrap asks one step at a time; click handoff buttons to advance through Analyst → Architect → Designer → Spec → Script.
-
 ### Brownfield — existing codebase
 
 ```sh
@@ -131,12 +121,6 @@ copilot-bootstrap spec              → initializes pipeline.lock.json
 copilot-bootstrap generate          → .github/ (runtime Copilot config) — runs automatically
 ```
 
-**Greenfield (legacy, manual navigation)**:
-
-```
-Bootstrap → Analyst → Architect → Designer → Spec → Script
-```
-
 **Brownfield**:
 
 ```
@@ -149,7 +133,7 @@ Bootstrap → Discovery → Analyst → Architect → Designer → Spec → Scri
 ... → Evaluator → Script → Ops
 ```
 
-For manual navigation, agents are chained via **handoff buttons**. Each agent completes its phase and presents a button that passes context to the next.
+For brownfield, agents are chained via **handoff buttons**. Each agent completes its phase and presents a button that passes context to the next.
 
 ### State machine
 
@@ -288,7 +272,7 @@ Steps that already have output files are automatically skipped (resumable from a
 | `plugins` | `.github/plugins/project.plugin.json` |
 | `docs` | `.github/docs/` (includes getting-started.md — greenfield only) |
 
-### Standard bootstrap — greenfield (legacy, 13 steps)
+### Standard bootstrap — greenfield (13 steps, brownfield reference)
 
 | # | Step | Agent | Output |
 |---|------|-------|--------|
