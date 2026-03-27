@@ -76,6 +76,60 @@ words_to_json_array() {
   echo "$1" | tr ' ' '\n' | grep -v '^$' | jq -R . | jq -sc .
 }
 
+# mk_tool name [version] → {"name":N,"version":V|null}
+mk_tool() {
+  if [ -n "$2" ]; then
+    jq -cn --arg n "$1" --arg v "$2" '{"name":$n,"version":$v}'
+  else
+    jq -cn --arg n "$1" '{"name":$n,"version":null}'
+  fi
+}
+
+# append_tool arr name [version] → updated array JSON
+append_tool() {
+  echo "$1" | jq --argjson o "$(mk_tool "$2" "$3")" '. + [$o]'
+}
+
+# js_pkg_version pkg → version string from package.json devDeps/deps (strips ^ ~ >= etc.)
+js_pkg_version() {
+  f "package.json" || return
+  _raw=$(jq -r --arg p "$1" '.devDependencies[$p] // .dependencies[$p] // ""' \
+    "$CODEBASE/package.json" 2>/dev/null || echo "")
+  echo "$_raw" | sed 's/^[^0-9]*//' | grep -o '^[0-9][0-9]*\(\.[0-9][0-9.]*\)*' | head -1
+}
+
+# js_pm_version pm → version from package.json packageManager field ("npm@10.2.4" → "10.2.4")
+js_pm_version() {
+  f "package.json" || return
+  _f=$(jq -r '.packageManager // ""' "$CODEBASE/package.json" 2>/dev/null || echo "")
+  echo "$_f" | grep -o "^$1@[0-9].*" | sed "s/^$1@//"
+}
+
+# py_pkg_version pkg → version from pyproject.toml or requirements*.txt
+py_pkg_version() {
+  _ver=""
+  if f "pyproject.toml"; then
+    _ver=$(grep -i "\"$1[>=<!~\" ]\\|^$1[[:space:]=<>!~]" \
+      "$CODEBASE/pyproject.toml" 2>/dev/null | \
+      head -1 | grep -o '[0-9][0-9]*\(\.[0-9][0-9]*\)*' | head -1)
+  fi
+  if [ -z "$_ver" ]; then
+    for _req in "requirements.txt" "requirements-dev.txt" "requirements/dev.txt"; do
+      if f "$_req"; then
+        _ver=$(grep -i "^$1[>=<!~ ]" "$CODEBASE/$_req" 2>/dev/null | \
+          head -1 | grep -o '[0-9][0-9]*\(\.[0-9][0-9]*\)*' | head -1)
+        [ -n "$_ver" ] && break
+      fi
+    done
+  fi
+  echo "$_ver"
+}
+
+# go_mod_version → Go toolchain version from go.mod
+go_mod_version() {
+  f "go.mod" && grep "^go " "$CODEBASE/go.mod" 2>/dev/null | head -1 | awk '{print $2}'
+}
+
 echo "Scanning: $CODEBASE"
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -425,9 +479,6 @@ echo "done"
 
 printf "  [3/5] Detecting tools... "
 
-linter="null"
-formatter="null"
-test_runner="null"
 bundler="null"
 container="null"
 orchestrator="null"
@@ -461,12 +512,16 @@ f "pom.xml"         && other_pms="$other_pms maven"
 f "Gemfile"         && other_pms="$other_pms bundler"
 f "composer.json"   && other_pms="$other_pms composer"
 
-# Combine into a single space-separated list, then convert to JSON array
-all_pms=""
-[ -n "$js_pm" ] && all_pms="$all_pms $js_pm"
-[ -n "$py_pm" ] && all_pms="$all_pms $py_pm"
-[ -n "$other_pms" ] && all_pms="$all_pms $other_pms"
-pkg_managers_json=$(words_to_json_array "$all_pms")
+# Build JSON array of {name, version} objects
+pkg_managers_json="[]"
+[ -n "$js_pm" ] && pkg_managers_json=$(append_tool "$pkg_managers_json" "$js_pm" "$(js_pm_version "$js_pm")")
+[ -n "$py_pm" ] && pkg_managers_json=$(append_tool "$pkg_managers_json" "$py_pm" "$(py_pkg_version "$py_pm")")
+for _pm in $other_pms; do
+  case "$_pm" in
+    go) pkg_managers_json=$(append_tool "$pkg_managers_json" "go" "$(go_mod_version)") ;;
+    *)  pkg_managers_json=$(append_tool "$pkg_managers_json" "$_pm" "") ;;
+  esac
+done
 [ "$pkg_managers_json" = "[]" ] && pkg_managers_json="null"
 
 # ── Linters ───────────────────────────────────────────────────────────────
@@ -494,11 +549,10 @@ f ".clippy.toml"   && other_linters="$other_linters clippy"
 f ".rubocop.yml"   && other_linters="$other_linters rubocop"
 f "checkstyle.xml" && other_linters="$other_linters checkstyle"
 
-all_linters=""
-[ -n "$js_linter" ]    && all_linters="$all_linters $js_linter"
-[ -n "$py_linter" ]    && all_linters="$all_linters $py_linter"
-[ -n "$other_linters" ] && all_linters="$all_linters $other_linters"
-linters_json=$(words_to_json_array "$all_linters")
+linters_json="[]"
+[ -n "$js_linter" ] && linters_json=$(append_tool "$linters_json" "$js_linter" "$(js_pkg_version "$js_linter")")
+[ -n "$py_linter" ] && linters_json=$(append_tool "$linters_json" "$py_linter" "$(py_pkg_version "$py_linter")")
+for _l in $other_linters; do linters_json=$(append_tool "$linters_json" "$_l" ""); done
 [ "$linters_json" = "[]" ] && linters_json="null"
 
 # ── Formatters ────────────────────────────────────────────────────────────
@@ -520,11 +574,10 @@ other_formatters=""
 grep_file "gofmt\|goimports" ".golangci.yml" && other_formatters="$other_formatters gofmt"
 { f "rustfmt.toml" || f ".rustfmt.toml"; }   && other_formatters="$other_formatters rustfmt"
 
-all_formatters=""
-[ -n "$js_formatter" ]     && all_formatters="$all_formatters $js_formatter"
-[ -n "$py_formatter" ]     && all_formatters="$all_formatters $py_formatter"
-[ -n "$other_formatters" ] && all_formatters="$all_formatters $other_formatters"
-formatters_json=$(words_to_json_array "$all_formatters")
+formatters_json="[]"
+[ -n "$js_formatter" ] && formatters_json=$(append_tool "$formatters_json" "$js_formatter" "$(js_pkg_version "$js_formatter")")
+[ -n "$py_formatter" ] && formatters_json=$(append_tool "$formatters_json" "$py_formatter" "$(py_pkg_version "$py_formatter")")
+for _f in $other_formatters; do formatters_json=$(append_tool "$formatters_json" "$_f" ""); done
 [ "$formatters_json" = "[]" ] && formatters_json="null"
 
 # ── Test runners ──────────────────────────────────────────────────────────
@@ -558,11 +611,10 @@ f "Cargo.toml" && other_test_runners="$other_test_runners cargo-test"
 { f "pom.xml" || f "build.gradle"; } && other_test_runners="$other_test_runners junit"
 f "Gemfile"  && other_test_runners="$other_test_runners rspec"
 
-all_test_runners=""
-[ -n "$js_test_runner" ]     && all_test_runners="$all_test_runners $js_test_runner"
-[ -n "$py_test_runner" ]     && all_test_runners="$all_test_runners $py_test_runner"
-[ -n "$other_test_runners" ] && all_test_runners="$all_test_runners $other_test_runners"
-test_runners_json=$(words_to_json_array "$all_test_runners")
+test_runners_json="[]"
+[ -n "$js_test_runner" ] && test_runners_json=$(append_tool "$test_runners_json" "$js_test_runner" "$(js_pkg_version "$js_test_runner")")
+[ -n "$py_test_runner" ] && test_runners_json=$(append_tool "$test_runners_json" "$py_test_runner" "$(py_pkg_version "$py_test_runner")")
+for _t in $other_test_runners; do test_runners_json=$(append_tool "$test_runners_json" "$_t" ""); done
 [ "$test_runners_json" = "[]" ] && test_runners_json="null"
 
 # ── Bundler ───────────────────────────────────────────────────────────────
@@ -591,6 +643,9 @@ if [ "$bundler" = "null" ] && f "package.json"; then
   has_dep "parcel"  && [ "$bundler" = "null" ] && bundler="parcel"
 fi
 
+bundler_json="null"
+[ "$bundler" != "null" ] && bundler_json=$(mk_tool "$bundler" "$(js_pkg_version "$bundler")")
+
 # ── Container / Orchestrator ──────────────────────────────────────────────
 
 f "Dockerfile"          && container="docker"
@@ -611,7 +666,7 @@ jq -n \
   --argjson linters        "$linters_json" \
   --argjson formatters     "$formatters_json" \
   --argjson test_runners   "$test_runners_json" \
-  --arg     bundler        "$bundler" \
+  --argjson bundler        "$bundler_json" \
   --arg     container      "$container" \
   --arg     orchestrator   "$orchestrator" \
   '{
@@ -619,7 +674,7 @@ jq -n \
     linters:          $linters,
     formatters:       $formatters,
     test_runners:     $test_runners,
-    bundler:          (if $bundler      == "null" then null else $bundler      end),
+    bundler:          $bundler,
     container:        (if $container    == "null" then null else $container    end),
     orchestrator:     (if $orchestrator == "null" then null else $orchestrator end)
   }' > "$DISCOVERY_DIR/tools.json"
@@ -883,7 +938,7 @@ jq -n \
   --argjson linters        "$linters_json" \
   --argjson formatters     "$formatters_json" \
   --argjson test_runners   "$test_runners_json" \
-  --arg     bundler        "$bundler" \
+  --argjson bundler        "$bundler_json" \
   --arg     container      "$container" \
   --arg     src_path       "$src_path" \
   --arg     tests_path     "$tests_path" \
@@ -901,7 +956,7 @@ jq -n \
       linters:          $linters,
       formatters:       $formatters,
       test_runners:     $test_runners,
-      bundler:          (if $bundler    == "null" then null else $bundler    end),
+      bundler:          $bundler,
       container:        (if $container  == "null" then null else $container  end)
     },
     arch: {
@@ -931,10 +986,11 @@ printf "  Frontend:     %s\n" "$(jq -r '.stack.frontend // "none"' "$DISCOVERY_D
 printf "  Backend:      %s\n" "$(jq -r '.stack.backend // "none"' "$DISCOVERY_DIR/context.json")"
 printf "  Database:     %s\n" "$(jq -r '.stack.db // "none"' "$DISCOVERY_DIR/context.json")"
 printf "  Architecture: %s\n" "$(jq -r '.arch.style' "$DISCOVERY_DIR/context.json")"
-printf "  Pkg managers: %s\n" "$(jq -r '(.tools.package_managers // ["none"]) | join(", ")' "$DISCOVERY_DIR/context.json")"
-printf "  Linters:      %s\n" "$(jq -r '(.tools.linters      // ["none"]) | join(", ")' "$DISCOVERY_DIR/context.json")"
-printf "  Formatters:   %s\n" "$(jq -r '(.tools.formatters   // ["none"]) | join(", ")' "$DISCOVERY_DIR/context.json")"
-printf "  Test runners: %s\n" "$(jq -r '(.tools.test_runners // ["none"]) | join(", ")' "$DISCOVERY_DIR/context.json")"
+_fmt_tools='map(.name + if .version then "@"+.version else "" end) | join(", ")'
+printf "  Pkg managers: %s\n" "$(jq -r "(.tools.package_managers // []) | $_fmt_tools" "$DISCOVERY_DIR/context.json")"
+printf "  Linters:      %s\n" "$(jq -r "(.tools.linters      // []) | $_fmt_tools" "$DISCOVERY_DIR/context.json")"
+printf "  Formatters:   %s\n" "$(jq -r "(.tools.formatters   // []) | $_fmt_tools" "$DISCOVERY_DIR/context.json")"
+printf "  Test runners: %s\n" "$(jq -r "(.tools.test_runners // []) | $_fmt_tools" "$DISCOVERY_DIR/context.json")"
 echo ""
 echo "Confidence:"
 jq -r 'to_entries | .[] | "  \(.key): \(.value)"' "$DISCOVERY_DIR/confidence.json"

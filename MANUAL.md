@@ -652,7 +652,7 @@ Output example:
 ```json
 {
   "stack": { "languages": ["typescript"], "backend": "express", "frontend": "react", "db": "postgres" },
-  "tools": { "package_managers": ["npm"], "linters": ["eslint"], "formatters": ["prettier"], "test_runners": ["jest"], "bundler": "vite", "container": "docker" },
+  "tools": { "package_managers": [{"name":"npm","version":"10.2.4"}], "linters": [{"name":"eslint","version":"9.0.0"}], "formatters": [{"name":"prettier","version":"3.0.0"}], "test_runners": [{"name":"jest","version":"29.0.0"}], "bundler": {"name":"vite","version":"5.0.0"}, "container": "docker" },
   "arch": { "style": "layered", "monorepo": false, "services": 1 },
   "paths": { "src": "src/", "tests": "tests/" }
 }

@@ -38,27 +38,27 @@
       "properties": {
         "package_managers": {
           "type": ["array", "null"],
-          "items": { "type": "string" },
-          "description": "All detected package managers, one per language ecosystem (e.g. [\"npm\", \"uv\"] for a JS+Python monorepo)"
+          "items": { "$ref": "#/$defs/tool" },
+          "description": "All detected package managers, one per language ecosystem (e.g. [{\"name\":\"npm\",\"version\":\"10.2.4\"},{\"name\":\"uv\",\"version\":\"0.5.1\"}])"
         },
         "linters": {
           "type": ["array", "null"],
-          "items": { "type": "string" },
-          "description": "All detected linters, one per ecosystem (e.g. [\"eslint\", \"ruff\"])"
+          "items": { "$ref": "#/$defs/tool" },
+          "description": "All detected linters, one per ecosystem (e.g. [{\"name\":\"eslint\",\"version\":\"9.0.0\"},{\"name\":\"ruff\",\"version\":\"0.4.0\"}])"
         },
         "formatters": {
           "type": ["array", "null"],
-          "items": { "type": "string" },
-          "description": "All detected formatters, one per ecosystem (e.g. [\"prettier\", \"black\"])"
+          "items": { "$ref": "#/$defs/tool" },
+          "description": "All detected formatters, one per ecosystem (e.g. [{\"name\":\"prettier\",\"version\":\"3.0.0\"},{\"name\":\"black\",\"version\":\"24.0.0\"}])"
         },
         "test_runners": {
           "type": ["array", "null"],
-          "items": { "type": "string" },
-          "description": "All detected test runners, one per ecosystem (e.g. [\"vitest\", \"pytest\"])"
+          "items": { "$ref": "#/$defs/tool" },
+          "description": "All detected test runners, one per ecosystem (e.g. [{\"name\":\"vitest\",\"version\":\"1.6.0\"},{\"name\":\"pytest\",\"version\":\"8.0.0\"}])"
         },
         "bundler": {
-          "type": ["string", "null"],
-          "description": "e.g. \"vite\", \"webpack\", \"esbuild\""
+          "oneOf": [{ "$ref": "#/$defs/tool" }, { "type": "null" }],
+          "description": "Detected frontend bundler (e.g. {\"name\":\"vite\",\"version\":\"5.0.0\"})"
         },
         "container": {
           "type": ["string", "null"],
@@ -123,6 +123,17 @@
     }
   },
   "additionalProperties": false,
+  "$defs": {
+    "tool": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name":    { "type": "string" },
+        "version": { "type": ["string", "null"] }
+      },
+      "additionalProperties": false
+    }
+  },
   "examples": [
     {
       "stack": {
@@ -132,12 +143,12 @@
         "db": "postgres"
       },
       "tools": {
-        "package_managers": ["npm"],
-        "linters": ["eslint"],
-        "formatters": ["prettier"],
-        "test_runners": ["jest"],
-        "bundler": "vite",
-        "container": "docker"
+        "package_managers": [{"name": "npm", "version": "10.2.4"}],
+        "linters":          [{"name": "eslint", "version": "9.0.0"}],
+        "formatters":       [{"name": "prettier", "version": "3.0.0"}],
+        "test_runners":     [{"name": "jest", "version": "29.0.0"}],
+        "bundler":          {"name": "vite", "version": "5.0.0"},
+        "container":        "docker"
       },
       "arch": {
         "style": "layered",
