@@ -105,7 +105,7 @@ js_pm_version() {
   echo "$_f" | grep -o "^$1@[0-9].*" | sed "s/^$1@//"
 }
 
-# py_pkg_version pkg → version from pyproject.toml or requirements*.txt
+# py_pkg_version pkg → version from pyproject.toml or requirements*.txt (fallback)
 py_pkg_version() {
   _ver=""
   if f "pyproject.toml"; then
@@ -123,6 +123,36 @@ py_pkg_version() {
     done
   fi
   echo "$_ver"
+}
+
+# find_venv_bin → absolute path to venv bin dir, or empty
+find_venv_bin() {
+  for _d in ".venv" "venv" "env" ".env"; do
+    [ -f "$CODEBASE/$_d/bin/python" ] && echo "$CODEBASE/$_d/bin" && return
+  done
+}
+
+# py_tool_version tool → version from venv binary, falls back to py_pkg_version
+py_tool_version() {
+  _vbin=$(find_venv_bin)
+  if [ -n "$_vbin" ] && [ -x "$_vbin/$1" ]; then
+    "$_vbin/$1" --version 2>&1 | grep -o '[0-9][0-9]*\.[0-9][0-9.]*' | head -1
+  else
+    py_pkg_version "$1"
+  fi
+}
+
+# cmd_version cmd → version from running a global command (uv, poetry, pipenv)
+cmd_version() {
+  command -v "$1" > /dev/null 2>&1 && \
+    "$1" --version 2>&1 | grep -o '[0-9][0-9]*\.[0-9][0-9.]*' | head -1
+}
+
+# py_pm_version pm → version of a Python package manager (global first, then venv)
+py_pm_version() {
+  _v=$(cmd_version "$1")
+  [ -n "$_v" ] && echo "$_v" && return
+  py_tool_version "$1"
 }
 
 # go_mod_version → Go toolchain version from go.mod
@@ -515,7 +545,7 @@ f "composer.json"   && other_pms="$other_pms composer"
 # Build JSON array of {name, version} objects
 pkg_managers_json="[]"
 [ -n "$js_pm" ] && pkg_managers_json=$(append_tool "$pkg_managers_json" "$js_pm" "$(js_pm_version "$js_pm")")
-[ -n "$py_pm" ] && pkg_managers_json=$(append_tool "$pkg_managers_json" "$py_pm" "$(py_pkg_version "$py_pm")")
+[ -n "$py_pm" ] && pkg_managers_json=$(append_tool "$pkg_managers_json" "$py_pm" "$(py_pm_version "$py_pm")")
 for _pm in $other_pms; do
   case "$_pm" in
     go) pkg_managers_json=$(append_tool "$pkg_managers_json" "go" "$(go_mod_version)") ;;
@@ -551,7 +581,7 @@ f "checkstyle.xml" && other_linters="$other_linters checkstyle"
 
 linters_json="[]"
 [ -n "$js_linter" ] && linters_json=$(append_tool "$linters_json" "$js_linter" "$(js_pkg_version "$js_linter")")
-[ -n "$py_linter" ] && linters_json=$(append_tool "$linters_json" "$py_linter" "$(py_pkg_version "$py_linter")")
+[ -n "$py_linter" ] && linters_json=$(append_tool "$linters_json" "$py_linter" "$(py_tool_version "$py_linter")")
 for _l in $other_linters; do linters_json=$(append_tool "$linters_json" "$_l" ""); done
 [ "$linters_json" = "[]" ] && linters_json="null"
 
@@ -576,7 +606,7 @@ grep_file "gofmt\|goimports" ".golangci.yml" && other_formatters="$other_formatt
 
 formatters_json="[]"
 [ -n "$js_formatter" ] && formatters_json=$(append_tool "$formatters_json" "$js_formatter" "$(js_pkg_version "$js_formatter")")
-[ -n "$py_formatter" ] && formatters_json=$(append_tool "$formatters_json" "$py_formatter" "$(py_pkg_version "$py_formatter")")
+[ -n "$py_formatter" ] && formatters_json=$(append_tool "$formatters_json" "$py_formatter" "$(py_tool_version "$py_formatter")")
 for _f in $other_formatters; do formatters_json=$(append_tool "$formatters_json" "$_f" ""); done
 [ "$formatters_json" = "[]" ] && formatters_json="null"
 
@@ -613,7 +643,7 @@ f "Gemfile"  && other_test_runners="$other_test_runners rspec"
 
 test_runners_json="[]"
 [ -n "$js_test_runner" ] && test_runners_json=$(append_tool "$test_runners_json" "$js_test_runner" "$(js_pkg_version "$js_test_runner")")
-[ -n "$py_test_runner" ] && test_runners_json=$(append_tool "$test_runners_json" "$py_test_runner" "$(py_pkg_version "$py_test_runner")")
+[ -n "$py_test_runner" ] && test_runners_json=$(append_tool "$test_runners_json" "$py_test_runner" "$(py_tool_version "$py_test_runner")")
 for _t in $other_test_runners; do test_runners_json=$(append_tool "$test_runners_json" "$_t" ""); done
 [ "$test_runners_json" = "[]" ] && test_runners_json="null"
 
