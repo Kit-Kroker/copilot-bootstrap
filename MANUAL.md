@@ -652,7 +652,7 @@ Output example:
 ```json
 {
   "stack": { "languages": ["typescript"], "backend": "express", "frontend": "react", "db": "postgres" },
-  "tools": { "package_managers": ["npm"], "test_runner": "jest", "linter": "eslint", "bundler": "vite", "container": "docker" },
+  "tools": { "package_managers": ["npm"], "linters": ["eslint"], "formatters": ["prettier"], "test_runners": ["jest"], "bundler": "vite", "container": "docker" },
   "arch": { "style": "layered", "monorepo": false, "services": 1 },
   "paths": { "src": "src/", "tests": "tests/" }
 }
@@ -1160,9 +1160,9 @@ Generators use templates from the `templates/` directory. Variables use `{{UPPER
 | `{{BACKEND}}` | `stack.backend` |
 | `{{DB}}` | `stack.db` |
 | `{{PKG_MANAGERS}}` | `tools.package_managers` |
-| `{{LINTER}}` | `tools.linter` |
-| `{{FORMATTER}}` | `tools.formatter` |
-| `{{TEST_RUNNER}}` | `tools.test_runner` |
+| `{{LINTERS}}` | `tools.linters` |
+| `{{FORMATTERS}}` | `tools.formatters` |
+| `{{TEST_RUNNERS}}` | `tools.test_runners` |
 | `{{BUNDLER}}` | `tools.bundler` |
 | `{{CONTAINER}}` | `tools.container` |
 | `{{ARCH_STYLE}}` | `arch.style` |

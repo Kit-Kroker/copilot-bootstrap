@@ -469,69 +469,101 @@ all_pms=""
 pkg_managers_json=$(words_to_json_array "$all_pms")
 [ "$pkg_managers_json" = "[]" ] && pkg_managers_json="null"
 
-# ── Linter ────────────────────────────────────────────────────────────────
+# ── Linters ───────────────────────────────────────────────────────────────
+# Detect one linter per ecosystem, then combine into an array.
 
-f ".eslintrc"           && linter="eslint"
-f ".eslintrc.js"        && linter="eslint"
-f ".eslintrc.cjs"       && linter="eslint"
-f ".eslintrc.json"      && linter="eslint"
-f ".eslintrc.yaml"      && linter="eslint"
-f ".eslintrc.yml"       && linter="eslint"
-f "eslint.config.js"    && linter="eslint"
-f "eslint.config.mjs"   && linter="eslint"
-f ".pylintrc"           && [ "$linter" = "null" ] && linter="pylint"
-f ".golangci.yml"       && [ "$linter" = "null" ] && linter="golangci-lint"
-f ".golangci.yaml"      && [ "$linter" = "null" ] && linter="golangci-lint"
-f ".clippy.toml"        && [ "$linter" = "null" ] && linter="clippy"
-f ".rubocop.yml"        && [ "$linter" = "null" ] && linter="rubocop"
-f "checkstyle.xml"      && [ "$linter" = "null" ] && linter="checkstyle"
+js_linter=""
+f ".eslintrc"        && js_linter="eslint"
+f ".eslintrc.js"     && js_linter="eslint"
+f ".eslintrc.cjs"    && js_linter="eslint"
+f ".eslintrc.json"   && js_linter="eslint"
+f ".eslintrc.yaml"   && js_linter="eslint"
+f ".eslintrc.yml"    && js_linter="eslint"
+f "eslint.config.js" && js_linter="eslint"
+f "eslint.config.mjs" && js_linter="eslint"
 
-# ruff (Python): check pyproject.toml or ruff.toml
-f "ruff.toml" && [ "$linter" = "null" ] && linter="ruff"
-grep_file "\[tool.ruff\]" "pyproject.toml" && [ "$linter" = "null" ] && linter="ruff"
+py_linter=""
+f "ruff.toml"                              && py_linter="ruff"
+grep_file "\[tool\.ruff\]" "pyproject.toml" && [ -z "$py_linter" ] && py_linter="ruff"
+f ".pylintrc"                              && [ -z "$py_linter" ] && py_linter="pylint"
 
-# ── Formatter ─────────────────────────────────────────────────────────────
+other_linters=""
+f ".golangci.yml"  && other_linters="$other_linters golangci-lint"
+f ".golangci.yaml" && [ -z "$(echo "$other_linters" | grep golangci)" ] && other_linters="$other_linters golangci-lint"
+f ".clippy.toml"   && other_linters="$other_linters clippy"
+f ".rubocop.yml"   && other_linters="$other_linters rubocop"
+f "checkstyle.xml" && other_linters="$other_linters checkstyle"
 
-f ".prettierrc"         && formatter="prettier"
-f ".prettierrc.js"      && formatter="prettier"
-f ".prettierrc.json"    && formatter="prettier"
-f ".prettierrc.yaml"    && formatter="prettier"
-f "prettier.config.js"  && formatter="prettier"
-f "prettier.config.mjs" && formatter="prettier"
-grep_file "\[tool.black\]" "pyproject.toml" && [ "$formatter" = "null" ] && formatter="black"
-f ".black"              && [ "$formatter" = "null" ] && formatter="black"
-grep_file "\[tool.isort\]" "pyproject.toml" && [ "$formatter" = "null" ] && formatter="isort"
-grep_file "gofmt\|goimports" ".golangci.yml" && [ "$formatter" = "null" ] && formatter="gofmt"
-f "rustfmt.toml"        && [ "$formatter" = "null" ] && formatter="rustfmt"
-f ".rustfmt.toml"       && [ "$formatter" = "null" ] && formatter="rustfmt"
+all_linters=""
+[ -n "$js_linter" ]    && all_linters="$all_linters $js_linter"
+[ -n "$py_linter" ]    && all_linters="$all_linters $py_linter"
+[ -n "$other_linters" ] && all_linters="$all_linters $other_linters"
+linters_json=$(words_to_json_array "$all_linters")
+[ "$linters_json" = "[]" ] && linters_json="null"
 
-# ── Test runner ───────────────────────────────────────────────────────────
+# ── Formatters ────────────────────────────────────────────────────────────
 
-f "jest.config.js"      && test_runner="jest"
-f "jest.config.ts"      && test_runner="jest"
-f "jest.config.mjs"     && test_runner="jest"
-f "jest.config.cjs"     && test_runner="jest"
-f "vitest.config.ts"    && [ "$test_runner" = "null" ] && test_runner="vitest"
-f "vitest.config.js"    && [ "$test_runner" = "null" ] && test_runner="vitest"
-f "pytest.ini"          && [ "$test_runner" = "null" ] && test_runner="pytest"
-f ".pytest.ini"         && [ "$test_runner" = "null" ] && test_runner="pytest"
-grep_file "\[tool.pytest" "pyproject.toml" && [ "$test_runner" = "null" ] && test_runner="pytest"
-f "go.mod"              && d "$(find "$CODEBASE" -name '*_test.go' 2>/dev/null | head -1 | sed "s|$CODEBASE/||" | sed 's|/[^/]*$||')" && [ "$test_runner" = "null" ] && test_runner="go-test"
-f "go.mod"              && [ "$test_runner" = "null" ] && test_runner="go-test"
-f "Cargo.toml"          && [ "$test_runner" = "null" ] && test_runner="cargo-test"
-f "pom.xml"             && [ "$test_runner" = "null" ] && test_runner="junit"
-f "build.gradle"        && [ "$test_runner" = "null" ] && test_runner="junit"
-f "Gemfile"             && [ "$test_runner" = "null" ] && test_runner="rspec"
-grep_file "mocha" "package.json" && [ "$test_runner" = "null" ] && test_runner="mocha"
+js_formatter=""
+f ".prettierrc"         && js_formatter="prettier"
+f ".prettierrc.js"      && js_formatter="prettier"
+f ".prettierrc.json"    && js_formatter="prettier"
+f ".prettierrc.yaml"    && js_formatter="prettier"
+f "prettier.config.js"  && js_formatter="prettier"
+f "prettier.config.mjs" && js_formatter="prettier"
 
-# If package.json has jest in devDeps but no config file
-if [ "$test_runner" = "null" ] && f "package.json"; then
+py_formatter=""
+grep_file "\[tool\.black\]" "pyproject.toml" && py_formatter="black"
+f ".black"                                   && [ -z "$py_formatter" ] && py_formatter="black"
+grep_file "\[tool\.isort\]" "pyproject.toml" && [ -z "$py_formatter" ] && py_formatter="isort"
+
+other_formatters=""
+grep_file "gofmt\|goimports" ".golangci.yml" && other_formatters="$other_formatters gofmt"
+{ f "rustfmt.toml" || f ".rustfmt.toml"; }   && other_formatters="$other_formatters rustfmt"
+
+all_formatters=""
+[ -n "$js_formatter" ]     && all_formatters="$all_formatters $js_formatter"
+[ -n "$py_formatter" ]     && all_formatters="$all_formatters $py_formatter"
+[ -n "$other_formatters" ] && all_formatters="$all_formatters $other_formatters"
+formatters_json=$(words_to_json_array "$all_formatters")
+[ "$formatters_json" = "[]" ] && formatters_json="null"
+
+# ── Test runners ──────────────────────────────────────────────────────────
+
+js_test_runner=""
+f "jest.config.js"   && js_test_runner="jest"
+f "jest.config.ts"   && js_test_runner="jest"
+f "jest.config.mjs"  && js_test_runner="jest"
+f "jest.config.cjs"  && js_test_runner="jest"
+f "vitest.config.ts" && [ -z "$js_test_runner" ] && js_test_runner="vitest"
+f "vitest.config.js" && [ -z "$js_test_runner" ] && js_test_runner="vitest"
+grep_file "mocha" "package.json" && [ -z "$js_test_runner" ] && js_test_runner="mocha"
+
+# Fallback: check package.json devDependencies
+if [ -z "$js_test_runner" ] && f "package.json"; then
   pkg="$CODEBASE/package.json"
   has_dep() { jq -e --arg d "$1" '.dependencies[$d] // .devDependencies[$d] // null | . != null' "$pkg" > /dev/null 2>&1; }
-  has_dep "jest"   && test_runner="jest"
-  has_dep "vitest" && [ "$test_runner" = "null" ] && test_runner="vitest"
-  has_dep "mocha"  && [ "$test_runner" = "null" ] && test_runner="mocha"
+  has_dep "jest"   && js_test_runner="jest"
+  has_dep "vitest" && [ -z "$js_test_runner" ] && js_test_runner="vitest"
+  has_dep "mocha"  && [ -z "$js_test_runner" ] && js_test_runner="mocha"
 fi
+
+py_test_runner=""
+f "pytest.ini"                              && py_test_runner="pytest"
+f ".pytest.ini"                             && py_test_runner="pytest"
+grep_file "\[tool\.pytest" "pyproject.toml" && [ -z "$py_test_runner" ] && py_test_runner="pytest"
+
+other_test_runners=""
+f "go.mod"   && other_test_runners="$other_test_runners go-test"
+f "Cargo.toml" && other_test_runners="$other_test_runners cargo-test"
+{ f "pom.xml" || f "build.gradle"; } && other_test_runners="$other_test_runners junit"
+f "Gemfile"  && other_test_runners="$other_test_runners rspec"
+
+all_test_runners=""
+[ -n "$js_test_runner" ]     && all_test_runners="$all_test_runners $js_test_runner"
+[ -n "$py_test_runner" ]     && all_test_runners="$all_test_runners $py_test_runner"
+[ -n "$other_test_runners" ] && all_test_runners="$all_test_runners $other_test_runners"
+test_runners_json=$(words_to_json_array "$all_test_runners")
+[ "$test_runners_json" = "[]" ] && test_runners_json="null"
 
 # ── Bundler ───────────────────────────────────────────────────────────────
 
@@ -575,18 +607,18 @@ d "charts"              && [ "$orchestrator" = "null" ] && orchestrator="helm"
 # ── Write tools.json ──────────────────────────────────────────────────────
 
 jq -n \
-  --argjson pkg_managers "$pkg_managers_json" \
-  --arg linter            "$linter" \
-  --arg formatter         "$formatter" \
-  --arg test_runner       "$test_runner" \
-  --arg bundler           "$bundler" \
-  --arg container         "$container" \
-  --arg orchestrator      "$orchestrator" \
+  --argjson pkg_managers   "$pkg_managers_json" \
+  --argjson linters        "$linters_json" \
+  --argjson formatters     "$formatters_json" \
+  --argjson test_runners   "$test_runners_json" \
+  --arg     bundler        "$bundler" \
+  --arg     container      "$container" \
+  --arg     orchestrator   "$orchestrator" \
   '{
     package_managers: $pkg_managers,
-    linter:           (if $linter       == "null" then null else $linter       end),
-    formatter:        (if $formatter    == "null" then null else $formatter    end),
-    test_runner:      (if $test_runner  == "null" then null else $test_runner  end),
+    linters:          $linters,
+    formatters:       $formatters,
+    test_runners:     $test_runners,
     bundler:          (if $bundler      == "null" then null else $bundler      end),
     container:        (if $container    == "null" then null else $container    end),
     orchestrator:     (if $orchestrator == "null" then null else $orchestrator end)
@@ -848,8 +880,9 @@ jq -n \
   --argjson monorepo       "$monorepo" \
   --argjson services       "$services" \
   --argjson pkg_managers   "$pkg_managers_json" \
-  --arg     linter         "$linter" \
-  --arg     test_runner    "$test_runner" \
+  --argjson linters        "$linters_json" \
+  --argjson formatters     "$formatters_json" \
+  --argjson test_runners   "$test_runners_json" \
   --arg     bundler        "$bundler" \
   --arg     container      "$container" \
   --arg     src_path       "$src_path" \
@@ -865,10 +898,11 @@ jq -n \
     },
     tools: {
       package_managers: $pkg_managers,
-      linter:           (if $linter      == "null" then null else $linter      end),
-      test_runner:      (if $test_runner == "null" then null else $test_runner end),
-      bundler:          (if $bundler     == "null" then null else $bundler     end),
-      container:        (if $container   == "null" then null else $container   end)
+      linters:          $linters,
+      formatters:       $formatters,
+      test_runners:     $test_runners,
+      bundler:          (if $bundler    == "null" then null else $bundler    end),
+      container:        (if $container  == "null" then null else $container  end)
     },
     arch: {
       style:    $arch_style,
@@ -898,6 +932,9 @@ printf "  Backend:      %s\n" "$(jq -r '.stack.backend // "none"' "$DISCOVERY_DI
 printf "  Database:     %s\n" "$(jq -r '.stack.db // "none"' "$DISCOVERY_DIR/context.json")"
 printf "  Architecture: %s\n" "$(jq -r '.arch.style' "$DISCOVERY_DIR/context.json")"
 printf "  Pkg managers: %s\n" "$(jq -r '(.tools.package_managers // ["none"]) | join(", ")' "$DISCOVERY_DIR/context.json")"
+printf "  Linters:      %s\n" "$(jq -r '(.tools.linters      // ["none"]) | join(", ")' "$DISCOVERY_DIR/context.json")"
+printf "  Formatters:   %s\n" "$(jq -r '(.tools.formatters   // ["none"]) | join(", ")' "$DISCOVERY_DIR/context.json")"
+printf "  Test runners: %s\n" "$(jq -r '(.tools.test_runners // ["none"]) | join(", ")' "$DISCOVERY_DIR/context.json")"
 echo ""
 echo "Confidence:"
 jq -r 'to_entries | .[] | "  \(.key): \(.value)"' "$DISCOVERY_DIR/confidence.json"
