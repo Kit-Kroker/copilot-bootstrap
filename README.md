@@ -52,14 +52,50 @@ uv tool install copilot-bootstrap --from git+https://github.com/Kit-Kroker/copil
 
 ```sh
 mkdir my-project && cd my-project
-copilot-bootstrap init
-copilot-bootstrap interview      # answer 6 questions about the project
-copilot-bootstrap build-context  # build context.json, decisions.json, scope.json
-copilot-bootstrap spec           # initialize spec pipeline
+copilot-bootstrap init   # copies framework files (.github/, docs/workflow/) to your project
 code .
 ```
 
-In VS Code, open Copilot Chat and use the `#run-spec-pipeline` skill to run the full pipeline automatically. When all spec steps complete, `copilot-bootstrap spec` auto-runs the generators and writes project-specific Copilot config to `.github/`.
+Everything after this is in Copilot Chat:
+
+```
+/bootstrap idea: freelancer invoicing tool
+```
+
+Answer 6 questions conversationally (idea, project info, users, features, tech, complexity), then:
+
+```
+/build-context   — derives context.json, decisions.json, scope.json from your answers
+/spec            — creates the pipeline lock and runs all spec generation steps automatically
+```
+
+When the pipeline finishes, run the generator once:
+
+```sh
+copilot-bootstrap generate
+```
+
+### Brownfield — existing codebase
+
+```sh
+cd /path/to/existing-project
+copilot-bootstrap init
+code .
+```
+
+In Copilot Chat:
+
+```
+/scan            — detects language, framework, database, tools, architecture
+/bootstrap idea: understand and document this codebase before modernizing it
+/discover        — runs all 7 capability extraction steps automatically
+```
+
+Then:
+
+```sh
+copilot-bootstrap generate
+```
 
 ---
 
@@ -67,18 +103,20 @@ In VS Code, open Copilot Chat and use the `#run-spec-pipeline` skill to run the 
 
 Here is an abbreviated session for a SaaS freelancer invoicing tool.
 
-**Step 1 — Interview (6 questions)**
+**Step 1 — Interview**
 
-```sh
-copilot-bootstrap interview
+In Copilot Chat:
+
+```
+/bootstrap idea: freelancer invoicing tool
 ```
 
-Run this, then use the `#bootstrap-ask` skill in Copilot Chat. The agent collects answers across 6 steps: idea, project info, user roles, features, tech stack, complexity. Smart defaults are applied automatically — pick React and get Vite + ESLint + Prettier + Vitest without being asked.
+The Bootstrap agent collects answers across 6 steps: idea, project info, user roles, features, tech stack, complexity. Smart defaults are applied automatically — pick React and get Vite + ESLint + Prettier + Vitest without being asked.
 
 **Step 2 — Build context**
 
-```sh
-copilot-bootstrap build-context
+```
+/build-context
 ```
 
 Produces three files from your answers:
@@ -88,11 +126,11 @@ Produces three files from your answers:
 
 **Step 3 — Run spec pipeline**
 
-```sh
-copilot-bootstrap spec
+```
+/spec
 ```
 
-Initializes `.greenfield/pipeline.lock.json` and shows step status. Use `#run-spec-pipeline` in Copilot Chat to run the full pipeline:
+Creates `.greenfield/pipeline.lock.json` and immediately runs the full pipeline:
 
 ```
 Analyst     → docs/analysis/prd.md, docs/analysis/capabilities.md
@@ -102,9 +140,15 @@ Spec        → docs/spec/api.md
 Script      → .github/skills/ (dev scaffolding skills)
 ```
 
-**Step 4 — Generators run automatically**
+**Step 4 — Run generator**
 
-When the spec pipeline completes, `copilot-bootstrap spec` auto-triggers `copilot-bootstrap generate`, producing project-specific Copilot config tailored to your chosen stack:
+When `/spec` finishes, run:
+
+```sh
+copilot-bootstrap generate
+```
+
+This produces project-specific Copilot config tailored to your chosen stack:
 
 ```
 .github/copilot-instructions.md         project-wide context
@@ -179,16 +223,13 @@ These feed directly into Copilot for implementation — the model, field names, 
 
 ## Brownfield example
 
-If you have an existing codebase, use brownfield mode. The `scan` command detects the stack automatically:
+If you have an existing codebase, use brownfield mode. After `copilot-bootstrap init && code .`, run in Copilot Chat:
 
-```sh
-cd /path/to/existing-project
-copilot-bootstrap init
-copilot-bootstrap scan    # detects language, framework, DB, tools
-copilot-bootstrap discover
+```
+/scan
 ```
 
-`scan` writes `.discovery/context.json`:
+Detects and writes `.discovery/context.json`:
 
 ```json
 {
@@ -198,7 +239,14 @@ copilot-bootstrap discover
 }
 ```
 
-The Discovery agent then runs the 7-step capability extraction pipeline against your codebase, producing `docs/discovery/l1-capabilities.md` with entries like:
+Then:
+
+```
+/bootstrap idea: understand and document this codebase before modernizing it
+/discover
+```
+
+`/discover` runs the 7-step capability extraction pipeline, producing `docs/discovery/l1-capabilities.md` with entries like:
 
 ```markdown
 ## BC-001 — Order Management
@@ -252,6 +300,62 @@ copilot-bootstrap next              # advance to next step
 copilot-bootstrap ask               # print questions for the current step
 copilot-bootstrap validate          # validate state file integrity
 ```
+
+---
+
+## Copilot Chat
+
+After `copilot-bootstrap init` copies the framework files to your project, the entire workflow runs from Copilot Chat. No further CLI is needed until the final `generate` step.
+
+### Slash commands
+
+**Setup**
+
+| Command | Description |
+|---------|-------------|
+| `/init` | Initialize project state files. Run once after opening a new project in VS Code. |
+| `/scan` | Detect language, framework, database, and tools from the codebase. Brownfield only. |
+
+**Greenfield workflow**
+
+| Command | Description |
+|---------|-------------|
+| `/bootstrap idea: <text>` | Start the interview. Collects answers for idea, project info, users, features, tech, complexity. |
+| `/build-context` | Derive `context.json`, `decisions.json`, `scope.json` from interview answers. |
+| `/spec` | Initialize the spec pipeline and run all generation steps automatically. |
+
+**Brownfield workflow**
+
+| Command | Description |
+|---------|-------------|
+| `/bootstrap idea: <text>` | Start the codebase setup interview. Prefill from `/scan` results where confidence is high. |
+| `/discover` | Initialize the discovery pipeline and run all 7 capability extraction steps automatically. |
+
+**Status and review**
+
+| Command | Description |
+|---------|-------------|
+| `/status` | Show current step, collected answers, and generated files. |
+| `/discovery-status` | Show brownfield discovery pipeline progress (A1–A7 with stats). |
+| `/review-spec` | Review generated spec for consistency across api, events, permissions, and state machines. |
+| `/adlc-status` | Show ADLC extended workflow progress. |
+| `/stitch` | Generate Google Stitch screen prompts from IA and flows. |
+| `/pov` | Generate Proof of Value plan. |
+| `/reset` | Reset workflow state. |
+
+### Agents
+
+| Agent | How to invoke | Purpose |
+|-------|---------------|---------|
+| Bootstrap | `@Bootstrap idea: ...` | Drives the interview phase; routes to downstream agents |
+| Analyst | `@Analyst` | Generates PRD and capability map |
+| Architect | `@Architect` | Generates domain model, RBAC, workflows |
+| Designer | `@Designer` | Generates design overview, IA, flows |
+| Spec | `@Spec` | Generates API spec |
+| Discovery | `@Discovery` | Runs the brownfield capability extraction pipeline |
+| Script | `@Script` | Generates dev skills and operational scripts |
+| Evaluator | `@Evaluator` | Runs ADLC evaluation framework steps |
+| Ops | `@Ops` | Generates monitoring spec and governance policy |
 
 ---
 

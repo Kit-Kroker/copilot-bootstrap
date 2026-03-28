@@ -19,12 +19,12 @@ Supports **greenfield** (build from scratch) and **brownfield** (modernize exist
 9. [CLI Commands](#9-cli-commands)
 10. [File Structure](#10-file-structure)
 11. [Greenfield Pipeline](#11-greenfield-pipeline)
-13. [Brownfield Discovery Pipeline](#13-brownfield-discovery-pipeline)
-14. [Generator Orchestrator](#14-generator-orchestrator)
-15. [Google Stitch Integration](#15-google-stitch-integration)
-16. [ADLC Extended Workflow](#16-adlc-extended-workflow)
-17. [Extending the Framework](#17-extending-the-framework)
-18. [Troubleshooting](#18-troubleshooting)
+12. [Brownfield Discovery Pipeline](#12-brownfield-discovery-pipeline)
+13. [Generator Orchestrator](#13-generator-orchestrator)
+14. [Google Stitch Integration](#14-google-stitch-integration)
+15. [ADLC Extended Workflow](#15-adlc-extended-workflow)
+16. [Extending the Framework](#16-extending-the-framework)
+17. [Troubleshooting](#17-troubleshooting)
 
 ---
 
@@ -51,39 +51,53 @@ uv tool install copilot-bootstrap --from git+https://github.com/Kit-Kroker/copil
 
 ```sh
 mkdir my-project && cd my-project
-copilot-bootstrap init
-copilot-bootstrap interview         # 6-step interview: idea → project_info → users → features → tech → complexity
-copilot-bootstrap build-context     # derive context.json, decisions.json, scope.json from answers
-copilot-bootstrap spec              # initialize spec pipeline (creates pipeline.lock.json)
+copilot-bootstrap init   # copies framework files (.github/, docs/workflow/) to your project
 code .
 ```
 
-In VS Code, use the `#run-spec-pipeline` skill in Copilot Chat. The pipeline runs all spec steps automatically. When complete, `copilot-bootstrap spec` auto-triggers `copilot-bootstrap generate`, which writes project-specific Copilot config to `.github/`.
+Everything after this runs in Copilot Chat:
 
-**Smart defaults**: pick React → Vite + ESLint + Prettier + Vitest are set automatically. Pick Python → Poetry + Ruff + Black + Pytest. Toolchain derivations are tracked in `.greenfield/decisions.json` so generators know why each choice was made.
+```
+/bootstrap idea: freelancer invoicing tool
+```
 
-**Resumable**: both the spec pipeline and generators track progress in lock files. Re-run `copilot-bootstrap spec` or `copilot-bootstrap generate` after an interruption — completed steps are skipped.
+Answer 6 questions conversationally (idea, project info, users, features, tech, complexity). Then:
+
+```
+/build-context   — derives context.json, decisions.json, scope.json from your answers
+/spec            — creates the pipeline lock and runs all spec generation steps automatically
+```
+
+When `/spec` finishes, run the generator once from the terminal:
+
+```sh
+copilot-bootstrap generate
+```
+
+**Smart defaults**: pick React → Vite + ESLint + Prettier + Vitest are set automatically by `/build-context`. Pick Python → Pip + Ruff + Black + Pytest. All toolchain decisions are recorded in `.greenfield/decisions.json`.
+
+**Resumable**: both the spec pipeline and generators track progress in lock files. Re-run `/spec` or `copilot-bootstrap generate` after an interruption — completed steps are skipped.
 
 ### Brownfield — existing codebase
 
 ```sh
 cd /path/to/existing-project
 copilot-bootstrap init
-copilot-bootstrap scan          # detect stack → .discovery/context.json
-copilot-bootstrap discover      # initialise discovery pipeline
 code .
 ```
 
-In VS Code, select **Bootstrap** and say:
+In Copilot Chat:
 
 ```
-idea: understand and document this codebase before modernizing it
+/scan            — auto-detects language, framework, database, tools, architecture
+/bootstrap idea: understand and document this codebase before modernizing it
+/discover        — runs all 7 capability extraction steps automatically
 ```
 
-Bootstrap collects `codebase_setup` answers, then routes to the **Discovery** agent, which runs the 7-step capability extraction pipeline. After discovery completes, run:
+Then:
 
 ```sh
-copilot-bootstrap generate      # produce project-specific Copilot config
+copilot-bootstrap generate
 ```
 
 ---
@@ -106,25 +120,27 @@ This framework uses all VS Code Copilot customization types:
 
 ### Agent pipeline
 
-**Greenfield pipeline (single-command)**:
+**Greenfield**:
 
 ```
-copilot-bootstrap interview         → .greenfield/answers.json
-copilot-bootstrap build-context     → .greenfield/context.json + decisions.json + scope.json
-copilot-bootstrap spec              → initializes pipeline.lock.json
-  #run-spec-pipeline skill:
+/bootstrap (chat)    → .greenfield/answers.json
+/build-context (chat)→ .greenfield/context.json + decisions.json + scope.json
+/spec (chat)         → creates pipeline.lock.json, then runs:
     Analyst  → docs/analysis/prd.md, capabilities.md
     Architect→ docs/domain/model.md, rbac.md, workflows.md
     Designer → docs/design/overview.md, ia.md, flows.md
     Spec     → docs/spec/api.md
     Script   → .github/skills/ (dev skills)
-copilot-bootstrap generate          → .github/ (runtime Copilot config) — runs automatically
+copilot-bootstrap generate (CLI) → .github/ (runtime Copilot config)
 ```
 
 **Brownfield**:
 
 ```
-Bootstrap → Discovery → Analyst → Architect → Designer → Spec → Script
+/scan (chat)         → .discovery/context.json + confidence.json
+/bootstrap (chat)    → answers: codebase_setup
+/discover (chat)     → creates pipeline.lock.json, then runs Discovery (7 steps)
+copilot-bootstrap generate (CLI) → .github/ (runtime Copilot config)
 ```
 
 **ADLC extension** (appends when type = `agent` or `ai-system`):
@@ -219,16 +235,14 @@ When `brownfield`: the `users`, `features`, `tech`, `complexity` steps are repla
 
 ## 5. Workflow Steps
 
-### Greenfield pipeline (single-command)
+### Greenfield pipeline
 
-The pipeline approach replaces manual step navigation with CLI commands and a single skill invocation.
-
-| Phase | Command / Skill | Output |
-|-------|----------------|--------|
-| Interview | `copilot-bootstrap interview` + `#bootstrap-ask` | `.greenfield/answers.json` |
-| Context build | `copilot-bootstrap build-context` | `.greenfield/context.json`, `decisions.json`, `scope.json` |
-| Spec pipeline | `copilot-bootstrap spec` + `#run-spec-pipeline` | `docs/analysis/`, `docs/domain/`, `docs/design/`, `docs/spec/`, `.github/skills/` |
-| Generators | auto-runs when spec completes (or `copilot-bootstrap generate`) | `.github/instructions/`, `agents/`, `skills/`, `prompts/`, hooks, MCP, docs |
+| Phase | How to run | Output |
+|-------|-----------|--------|
+| Interview | `/bootstrap idea: <text>` in Copilot Chat | `.greenfield/answers.json` |
+| Context build | `/build-context` in Copilot Chat | `.greenfield/context.json`, `decisions.json`, `scope.json` |
+| Spec pipeline | `/spec` in Copilot Chat | `docs/analysis/`, `docs/domain/`, `docs/design/`, `docs/spec/`, `.github/skills/` |
+| Generators | `copilot-bootstrap generate` in terminal | `.github/instructions/`, `agents/`, `skills/`, `prompts/`, hooks, MCP, docs |
 
 #### Interview steps (6 steps)
 
@@ -421,9 +435,36 @@ Generates: `docs/ops/monitoring.md` (dashboards, alert thresholds tied to KPIs, 
 
 ## 7. Slash Commands
 
-Type `/` in Copilot Chat to access these commands.
+Type `/` in Copilot Chat to access these commands. All commands run entirely in chat — no terminal required except where noted.
 
-### `/bootstrap`
+### Setup
+
+#### `/init`
+Initialize a new project. Creates `.project/state/workflow.json`, `.project/state/answers.json`, `project.json`, and `.greenfield/answers.json`. Safe — exits if state already exists.
+
+```
+/init
+```
+
+Use this when opening a new empty folder in VS Code. If you ran `copilot-bootstrap init` from the terminal already, skip this.
+
+---
+
+#### `/scan`
+Scan the current codebase to detect language, framework, database, tools, and architecture. Writes `.discovery/context.json` and `.discovery/confidence.json`. **Brownfield only.**
+
+```
+/scan
+/scan path/to/codebase
+```
+
+Fields detected with confidence ≥ 0.85 are used automatically in the bootstrap interview. Fields with lower confidence are shown for confirmation. Fields not detected are asked directly.
+
+---
+
+### Greenfield workflow
+
+#### `/bootstrap`
 Start or resume the workflow. Routes to Bootstrap from the current step.
 
 ```
@@ -433,7 +474,44 @@ Start or resume the workflow. Routes to Bootstrap from the current step.
 
 ---
 
-### `/status`
+#### `/build-context`
+Build `.greenfield/context.json`, `decisions.json`, and `scope.json` from interview answers. Applies derivation rules (runtime from language, architecture from project type) and smart toolchain defaults.
+
+```
+/build-context
+```
+
+Requires the bootstrap interview to be complete (all 6 steps in `.greenfield/answers.json`). Prints a summary of derived values and applied defaults on completion.
+
+---
+
+#### `/spec`
+Initialize the greenfield spec pipeline and run it automatically. Creates `.greenfield/pipeline.lock.json`, applies skip-if-exists for any output files that already exist, then immediately executes all pending steps in sequence.
+
+```
+/spec
+```
+
+Requires `project.json → approach = "greenfield"` and `.greenfield/context.json`. If interrupted, re-run `/spec` to resume from the first incomplete step.
+
+---
+
+### Brownfield workflow
+
+#### `/discover`
+Initialize the brownfield discovery pipeline and run it automatically. Creates `.discovery/pipeline.lock.json`, applies skip-if-exists, then runs all 7 capability extraction steps in sequence.
+
+```
+/discover
+```
+
+Requires `project.json → approach = "brownfield"`, `.discovery/context.json`, and `codebase_setup` answers in `.project/state/answers.json`. Re-run to resume after an interruption.
+
+---
+
+### Status and review
+
+#### `/status`
 Show current step, collected answers, and which output files exist.
 
 ```
@@ -442,7 +520,7 @@ Show current step, collected answers, and which output files exist.
 
 ---
 
-### `/discovery-status`
+#### `/discovery-status`
 Show brownfield discovery pipeline progress: which of the 7 steps are complete, counts, and coverage stats.
 
 ```
@@ -451,17 +529,17 @@ Show brownfield discovery pipeline progress: which of the 7 steps are complete, 
 
 ---
 
-### `/adlc-status`
+#### `/adlc-status`
 Extended status view for ADLC projects. Shows all ADLC documents grouped by phase.
 
 ---
 
-### `/pov`
+#### `/pov`
 Print the Proof of Value plan and go/no-go thresholds from `docs/spec/pov-plan.md`. Use during PoV execution to stay aligned on the experiment scope and pass/fail criteria.
 
 ---
 
-### `/reset`
+#### `/reset`
 Jump the workflow to a specific step without deleting output files. Use when re-running a phase after editing answers.
 
 ```
@@ -472,17 +550,17 @@ Jump the workflow to a specific step without deleting output files. Use when re-
 
 ---
 
-### `/review-spec`
+#### `/review-spec`
 Cross-check all four spec files for consistency: resource naming, permission coverage for every API endpoint, event coverage for every state transition, role name consistency with `rbac.md`.
 
 ---
 
-### `/review-agent`
+#### `/review-agent`
 Cross-check all ADLC documents: KPI thresholds match eval thresholds, human-agent map tasks map to capabilities, PoV criteria match KPIs, monitoring alerts reference the correct thresholds.
 
 ---
 
-### `/stitch`
+#### `/stitch`
 Generate or regenerate UI screens via Google Stitch MCP.
 
 ```
@@ -556,27 +634,29 @@ Used when `adlc = true`.
 
 All commands require `jq`. Run `copilot-bootstrap <command> --help` for full options.
 
+The core workflow commands (`init`, `interview`, `build-context`, `spec`, `scan`, `discover`) are also available as Copilot Chat slash commands — see [Section 7](#7-slash-commands). Use whichever interface you prefer; both paths produce the same state files.
+
 ### `init`
 
-Initialise a fresh project. Safe — exits if state already exists.
+Initialise a fresh project. Copies framework files (`.github/`, `docs/workflow/`) from the installed package to your project directory. Safe — exits if state already exists.
 
 ```sh
 copilot-bootstrap init
 ```
 
-Creates `.project/state/workflow.json`, `.project/state/answers.json`, `project.json`, and all output folders.
+Creates `.project/state/workflow.json`, `.project/state/answers.json`, `project.json`, and all output folders. **Note:** the CLI version also copies framework files from the package; the `/init` chat command only creates state files and requires the framework to already be present.
 
 ---
 
 ### `interview`
 
-Start or resume the greenfield interview. Initialises `.greenfield/answers.json`, shows progress, and guides you to use the `#bootstrap-ask` skill in Copilot Chat.
+Start or resume the greenfield interview from the terminal. Opens a guided flow that shows progress and tells you to use `/bootstrap` in Copilot Chat for the actual Q&A.
 
 ```sh
 copilot-bootstrap interview
 ```
 
-Tracks 6 steps: `idea`, `project_info`, `users`, `features`, `tech`, `complexity`. Shows which steps are complete and which remain. Re-running is safe — completed steps are not overwritten.
+Tracks 6 steps: `idea`, `project_info`, `users`, `features`, `tech`, `complexity`. Re-running is safe. Use `/bootstrap` in Copilot Chat as the primary interface; this command is a terminal-side progress view.
 
 ---
 
@@ -616,15 +696,13 @@ All defaults are recorded in `decisions.json` with `source: "default"` so genera
 
 ### `spec`
 
-Initialise or resume the greenfield spec pipeline. Validates prerequisites, creates `.greenfield/pipeline.lock.json`, and reports step status.
+Initialise or resume the greenfield spec pipeline from the terminal. Validates prerequisites, creates `.greenfield/pipeline.lock.json`, reports step status, and auto-runs `copilot-bootstrap generate` when all steps complete.
 
 ```sh
 copilot-bootstrap spec
 ```
 
-When all spec steps are complete (all 11 show `completed` or `skipped`), `spec` automatically runs `copilot-bootstrap generate`.
-
-Use the `#run-spec-pipeline` skill in Copilot Chat to execute the pipeline steps. Re-run `copilot-bootstrap spec` after the skill completes to update the lock and trigger generators.
+Use `/spec` in Copilot Chat as the primary interface — it creates the lock file and immediately runs the full pipeline without switching back to the terminal.
 
 ---
 
@@ -646,7 +724,7 @@ Scan the codebase and write `.discovery/context.json`. Run this before `discover
 copilot-bootstrap scan
 ```
 
-Detects: languages, frontend framework, backend framework, database, package manager, linter, test runner, bundler, container tool, architecture style, monorepo flag, entry points. Writes detection confidence scores to `.discovery/confidence.json`. Produces a unified context at `.discovery/context.json`.
+Detects: languages, frontend framework, backend framework, database, package manager, linter, test runner, bundler, container tool, architecture style, monorepo flag, entry points. Writes detection confidence scores to `.discovery/confidence.json`. Use `/scan` in Copilot Chat as the primary interface — it reads the same config files and produces the same output.
 
 Output example:
 ```json
@@ -662,13 +740,13 @@ Output example:
 
 ### `discover`
 
-Initialise or resume the brownfield discovery pipeline. Validates prerequisites, creates `.discovery/pipeline.lock.json`, and reports step status.
+Initialise or resume the brownfield discovery pipeline from the terminal. Validates prerequisites, creates `.discovery/pipeline.lock.json`, reports step status, and auto-runs `copilot-bootstrap generate` when all 7 steps complete.
 
 ```sh
 copilot-bootstrap discover
 ```
 
-The pipeline itself runs via the Discovery agent in Copilot Chat. Re-run `discover` after the agent completes steps to see updated status and auto-trigger `generate` when all 7 steps are done.
+Use `/discover` in Copilot Chat as the primary interface — it creates the lock file and immediately runs the full pipeline without switching back to the terminal.
 
 ---
 
@@ -814,7 +892,12 @@ Checks: valid JSON, required fields present, `status` is a valid value, `project
     decisions.instructions.md     Stack rationale and smart defaults summary (greenfield only)†
 
   prompts/
+    init.prompt.md                /init
+    scan.prompt.md                /scan**
     bootstrap.prompt.md           /bootstrap
+    build-context.prompt.md       /build-context
+    spec.prompt.md                /spec
+    discover.prompt.md            /discover**
     status.prompt.md              /status
     discovery-status.prompt.md    /discovery-status**
     adlc-status.prompt.md         /adlc-status*
@@ -975,23 +1058,27 @@ The greenfield pipeline transforms a project idea into a complete, implementatio
 ### Full flow
 
 ```
-copilot-bootstrap init
-copilot-bootstrap interview         → .greenfield/answers.json
-copilot-bootstrap build-context     → .greenfield/context.json + decisions.json + scope.json
-copilot-bootstrap spec              → .greenfield/pipeline.lock.json
-  [run #run-spec-pipeline in Copilot Chat]
-    → docs/analysis/prd.md, capabilities.md
-    → docs/domain/model.md, rbac.md, workflows.md
-    → docs/design/overview.md, ia.md, flows.md
-    → docs/spec/api.md
-    → .github/skills/ (dev skills)
-copilot-bootstrap spec              → detects all steps complete → runs generate automatically
-  → .github/copilot-instructions.md + instructions/
-  → .github/agents/ (backend, frontend, test, refactor, devops, scaffold)
-  → .github/skills/ (build, test, lint, format, deploy)
-  → .github/prompts/ (new-feature, fix-bug, write-tests, review-pr, scaffold-project, implement-feature)
-  → .vscode/mcp.json
-  → .github/docs/getting-started.md
+# Terminal (once)
+copilot-bootstrap init              → copies .github/, docs/workflow/ to your project
+code .
+
+# Copilot Chat
+/bootstrap idea: <your idea>        → .greenfield/answers.json (6-step interview)
+/build-context                      → .greenfield/context.json + decisions.json + scope.json
+/spec                               → .greenfield/pipeline.lock.json, then runs:
+                                        docs/analysis/prd.md, capabilities.md
+                                        docs/domain/model.md, rbac.md, workflows.md
+                                        docs/design/overview.md, ia.md, flows.md
+                                        docs/spec/api.md
+                                        .github/skills/ (dev skills)
+
+# Terminal (once)
+copilot-bootstrap generate          → .github/copilot-instructions.md + instructions/
+                                      .github/agents/ (backend, frontend, test, refactor, devops, scaffold)
+                                      .github/skills/ (build, test, lint, format, deploy)
+                                      .github/prompts/ (new-feature, fix-bug, write-tests, review-pr, ...)
+                                      .vscode/mcp.json
+                                      .github/docs/getting-started.md
 ```
 
 ### Smart defaults
@@ -1011,7 +1098,7 @@ All defaults are recorded in `.greenfield/decisions.json` with `source: "default
 
 ### Spec pipeline lock
 
-`.greenfield/pipeline.lock.json` tracks each step's status. Steps whose output files already exist are automatically marked `skipped` when `copilot-bootstrap spec` runs — so you can pre-populate `docs/` with existing content and the pipeline will not overwrite it.
+`.greenfield/pipeline.lock.json` tracks each step's status. Steps whose output files already exist are automatically marked `skipped` when `/spec` (or `copilot-bootstrap spec`) runs — so you can pre-populate `docs/` with existing content and the pipeline will not overwrite it.
 
 ```json
 {
@@ -1036,7 +1123,7 @@ Both are distinct outputs that complement each other. Dev skills are created onc
 
 ---
 
-## 13. Brownfield Discovery Pipeline
+## 12. Brownfield Discovery Pipeline
 
 The brownfield discovery pipeline extracts a complete business capability map from an existing codebase in 7 steps. Each step reads one input, produces one output, and feeds the next.
 
@@ -1046,24 +1133,32 @@ Set `approach = brownfield` during the `project_info` step (or answer "existing"
 
 ### Before running the pipeline
 
-```sh
-copilot-bootstrap scan
+In Copilot Chat:
+
+```
+/scan
 ```
 
-`scan` reads the codebase at the current directory and writes:
+Or from the terminal: `copilot-bootstrap scan`.
+
+Both write:
 - `.discovery/context.json` — unified stack/tools/architecture context
 - `.discovery/confidence.json` — detection confidence per field
 - `.discovery/fs.json`, `stack.json`, `tools.json`, `arch.json` — raw detection outputs
 
-Review `.discovery/context.json` before proceeding. Correct any misdetections manually.
+Review `.discovery/context.json` before proceeding. Correct any misdetections manually or by re-running `/scan` with corrections.
 
 ### Running the pipeline
 
-```sh
-copilot-bootstrap discover
+In Copilot Chat:
+
+```
+/discover
 ```
 
-This validates prerequisites, initialises `.discovery/pipeline.lock.json`, and reports step status. The actual pipeline runs via the **Discovery agent** in Copilot Chat. Use the `run-discovery-pipeline` skill for a fully automatic run, or execute steps individually.
+`/discover` validates prerequisites, creates `.discovery/pipeline.lock.json`, applies skip-if-exists checks, and immediately runs all 7 steps in sequence without manual next commands. Re-run `/discover` to resume after an interruption.
+
+Alternatively from the terminal: `copilot-bootstrap discover` — this creates the lock file but does not run the pipeline; use `/discover` or `#run-discovery-pipeline` in chat to execute steps.
 
 ### Pipeline steps
 
@@ -1095,11 +1190,17 @@ This validates prerequisites, initialises `.discovery/pipeline.lock.json`, and r
 
 ### After pipeline complete
 
-When `copilot-bootstrap discover` detects all 7 steps complete, it automatically runs `copilot-bootstrap generate` to produce project-specific Copilot configuration from the discovered stack and capabilities.
+When all 7 steps finish, run:
+
+```sh
+copilot-bootstrap generate
+```
+
+This produces project-specific Copilot configuration from the discovered stack and capabilities.
 
 ---
 
-## 14. Generator Orchestrator
+## 13. Generator Orchestrator
 
 The generator orchestrator (`copilot-bootstrap generate`) reads context from `.greenfield/` (greenfield) or `.discovery/` (brownfield) and produces project-specific Copilot configuration: instructions, agents, skills, prompts, MCP config, hooks, plugins, and docs. It runs automatically after both pipelines complete, or on demand.
 
@@ -1211,7 +1312,7 @@ Each generator has a status: `pending`, `in_progress`, `completed`, `skipped`, o
 
 ---
 
-## 15. Google Stitch Integration
+## 14. Google Stitch Integration
 
 Google Stitch generates high-fidelity HTML + TailwindCSS screens from natural language prompts via an MCP server.
 
@@ -1257,7 +1358,7 @@ If Stitch is not configured, Designer logs a warning in `screens/index.md` and c
 
 ---
 
-## 16. ADLC Extended Workflow
+## 15. ADLC Extended Workflow
 
 The Agentic Development Lifecycle (ADLC) extends the standard bootstrap with phases designed for building and operating AI systems in production.
 
@@ -1305,7 +1406,7 @@ Bootstrap → Discovery → Analyst → Architect → Designer → Spec → Eval
 
 ---
 
-## 17. Extending the Framework
+## 16. Extending the Framework
 
 ### Add a new bootstrap step
 
@@ -1373,7 +1474,7 @@ model: ['Claude Opus 4.6', 'GPT-4o']
 
 ---
 
-## 18. Troubleshooting
+## 17. Troubleshooting
 
 ### Agent is not visible in the chat selector
 
@@ -1410,9 +1511,22 @@ copilot-bootstrap step prd
 
 A required earlier step did not run. Use `/status` to see missing files, then `/reset <step>` to re-run the missing phase.
 
-### `scan` detected the wrong language or framework
+### `/scan` detected the wrong language or framework
 
 Edit `.discovery/context.json` directly and correct the value. The schema is in `.discovery/context.schema.json`. Re-run `copilot-bootstrap generate` to regenerate config from the corrected context.
+
+### `/build-context` says interview is incomplete
+
+Check `.greenfield/answers.json → steps_completed`. If a step is missing, run `/bootstrap` to resume the interview from the incomplete step.
+
+### `/spec` or `/discover` says context not found
+
+`/spec` requires `.greenfield/context.json`. Run `/build-context` first.
+`/discover` requires `.discovery/context.json`. Run `/scan` first.
+
+### Pipeline resumes from wrong step after interruption
+
+The pipeline reads `.greenfield/pipeline.lock.json` (or `.discovery/pipeline.lock.json`). If a step shows `in_progress` but never completed, its output file is likely absent. The next `/spec` or `/discover` run will re-run it automatically.
 
 ### `generate` failed partway through
 

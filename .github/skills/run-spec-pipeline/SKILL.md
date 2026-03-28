@@ -12,8 +12,10 @@ Do NOT wait for user confirmation between steps unless a step requires interacti
 ## Pre-flight
 
 1. Verify `project.json → approach = "greenfield"`.
-2. Read `.greenfield/context.json` and `.greenfield/scope.json`. If either is missing, stop and tell the user to run `copilot-bootstrap interview` then `copilot-bootstrap build-context` first.
-3. Run `copilot-bootstrap spec` to initialize `.greenfield/pipeline.lock.json` and apply skip-if-exists checks.
+2. Read `.greenfield/context.json` and `.greenfield/scope.json`. If either is missing, stop and tell the user to run `/build-context` (or `copilot-bootstrap build-context`) first.
+3. Check if `.greenfield/pipeline.lock.json` already exists.
+   - If it exists, read it and resume from the first non-completed step.
+   - If it does not exist, tell the user to run `/spec` (or `copilot-bootstrap spec`) first to initialize the pipeline, then stop.
 4. Read `.greenfield/pipeline.lock.json` to identify which steps are pending.
 5. Read `project.json → adlc` to determine if ADLC steps should run.
 
@@ -148,7 +150,7 @@ Spec pipeline finished in {elapsed}.
 {N} artifacts generated in docs/. Ready for runtime generator.
 ```
 
-4. Tell the user: "Run 'copilot-bootstrap generate' to produce project-specific Copilot configuration."
+4. Tell the user: "Run `copilot-bootstrap generate` to produce project-specific Copilot configuration."
 
 ## Rules
 
