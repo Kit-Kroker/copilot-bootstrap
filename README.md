@@ -86,15 +86,10 @@ code .
 In Copilot Chat:
 
 ```
-/scan            — detects language, framework, database, tools, architecture
-/bootstrap idea: understand and document this codebase before modernizing it
-/discover        — runs all 7 capability extraction steps automatically
-```
-
-Then:
-
-```sh
-copilot-bootstrap generate
+/init            — initialize project state as brownfield
+/scan            — detect language, framework, database, tools, architecture
+/discover        — run all 7 capability extraction steps automatically
+/generate        — generate Copilot configuration tailored to this stack and domain
 ```
 
 ---
@@ -226,6 +221,7 @@ These feed directly into Copilot for implementation — the model, field names, 
 If you have an existing codebase, use brownfield mode. After `copilot-bootstrap init && code .`, run in Copilot Chat:
 
 ```
+/init brownfield
 /scan
 ```
 
@@ -242,7 +238,6 @@ Detects and writes `.discovery/context.json`:
 Then:
 
 ```
-/bootstrap idea: understand and document this codebase before modernizing it
 /discover
 ```
 
@@ -258,18 +253,20 @@ Confidence: HIGH
 Evidence: CustomerService, customers/ package, CUSTOMERS table
 ```
 
-After discovery, `copilot-bootstrap generate` produces project-specific Copilot config:
+Then:
 
 ```
-.github/copilot-instructions.md    project-wide context (stack, conventions)
-.github/instructions/              language + framework + architecture rules
-.github/agents/                    backend, frontend, test, refactor agents
-.github/skills/                    build, test, lint, deploy skills
-.github/prompts/                   /new-feature, /fix-bug, /write-tests, /review-pr
-.vscode/mcp.json                   MCP server config (postgres, filesystem)
+/generate
 ```
 
-`generate` detects whether `.greenfield/` or `.discovery/` is present and reads from the appropriate context automatically — same command for both approaches.
+Produces Copilot configuration tailored to the detected stack and discovered domain — not generic templates:
+
+```
+.github/copilot-instructions.md    project context: stack, entities, capabilities, conventions
+.github/skills/                    dev skills for the actual stack (e.g. add-endpoint, add-migration)
+.github/prompts/                   slash commands: /explain-capability, /trace-flow, /review-code
+.claude/settings.json              hooks: linter + formatter run automatically after file edits
+```
 
 ---
 
@@ -288,10 +285,11 @@ copilot-bootstrap scan              # detect stack and write .discovery/context.
 copilot-bootstrap discover          # initialise the brownfield discovery pipeline
 copilot-bootstrap discovery-status  # show discovery pipeline progress
 
-# Generator (both approaches)
-copilot-bootstrap generate          # generate Copilot config (auto-detects greenfield/brownfield)
+# Greenfield generator (CLI — run after /spec)
+copilot-bootstrap generate          # generate Copilot config from .greenfield/context.json
 copilot-bootstrap generate status   # show generator progress
 copilot-bootstrap generate --force  # re-run all generators
+# Note: brownfield generation runs in Copilot Chat via /generate
 
 # Navigation (manual / legacy)
 copilot-bootstrap sync              # update framework files to latest version
@@ -305,7 +303,7 @@ copilot-bootstrap validate          # validate state file integrity
 
 ## Copilot Chat
 
-After `copilot-bootstrap init` copies the framework files to your project, the entire workflow runs from Copilot Chat. No further CLI is needed until the final `generate` step.
+After `copilot-bootstrap init` copies the framework files to your project, the entire **brownfield** workflow runs from Copilot Chat — no terminal needed after init. For **greenfield**, `copilot-bootstrap generate` (CLI) runs after `/spec` finishes.
 
 ### Slash commands
 
@@ -328,8 +326,8 @@ After `copilot-bootstrap init` copies the framework files to your project, the e
 
 | Command | Description |
 |---------|-------------|
-| `/bootstrap idea: <text>` | Start the codebase setup interview. Prefill from `/scan` results where confidence is high. |
-| `/discover` | Initialize the discovery pipeline and run all 7 capability extraction steps automatically. |
+| `/discover` | Initialize the discovery pipeline and run all 7 capability extraction steps automatically. Requires `/scan` first. |
+| `/generate` | Generate Copilot configuration from discovery outputs: instructions, dev skills, prompts, and hooks. |
 
 **Status and review**
 
@@ -381,7 +379,7 @@ When type is `agent` or `ai-system`, the pipeline extends with KPIs, human-agent
 | `greenfield` | Building from scratch |
 | `brownfield` | Existing codebase to understand, document, or modernize |
 
-Brownfield replaces the users/features/tech/complexity steps with a 7-step codebase analysis. Both approaches support ADLC.
+Brownfield skips the interview entirely. `/scan` auto-detects the stack, `/discover` extracts capabilities from the code, and `/generate` produces Copilot configuration tailored to what was found.
 
 ---
 

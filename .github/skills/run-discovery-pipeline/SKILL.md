@@ -1,6 +1,6 @@
 ---
 name: run-discovery-pipeline
-description: Run the full brownfield discovery pipeline (A1–A7) automatically without manual next commands. Executes all 7 steps in sequence, skipping steps whose output already exists. Use this after codebase_setup when approach is brownfield.
+description: Run the full brownfield discovery pipeline (A1–A7) automatically without manual next commands. Executes all 7 steps in sequence, skipping steps whose output already exists. Use this after /scan when approach is brownfield.
 user-invocable: true
 ---
 

@@ -86,19 +86,16 @@ copilot-bootstrap init
 code .
 ```
 
-In Copilot Chat:
+In Copilot Chat — the full workflow runs here, no terminal needed after init:
 
 ```
-/scan            — auto-detects language, framework, database, tools, architecture
-/bootstrap idea: understand and document this codebase before modernizing it
-/discover        — runs all 7 capability extraction steps automatically
+/init            — initialize project state as brownfield
+/scan            — auto-detect language, framework, database, tools, architecture
+/discover        — run all 7 capability extraction steps automatically
+/generate        — generate Copilot configuration from the detected stack and discovered domain
 ```
 
-Then:
-
-```sh
-copilot-bootstrap generate
-```
+**No interview.** `/scan` captures the stack; `/discover` extracts capabilities from the code. `/generate` produces configuration specific to what was found — dev skills for the actual stack, prompts referencing real capabilities, hooks wiring the detected tools.
 
 ---
 
@@ -137,10 +134,10 @@ copilot-bootstrap generate (CLI) → .github/ (runtime Copilot config)
 **Brownfield**:
 
 ```
+/init (chat)         → project.json (approach: brownfield)
 /scan (chat)         → .discovery/context.json + confidence.json
-/bootstrap (chat)    → answers: codebase_setup
 /discover (chat)     → creates pipeline.lock.json, then runs Discovery (7 steps)
-copilot-bootstrap generate (CLI) → .github/ (runtime Copilot config)
+/generate (chat)     → .github/copilot-instructions.md, skills/, prompts/, .claude/settings.json
 ```
 
 **ADLC extension** (appends when type = `agent` or `ai-system`):
@@ -175,10 +172,10 @@ answers.json
                                       └─► docs/spec/api.md + events.md + permissions.md + state-machines.md
 ```
 
-Brownfield adds a discovery chain before generation:
+Brownfield uses a discovery chain instead of the interview:
 
 ```
-answers.json (codebase_setup)
+.discovery/context.json (from /scan)
   └─► docs/discovery/candidates.md
         └─► docs/discovery/analysis.md
               └─► docs/discovery/coverage.md
@@ -186,7 +183,10 @@ answers.json (codebase_setup)
                           └─► docs/discovery/l2-capabilities.md
                                 └─► docs/discovery/domain-model.md
                                       └─► docs/discovery/blueprint-comparison.md
-                                            └─► docs/analysis/prd.md (brownfield mode)
+                                            └─► .github/copilot-instructions.md
+                                                .github/skills/ (stack-specific dev skills)
+                                                .github/prompts/ (domain-aware slash commands)
+                                                .claude/settings.json (tool hooks)
 ```
 
 ADLC extends with:
@@ -229,7 +229,7 @@ When type is `agent` or `ai-system`: `project.json → adlc` is set to `true`, a
 | `greenfield` | Building from scratch — user provides idea, features, tech stack |
 | `brownfield` | Modernizing existing code — 7-step pipeline analyzes the codebase first |
 
-When `brownfield`: the `users`, `features`, `tech`, `complexity` steps are replaced by `codebase_setup` + 7 discovery steps. ADLC still applies if type is `agent` or `ai-system`.
+When `brownfield`: there is no interview. `/scan` auto-detects the stack; `/discover` runs 7 capability extraction steps; `/generate` produces Copilot configuration from what was found. ADLC is not applicable to brownfield projects.
 
 ---
 
@@ -319,28 +319,39 @@ Steps that already have output files are automatically skipped (resumable from a
 | 22 | `governance` | Ops | docs/ops/governance.md |
 | 23 | `adlc_done` | — | Full ADLC lifecycle complete |
 
-### Brownfield discovery steps (replaces greenfield steps 3-6)
+### Brownfield workflow (replaces greenfield entirely — no interview)
 
-| # | Step | Agent | Output |
+**Discovery phase** (`/discover`):
+
+| # | Step | Skill | Output |
 |---|------|-------|--------|
-| 3 | `codebase_setup` | Bootstrap | answers: codebase_setup |
-| 4 | `seed_candidates` | Discovery | docs/discovery/candidates.md |
-| 5 | `analyze_candidates` | Discovery | docs/discovery/analysis.md |
-| 6 | `verify_coverage` | Discovery | docs/discovery/coverage.md |
-| 7 | `lock_l1` | Discovery | docs/discovery/l1-capabilities.md |
-| 8 | `define_l2` | Discovery | docs/discovery/l2-capabilities.md |
-| 9 | `discovery_domain` | Discovery | docs/discovery/domain-model.md |
-| 10 | `blueprint_comparison` | Discovery | docs/discovery/blueprint-comparison.md |
+| 1 | `seed_candidates` | `discover-candidates` | docs/discovery/candidates.md |
+| 2 | `analyze_candidates` | `analyze-candidates` | docs/discovery/analysis.md |
+| 3 | `verify_coverage` | `verify-coverage` | docs/discovery/coverage.md |
+| 4 | `lock_l1` | `lock-l1` | docs/discovery/l1-capabilities.md |
+| 5 | `define_l2` | `define-l2` | docs/discovery/l2-capabilities.md |
+| 6 | `discovery_domain` | `generate-discovery-domain` | docs/discovery/domain-model.md |
+| 7 | `blueprint_comparison` | `compare-blueprint` | docs/discovery/blueprint-comparison.md |
 
-After discovery, the workflow continues from `prd` (step 11) onward, using discovery outputs as primary inputs.
+**Generation phase** (`/generate`):
 
-### Questions asked per step
+| # | Step | Skill | Output |
+|---|------|-------|--------|
+| 8 | `generate_instructions` | `generate-copilot-instructions` | .github/copilot-instructions.md |
+| 9 | `generate_dev_skills` | `generate-brownfield-skills` | .github/skills/ |
+| 10 | `generate_dev_prompts` | `generate-brownfield-prompts` | .github/prompts/ |
+| 11 | `generate_hooks` | `generate-brownfield-hooks` | .claude/settings.json |
+
+All steps are resumable — re-run the command after an interruption to continue from where it left off.
+
+### Questions asked per step (greenfield only)
+
+Brownfield has no interview. All inputs come from auto-detection (`/scan`) and code analysis (`/discover`).
 
 | Step | Questions |
 |------|-----------|
 | `idea` | Describe your project; what is currently manual or slow; why is a human doing it today |
 | `project_info` | Name; type; domain; approach |
-| `codebase_setup` | Codebase path; primary language; architecture style; DB access; pre-generated reports; has frontend |
 | `users` | Who are the users; what roles do they have |
 | `features` | List 3-10 core features |
 | `tech` | Backend, frontend, database preferences |
@@ -505,7 +516,18 @@ Initialize the brownfield discovery pipeline and run it automatically. Creates `
 /discover
 ```
 
-Requires `project.json → approach = "brownfield"`, `.discovery/context.json`, and `codebase_setup` answers in `.project/state/answers.json`. Re-run to resume after an interruption.
+Requires `project.json → approach = "brownfield"` and `.discovery/context.json` (from `/scan`). No interview needed. Re-run to resume after an interruption.
+
+---
+
+#### `/generate`
+Generate project-specific Copilot configuration from discovery outputs. Creates `.discovery/generate.lock.json` and runs 4 steps: copilot instructions, dev skills, project prompts, and hooks.
+
+```
+/generate
+```
+
+Requires `project.json → approach = "brownfield"`, `.discovery/context.json`, and `docs/discovery/l1-capabilities.md`. Outputs are tailored to the actual detected stack and discovered domain — not generic templates. Re-run to resume after an interruption.
 
 ---
 
@@ -601,7 +623,7 @@ Skills live in `.github/skills/`. Agents call them directly; some can also be in
 
 ### Brownfield discovery skills
 
-Used by the Discovery agent when `approach = brownfield`.
+Used by `/discover` when `approach = brownfield`.
 
 | Skill | Step | Output |
 |-------|------|--------|
@@ -612,6 +634,24 @@ Used by the Discovery agent when `approach = brownfield`.
 | `define-l2` | `define_l2` | `docs/discovery/l2-capabilities.md` |
 | `generate-discovery-domain` | `discovery_domain` | `docs/discovery/domain-model.md` |
 | `compare-blueprint` | `blueprint_comparison` | `docs/discovery/blueprint-comparison.md` |
+
+### Brownfield generation skills
+
+Used by `/generate` when `approach = brownfield`. Reads from `.discovery/` outputs — no generic templates.
+
+| Skill | Step | Output |
+|-------|------|--------|
+| `run-generate-pipeline` | orchestrator | runs all 4 generation steps in sequence |
+| `generate-copilot-instructions` | `generate_instructions` | `.github/copilot-instructions.md` |
+| `generate-brownfield-skills` | `generate_dev_skills` | `.github/skills/` |
+| `generate-brownfield-prompts` | `generate_dev_prompts` | `.github/prompts/` |
+| `generate-brownfield-hooks` | `generate_hooks` | `.claude/settings.json` |
+
+**What each generation skill produces:**
+- `generate-copilot-instructions` — project identity, detected stack, architecture, domain entities, capability map, coding conventions, hard constraints specific to this project
+- `generate-brownfield-skills` — dev skills derived from the actual stack (e.g. `add-endpoint` for Express, `add-migration` for Alembic, `add-module` for NestJS); max 12 skills prioritized by use frequency
+- `generate-brownfield-prompts` — slash commands for common operations: `/review-code`, `/explain-capability`, `/trace-flow`, plus conditional prompts for detected tools (DB migrations, integration tests, lint-fix)
+- `generate-brownfield-hooks` — PostToolUse hooks in `.claude/settings.json` wiring the detected linter and formatter to run automatically after file edits
 
 ### ADLC generation skills
 
@@ -898,6 +938,7 @@ Checks: valid JSON, required fields present, `status` is a valid value, `project
     build-context.prompt.md       /build-context
     spec.prompt.md                /spec
     discover.prompt.md            /discover**
+    generate.prompt.md            /generate**
     status.prompt.md              /status
     discovery-status.prompt.md    /discovery-status**
     adlc-status.prompt.md         /adlc-status*
@@ -940,6 +981,12 @@ Checks: valid JSON, required fields present, `status` is a valid value, `project
     define-l2/SKILL.md**
     generate-discovery-domain/SKILL.md**
     compare-blueprint/SKILL.md**
+    run-discovery-pipeline/SKILL.md**
+    run-generate-pipeline/SKILL.md**
+    generate-copilot-instructions/SKILL.md**
+    generate-brownfield-skills/SKILL.md**
+    generate-brownfield-prompts/SKILL.md**
+    generate-brownfield-hooks/SKILL.md**
 
   hooks/                          Generated lifecycle hooks**
     session-start.json
@@ -978,20 +1025,15 @@ Checks: valid JSON, required fields present, `status` is a valid value, `project
 .project/
   state/
     workflow.json                 { workflow, approach, step, status }
-    answers.json                  { idea, project_info, codebase_setup**, users, features, tech, complexity, constraints*, kpis* }
+    answers.json                  { idea, project_info, users, features, tech, complexity, constraints*, kpis* } (greenfield only)
 
 .discovery/                       Machine-readable detection and generation state**
-  context.json                    Unified detected stack (written by `scan`)
+  context.json                    Unified detected stack (written by `/scan`)
   confidence.json                 Detection confidence scores per field
-  fs.json                         Raw filesystem scan
-  stack.json                      Raw stack detection
-  tools.json                      Raw tools detection
-  arch.json                       Raw architecture detection
-  pipeline.lock.json              Discovery pipeline step progress
-  generators.lock.json            Generator orchestrator progress
+  pipeline.lock.json              Discovery pipeline step progress (written by `/discover`)
+  generate.lock.json              Generation pipeline step progress (written by `/generate`)
   context.schema.json             Schema for context.json
   pipeline.lock.schema.json       Schema for pipeline.lock.json
-  generators.lock.schema.json     Schema for generators.lock.json
 
 docs/
   workflow/
@@ -1129,7 +1171,7 @@ The brownfield discovery pipeline extracts a complete business capability map fr
 
 ### When it activates
 
-Set `approach = brownfield` during the `project_info` step (or answer "existing" when Bootstrap asks). This switches the workflow to `docs/workflow/brownfield.md`.
+Run `/init brownfield` (or `/init` and set `approach = brownfield` when prompted). This creates `project.json` with `approach: brownfield`.
 
 ### Before running the pipeline
 
@@ -1139,14 +1181,11 @@ In Copilot Chat:
 /scan
 ```
 
-Or from the terminal: `copilot-bootstrap scan`.
-
-Both write:
+Writes:
 - `.discovery/context.json` — unified stack/tools/architecture context
 - `.discovery/confidence.json` — detection confidence per field
-- `.discovery/fs.json`, `stack.json`, `tools.json`, `arch.json` — raw detection outputs
 
-Review `.discovery/context.json` before proceeding. Correct any misdetections manually or by re-running `/scan` with corrections.
+Review `.discovery/context.json` before proceeding. Correct any misdetections manually or by re-running `/scan`.
 
 ### Running the pipeline
 
@@ -1156,9 +1195,7 @@ In Copilot Chat:
 /discover
 ```
 
-`/discover` validates prerequisites, creates `.discovery/pipeline.lock.json`, applies skip-if-exists checks, and immediately runs all 7 steps in sequence without manual next commands. Re-run `/discover` to resume after an interruption.
-
-Alternatively from the terminal: `copilot-bootstrap discover` — this creates the lock file but does not run the pipeline; use `/discover` or `#run-discovery-pipeline` in chat to execute steps.
+`/discover` validates that `project.json → approach = "brownfield"` and `.discovery/context.json` exists, creates `.discovery/pipeline.lock.json`, applies skip-if-exists checks, and immediately runs all 7 steps in sequence. No interview required. Re-run to resume after an interruption.
 
 ### Pipeline steps
 
@@ -1190,125 +1227,87 @@ Alternatively from the terminal: `copilot-bootstrap discover` — this creates t
 
 ### After pipeline complete
 
-When all 7 steps finish, run:
+When all 7 steps finish, run in Copilot Chat:
 
-```sh
-copilot-bootstrap generate
+```
+/generate
 ```
 
-This produces project-specific Copilot configuration from the discovered stack and capabilities.
+This produces project-specific Copilot configuration from the discovered stack and capabilities — tailored instructions, dev skills for the actual stack, domain-aware prompts, and tool hooks. No generic templates.
 
 ---
 
 ## 13. Generator Orchestrator
 
-The generator orchestrator (`copilot-bootstrap generate`) reads context from `.greenfield/` (greenfield) or `.discovery/` (brownfield) and produces project-specific Copilot configuration: instructions, agents, skills, prompts, MCP config, hooks, plugins, and docs. It runs automatically after both pipelines complete, or on demand.
+The generator orchestrator differs by approach:
 
-### Context detection
+- **Greenfield**: `copilot-bootstrap generate` (CLI) — reads `.greenfield/context.json` and produces instructions, agents, skills, prompts, MCP config, hooks, plugins, and docs
+- **Brownfield**: `/generate` (Copilot Chat) — reads `.discovery/context.json` and discovery outputs; produces 4 targeted artifacts specific to the detected stack and domain
 
-`generate` checks for context files in this order:
+### Greenfield generator (CLI)
 
-1. `.greenfield/context.json` → greenfield mode
-2. `.discovery/context.json` → brownfield mode
+`copilot-bootstrap generate` reads `.greenfield/context.json`, `decisions.json`, `scope.json`, and spec pipeline outputs. Runs 8 generators in sequence.
 
-Both modes run the same 8 generators with the same templates. Greenfield mode additionally reads `decisions.json` and `scope.json`, and emits greenfield-specific artifacts.
+**Inputs:**
 
-### Inputs
+| File | Required | Purpose |
+|------|----------|---------|
+| `.greenfield/context.json` | Yes | Stack, tools, architecture |
+| `.greenfield/decisions.json` | No | Stack rationale → `decisions.instructions.md` |
+| `.greenfield/scope.json` | No | Complexity → `getting-started.md` |
+| `docs/analysis/prd.md`, `capabilities.md` | No | Requirements context |
+| `docs/domain/model.md` | No | Domain context |
+| `docs/spec/api.md` | No | API contracts |
 
-| File | Required | Mode | Purpose |
-|------|----------|------|---------|
-| `.greenfield/context.json` or `.discovery/context.json` | Yes | both | Stack, tools, architecture |
-| `.greenfield/decisions.json` | No | greenfield | Stack rationale → `decisions.instructions.md` |
-| `.greenfield/scope.json` | No | greenfield | Complexity → `getting-started.md` |
-| `docs/analysis/prd.md` | No | both | Requirements context |
-| `docs/analysis/capabilities.md` | No | both | Capability list |
-| `docs/domain/model.md` | No | both | Domain context |
-| `docs/spec/api.md` | No | both | API contracts |
-
-Generators work with `context.json` alone (minimal mode). Spec pipeline outputs enhance them when present (full mode).
-
-### Generator order and rationale
+**Generator order:**
 
 ```
-1. instructions  — foundational; all other generators respect these conventions
-2. agents        — uses instructions + stack to define agent personas
-3. skills        — uses tools detection to create runnable skill definitions
-4. prompts       — uses skills + agents to create reusable slash commands
-5. mcp           — uses stack detection for external tool integrations
-6. hooks         — uses skills + prompts to wire lifecycle automation
-7. plugins       — bundles agents/skills/hooks into a project manifest
-8. docs          — documents everything generated above
+1. instructions  — foundational conventions
+2. agents        — stack-specific agent personas
+3. skills        — runnable skill definitions
+4. prompts       — reusable slash commands
+5. mcp           — external tool integrations
+6. hooks         — lifecycle automation
+7. plugins       — project manifest
+8. docs          — documentation of all generated artifacts
 ```
 
-### Greenfield-specific outputs
+**Greenfield-specific outputs:**
 
 | Generator | Extra output | Purpose |
 |-----------|-------------|---------|
-| `instructions` | `.github/instructions/decisions.instructions.md` | Explains stack rationale from `decisions.json`; helps Copilot maintain consistency with chosen conventions |
-| `agents` | `.github/agents/scaffold.agent.md` | Guides initial project setup from spec docs; knows about `docs/analysis/`, `docs/domain/`, `.greenfield/` |
-| `prompts` | `.github/prompts/scaffold-project.prompt.md` | Kick off initial project creation using the scaffold agent |
-| `prompts` | `.github/prompts/implement-feature.prompt.md` | Implement a named capability from `docs/analysis/capabilities.md` |
-| `docs` | `.github/docs/getting-started.md` | Onboarding guide: how to scaffold the project, implement features, run dev tasks |
+| `instructions` | `decisions.instructions.md` | Stack rationale from `decisions.json` |
+| `agents` | `scaffold.agent.md` | Guides initial project setup from spec docs |
+| `prompts` | `scaffold-project.prompt.md`, `implement-feature.prompt.md` | Kickoff and feature implementation |
+| `docs` | `getting-started.md` | Onboarding guide for this project |
 
-### Template system
+Progress tracked in `.greenfield/generators.lock.json`. Re-run `copilot-bootstrap generate` to resume; use `--force` to re-run all.
 
-Generators use templates from the `templates/` directory. Variables use `{{UPPER_CASE}}` syntax resolved from `context.json` fields and additional exports:
+---
 
-| Variable | Source |
-|----------|--------|
-| `{{LANGUAGE}}` | `stack.languages[0]` |
-| `{{FRONTEND}}` | `stack.frontend` |
-| `{{BACKEND}}` | `stack.backend` |
-| `{{DB}}` | `stack.db` |
-| `{{PKG_MANAGERS}}` | `tools.package_managers` |
-| `{{LINTERS}}` | `tools.linters` |
-| `{{FORMATTERS}}` | `tools.formatters` |
-| `{{TEST_RUNNERS}}` | `tools.test_runners` |
-| `{{BUNDLER}}` | `tools.bundler` |
-| `{{CONTAINER}}` | `tools.container` |
-| `{{ARCH_STYLE}}` | `arch.style` |
-| `{{SRC_PATH}}` | `paths.src` |
-| `{{TESTS_PATH}}` | `paths.tests` |
-| `{{PROJECT_NAME}}` | `context.json → project.name` (fallback: `project.json → name`) |
-| `{{APPROACH}}` | `greenfield` or `brownfield` |
-| `{{COMPLEXITY}}` | `scope.json → complexity` (greenfield only) |
+### Brownfield generator (Chat — `/generate`)
 
-Template coverage:
+`/generate` runs in Copilot Chat after `/discover` completes. Uses 4 skills in sequence; all output is derived from actual discovery data.
 
-| Category | Templates |
-|----------|-----------|
-| Languages | TypeScript, JavaScript, Python, Go, Java, Rust |
-| Frameworks | React, Vue, Next.js, Express, FastAPI, Django |
-| Architectures | Layered, Hexagonal, Microservices, Monolith, Serverless |
-| Agents | backend, frontend, test, refactor, devops, **scaffold** (greenfield) |
-| Skills | build, test, lint, format, deploy |
-| Prompts | new-feature, fix-bug, write-tests, review-pr, **scaffold-project**, **implement-feature** (greenfield) |
-| Hooks | session-start, pre-tool-use, post-tool-use |
+**Inputs (read-only):**
+- `.discovery/context.json` — detected stack, tools, architecture
+- `docs/discovery/l1-capabilities.md` — L1 capabilities
+- `docs/discovery/l2-capabilities.md` — L2 sub-capabilities with code locations
+- `docs/discovery/domain-model.md` — entity ownership and relationships
+- `docs/discovery/blueprint-comparison.md` — industry alignment (if present)
 
-### Resumability
+**Steps and outputs:**
 
-Generator progress is tracked in `{context-dir}/generators.lock.json`:
-- Greenfield: `.greenfield/generators.lock.json`
-- Brownfield: `.discovery/generators.lock.json`
+| Step | Skill | Output |
+|------|-------|--------|
+| `generate_instructions` | `generate-copilot-instructions` | `.github/copilot-instructions.md` — project identity, stack, entities, capabilities, conventions, hard constraints |
+| `generate_dev_skills` | `generate-brownfield-skills` | `.github/skills/` — dev skills for the actual stack; max 12, prioritized by frequency |
+| `generate_dev_prompts` | `generate-brownfield-prompts` | `.github/prompts/` — `/review-code`, `/explain-capability`, `/trace-flow`, plus conditional prompts for detected tools |
+| `generate_hooks` | `generate-brownfield-hooks` | `.claude/settings.json` — PostToolUse hooks for detected linter and formatter |
 
-Each generator has a status: `pending`, `in_progress`, `completed`, `skipped`, or `failed`. Re-running `copilot-bootstrap generate` skips completed generators and resumes from the first incomplete one. Use `--force` to re-run everything.
+Progress tracked in `.discovery/generate.lock.json`. Re-run `/generate` to resume.
 
-```json
-{
-  "version": "1",
-  "started_at": "2026-03-26T10:15:00Z",
-  "generators": {
-    "instructions": { "status": "completed", "outputs": ["..."], "completed_at": "..." },
-    "agents":       { "status": "completed", "outputs": ["..."], "completed_at": "..." },
-    "skills":       { "status": "in_progress" },
-    "prompts":      { "status": "pending" },
-    "mcp":          { "status": "pending" },
-    "hooks":        { "status": "pending" },
-    "plugins":      { "status": "pending" },
-    "docs":         { "status": "pending" }
-  }
-}
-```
+**What makes brownfield generation different from greenfield:** brownfield generation reads from discovery artifacts (capabilities, domain model, code locations) and produces configuration that names real entities, real file paths, and real tools from the codebase. Greenfield generation uses templates filled from interview answers. Both approaches refuse to generate generic placeholders.
 
 ---
 
@@ -1528,13 +1527,17 @@ Check `.greenfield/answers.json → steps_completed`. If a step is missing, run 
 
 The pipeline reads `.greenfield/pipeline.lock.json` (or `.discovery/pipeline.lock.json`). If a step shows `in_progress` but never completed, its output file is likely absent. The next `/spec` or `/discover` run will re-run it automatically.
 
-### `generate` failed partway through
+### Greenfield `generate` failed partway through
 
-Check `.discovery/generators.lock.json` to see which generator failed. Fix the issue, then re-run `copilot-bootstrap generate` — completed generators are skipped automatically.
+Check `.greenfield/generators.lock.json` to see which generator failed. Fix the issue, then re-run `copilot-bootstrap generate` — completed generators are skipped automatically.
 
-### Discovery agent cannot read the codebase
+### Brownfield `/generate` failed partway through
 
-Check `answers.json → codebase_setup.path` is a valid path accessible from the workspace. Verify with `ls <path>`.
+Check `.discovery/generate.lock.json` to see which step failed. Fix the issue, then re-run `/generate` — completed steps are skipped automatically.
+
+### Discovery skills cannot read the codebase
+
+Check `.discovery/context.json → paths.src` is a valid path accessible from the workspace. Re-run `/scan` if the path is wrong or missing.
 
 ### Brownfield steps are not activating
 
