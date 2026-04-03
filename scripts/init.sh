@@ -1,7 +1,7 @@
 #!/bin/sh
 # init.sh — Initialise bootstrap workflow state
 #
-# Usage: ./scripts/init.sh
+# Usage: ./scripts/init.sh [--brownfield|--greenfield]
 
 set -e
 
@@ -10,11 +10,33 @@ ANSWERS_FILE=".project/state/answers.json"
 PROJECT_FILE="project.json"
 
 if [ "$1" = "--help" ]; then
-  echo "Usage: ./scripts/init.sh"
-  echo "Initialises .project/state/ for a new bootstrap workflow."
-  echo "Exits with error if state already exists."
+  echo "Usage: ./scripts/init.sh [--brownfield|--greenfield]"
+  echo ""
+  echo "  --brownfield   Initialise for an existing codebase (next step: scan)"
+  echo "  --greenfield   Initialise for a new project (default, next step: idea)"
+  echo ""
+  echo "Exits with error if state already exists. Run 'redo' to reinitialise."
   exit 0
 fi
+
+# Determine approach
+APPROACH="greenfield"
+STEP="idea"
+
+case "$1" in
+  --brownfield)
+    APPROACH="brownfield"
+    STEP="scan"
+    ;;
+  --greenfield|"")
+    APPROACH="greenfield"
+    STEP="idea"
+    ;;
+  *)
+    echo "Error: unknown option '$1'. Use --brownfield or --greenfield." >&2
+    exit 1
+    ;;
+esac
 
 if [ -f "$WORKFLOW_FILE" ]; then
   echo "Error: $WORKFLOW_FILE already exists. Delete it first to reinitialise."
@@ -35,8 +57,8 @@ fi
 cat > "$WORKFLOW_FILE" <<EOF
 {
   "workflow": "bootstrap",
-  "approach": "",
-  "step": "idea",
+  "approach": "$APPROACH",
+  "step": "$STEP",
   "status": "in_progress"
 }
 EOF
@@ -50,14 +72,36 @@ cat > "$PROJECT_FILE" <<EOF
   "name": "",
   "type": "",
   "domain": "",
-  "approach": "",
+  "approach": "$APPROACH",
   "codebase_path": "",
   "stage": "bootstrap",
   "workflow": "bootstrap",
-  "step": "idea",
+  "step": "$STEP",
   "autonomy_level": "",
   "adlc": false
 }
 EOF
 
-echo "Bootstrap workflow initialised. Current step: idea"
+if [ "$APPROACH" = "greenfield" ]; then
+  mkdir -p .greenfield
+  cat > ".greenfield/answers.json" <<EOF
+{
+  "collected_at": "",
+  "steps_completed": []
+}
+EOF
+fi
+
+if [ "$APPROACH" = "brownfield" ]; then
+  echo "Brownfield project initialised."
+  echo ""
+  echo "Next:"
+  echo "  copilot-bootstrap scan       — auto-detect your stack"
+  echo "  copilot-bootstrap discover   — extract capabilities from the codebase"
+  echo "  copilot-bootstrap generate   — generate Copilot configuration"
+else
+  echo "Greenfield project initialised."
+  echo ""
+  echo "Next: start the interview"
+  echo "  copilot-bootstrap interview"
+fi
