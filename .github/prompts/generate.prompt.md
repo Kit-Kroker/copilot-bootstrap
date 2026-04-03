@@ -24,10 +24,11 @@ Check if `.discovery/generate.lock.json` exists.
   "version": "1",
   "started_at": "<current UTC timestamp as YYYY-MM-DDTHH:MM:SSZ>",
   "steps": {
-    "generate_instructions": {"status": "pending", "output": ".github/copilot-instructions.md"},
-    "generate_dev_skills":   {"status": "pending", "output": ".github/skills/"},
-    "generate_dev_prompts":  {"status": "pending", "output": ".github/prompts/"},
-    "generate_hooks":        {"status": "pending", "output": ".vscode/settings.json"}
+    "generate_instructions":   {"status": "pending", "output": ".github/copilot-instructions.md"},
+    "generate_dev_skills":     {"status": "pending", "output": ".github/skills/"},
+    "generate_dev_prompts":    {"status": "pending", "output": ".github/prompts/"},
+    "generate_hooks":          {"status": "pending", "output": ".vscode/settings.json"},
+    "generate_project_agent":  {"status": "pending", "output": ".github/agents/project.agent.md"}
   }
 }
 ```

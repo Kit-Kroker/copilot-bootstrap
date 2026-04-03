@@ -55,6 +55,7 @@ Each agent uses a **handoff button** to pass control to the next agent when its 
 | Script | `script.agent.md` | Generate dev skill stubs and operational scripts |
 | Discovery | `discovery.agent.md` | Extract capabilities from existing codebase using 7-step pipeline (brownfield only) |
 | Ops | `ops.agent.md` | Generate monitoring spec and governance doc (ADLC only) |
+| **Project** | `project.agent.md` | **Generated.** Primary development agent after bootstrap is complete. Knows the discovered domain, capabilities, and stack. Replaces bootstrap agents for day-to-day work. |
 
 ## Skills
 
@@ -92,6 +93,7 @@ Skills in `.github/skills/` are invocable prompts used by agents and directly vi
 | `compare-blueprint` | Discovery agent (brownfield) |
 | `generate-monitoring-spec` | Ops agent (ADLC) |
 | `generate-governance` | Ops agent (ADLC) |
+| `generate-project-agent` | Script agent (brownfield) |
 
 ## Workflow State
 
@@ -139,6 +141,7 @@ Type `/` in chat to invoke these directly:
 | `/discovery-status` | `prompts/discovery-status.prompt.md` | Show brownfield discovery pipeline progress |
 | `/reset` | `prompts/reset.prompt.md` | Jump workflow to a specific step |
 | `/stitch` | `prompts/stitch.prompt.md` | Generate or regenerate UI screens via Google Stitch |
+| `/finish` | `prompts/finish.prompt.md` | Remove bootstrap scaffolding after `/generate` completes — keeps only the project agent, skills, prompts, and docs |
 
 ## Hooks
 

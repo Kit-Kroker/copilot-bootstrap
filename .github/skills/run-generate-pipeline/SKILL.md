@@ -45,6 +45,7 @@ Execute each step in order. For each step:
 | `generate_dev_skills` | `generate-brownfield-skills` | `.github/skills/` | Dev skills generated |
 | `generate_dev_prompts` | `generate-brownfield-prompts` | `.github/prompts/` | Project prompts generated |
 | `generate_hooks` | `generate-brownfield-hooks` | `.vscode/settings.json` | VS Code workspace settings configured |
+| `generate_project_agent` | `generate-project-agent` | `.github/agents/project.agent.md` | Project agent generated |
 
 ## Updating the Lock File
 
@@ -69,8 +70,10 @@ Copilot configuration generated.
   ✔ .github/skills/   ({N} skills)
   ✔ .github/prompts/  ({N} prompts)
   ✔ .vscode/settings.json (workspace settings: format-on-save, linter)
+  ✔ .github/agents/project.agent.md
 
-Your Copilot setup is ready. Open a PR or start using the skills directly in chat.
+Your Copilot setup is ready. Select the {project name} agent in chat to start developing.
+Run /finish to remove bootstrap scaffolding and leave only project-specific files.
 ```
 
 ## Rules
