@@ -66,5 +66,6 @@ Next: start the interview
 
 For brownfield (existing codebase):
   /scan       — auto-detect your stack
-  /bootstrap  — then describe your codebase
+  /discover   — extract capabilities from the codebase
+  /generate   — produce specification documents
 ```

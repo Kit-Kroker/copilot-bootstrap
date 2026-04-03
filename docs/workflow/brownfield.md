@@ -8,50 +8,40 @@ This workflow activates when `project.json → approach = "brownfield"`. It repl
 project.json → approach = "brownfield"
 ```
 
+## Commands
+
+| Command | Description |
+|---------|-------------|
+| `/init brownfield` | Initialize project as brownfield |
+| `/scan` | Auto-detect stack and write `.discovery/context.json` |
+| `/discover` | Run 7-phase capability extraction pipeline |
+| `/generate` | Run specification generation pipeline |
+
 ## Steps
 
-1. idea
-2. project_info
-3. codebase_setup
-4. seed_candidates
-5. analyze_candidates
-6. verify_coverage
-7. lock_l1
-8. define_l2
-9. discovery_domain
-10. blueprint_comparison
-11. prd
-12. capabilities
-13. domain
-14. design_workflow
-15. skills
-16. scripts
-17. done
+### Discovery (`/discover`)
+1. seed_candidates
+2. analyze_candidates
+3. verify_coverage
+4. lock_l1
+5. define_l2
+6. discovery_domain
+7. blueprint_comparison
+
+### Generation (`/generate`)
+8. generate_instructions
+9. generate_dev_skills
+10. generate_dev_prompts
+11. generate_hooks
+12. done
 
 ## ADLC Extended Steps
 
-When `project.json → adlc = true` (type is `agent` or `ai-system`), the following steps activate after `done`:
-
-18. constraints
-19. kpis
-20. human_agent_map
-21. agent_pattern
-22. cost_model
-23. eval_framework
-24. pov
-25. monitoring
-26. governance
-27. adlc_done
+Not applicable to the brownfield flow. Brownfield generates Copilot configuration only — ADLC analysis docs (KPIs, agent patterns, eval framework, etc.) are out of scope.
 
 ## Step Descriptions
 
-### Bootstrap Phase (steps 1-3)
-
-- **idea**: Capture the modernization goal and pain points with the legacy system
-- **project_info**: Collect project name, type, domain, and confirm brownfield approach
-- **codebase_setup**: Collect codebase path, primary language, architecture style, database availability, and any pre-generated analysis reports
-
-### Discovery Pipeline (steps 4-10) — Capability Extraction
+### Discovery Pipeline (steps 1-7) — Capability Extraction
 
 - **seed_candidates**: (A1) Extract capability candidates from 4 signal sources — package structure, database schema, backend entry points, frontend entry points. Cross-reference and assign HIGH/MEDIUM/LOW confidence. Produces 15-25 raw candidates.
 - **analyze_candidates**: (A2) Deep analysis of each candidate — cohesion, coupling, boundary clarity. Determine action per candidate: confirm / split / merge / de-scope / flag.
@@ -61,37 +51,38 @@ When `project.json → adlc = true` (type is `agent` or `ai-system`), the follow
 - **discovery_domain**: (A6) Generate consolidated domain model with capability hierarchy, entity ownership, cross-capability dependencies, and full code traceability.
 - **blueprint_comparison**: (A7) Compare code-derived capabilities against industry reference framework (BIAN for banking, TM Forum for telecom, APQC cross-industry). Flag: aligned / org-specific / missing-from-code.
 
-### Generation Phase (steps 11-17) — Same as Greenfield
+### Generation Phase (steps 8-11) — Copilot Configuration
 
-- **prd**: Generate PRD from discovered capabilities (brownfield mode reads `docs/discovery/`)
-- **capabilities**: Generate capability map from discovery L1/L2 outputs
-- **domain**: Generate domain model enriched by discovery domain model
-- **design_workflow**: Generate design workflow
-- **skills**: Define required skills and agents
-- **scripts**: Generate automation scripts
+Generates configuration artifacts tailored to the detected stack and discovered domain. Does NOT re-generate analysis docs — those come from the discovery phase.
+
+- **generate_instructions**: Generate `.github/copilot-instructions.md` — stack-specific, domain-aware AI instructions
+- **generate_dev_skills**: Generate `.github/skills/` — dev skills matching the actual stack (e.g., `add-endpoint`, `add-migration`, `add-test`)
+- **generate_dev_prompts**: Generate `.github/prompts/` — slash commands for common operations on this codebase
+- **generate_hooks**: Configure `.claude/settings.json` — PostToolUse hooks for the detected linter and formatter
 - **done**: Bootstrap complete
 
 ## Routing Table
 
-| Step | Agent | Skill | Output |
-|------|-------|-------|--------|
-| `idea` | bootstrap | `bootstrap-ask` | answers.json: idea, pain_points |
-| `project_info` | bootstrap | `bootstrap-ask` | answers.json: project_info (incl. approach) |
-| `codebase_setup` | bootstrap | `bootstrap-ask` | answers.json: codebase_setup |
-| `seed_candidates` | discovery | `discover-candidates` | docs/discovery/candidates.md |
-| `analyze_candidates` | discovery | `analyze-candidates` | docs/discovery/analysis.md |
-| `verify_coverage` | discovery | `verify-coverage` | docs/discovery/coverage.md |
-| `lock_l1` | discovery | `lock-l1` | docs/discovery/l1-capabilities.md |
-| `define_l2` | discovery | `define-l2` | docs/discovery/l2-capabilities.md |
-| `discovery_domain` | discovery | `generate-discovery-domain` | docs/discovery/domain-model.md |
-| `blueprint_comparison` | discovery | `compare-blueprint` | docs/discovery/blueprint-comparison.md |
-| `prd` | analyst | `generate-prd` | docs/analysis/prd.md |
-| `capabilities` | analyst | `generate-capabilities` | docs/analysis/capabilities.md |
-| `domain` | architect | `generate-domain` | docs/domain/model.md |
-| `design_workflow` | designer | `generate-design-workflow` | docs/workflow/design.md |
-| `skills` | script | `generate-skills` | .github/skills/ (dev skills) |
-| `scripts` | script | `generate-scripts` | scripts/*.sh |
-| `done` | — | — | Bootstrap complete |
+### Discovery (`/discover`)
+
+| Step | Skill | Output |
+|------|-------|--------|
+| `seed_candidates` | `discover-candidates` | docs/discovery/candidates.md |
+| `analyze_candidates` | `analyze-candidates` | docs/discovery/analysis.md |
+| `verify_coverage` | `verify-coverage` | docs/discovery/coverage.md |
+| `lock_l1` | `lock-l1` | docs/discovery/l1-capabilities.md |
+| `define_l2` | `define-l2` | docs/discovery/l2-capabilities.md |
+| `discovery_domain` | `generate-discovery-domain` | docs/discovery/domain-model.md |
+| `blueprint_comparison` | `compare-blueprint` | docs/discovery/blueprint-comparison.md |
+
+### Generation (`/generate`)
+
+| Step | Skill | Output |
+|------|-------|--------|
+| `generate_instructions` | `generate-copilot-instructions` | .github/copilot-instructions.md |
+| `generate_dev_skills` | `generate-brownfield-skills` | .github/skills/ |
+| `generate_dev_prompts` | `generate-brownfield-prompts` | .github/prompts/ |
+| `generate_hooks` | `generate-brownfield-hooks` | .claude/settings.json |
 
 ## Design Principles
 
@@ -103,12 +94,15 @@ When `project.json → adlc = true` (type is `agent` or `ai-system`), the follow
 
 ## Decision Loop
 
-Same as the standard bootstrap decision loop, extended for brownfield:
+Each command manages its own pipeline lock file:
 
-- Read workflow.json → current step + status
-- Look up step in brownfield routing table → agent + skill
-- Check answers.json → if data missing for step, run bootstrap-ask first
-- Run the skill for the current step
-- Save outputs to the correct file
-- Run workflow-update → advance to next step
-- Report what was done and what comes next
+- `/discover` uses `.discovery/pipeline.lock.json`
+- `/generate` uses `.discovery/generate.lock.json`
+
+Loop per pipeline:
+1. Read lock file → identify first non-completed step
+2. Mark step `in_progress`
+3. Run the corresponding skill
+4. Mark `completed` (or `failed` on error)
+5. Advance to next step — no user confirmation needed between steps
+6. Stop on failure with instructions to fix and resume

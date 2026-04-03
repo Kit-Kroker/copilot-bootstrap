@@ -12,12 +12,11 @@ Do NOT wait for user confirmation between steps unless a step requires interacti
 ## Pre-flight
 
 1. Verify `project.json → approach = "brownfield"`.
-2. Read `.project/state/answers.json` (specifically `codebase_setup`: path, language, architecture, database_path, has_frontend).
-3. Check `.discovery/context.json` exists. If missing, tell the user to run `/scan` (or `copilot-bootstrap scan`) first and stop.
-4. Check if `.discovery/pipeline.lock.json` already exists.
+2. Read `.discovery/context.json`. If missing, tell the user to run `/scan` first and stop. Use this file as the source of truth for codebase path, language, architecture, and database presence.
+3. Check if `.discovery/pipeline.lock.json` already exists.
    - If it exists, read it and resume from the first non-completed step.
-   - If it does not exist, tell the user to run `/discover` (or `copilot-bootstrap discover`) first to initialize the pipeline, then stop.
-5. Read `.discovery/pipeline.lock.json` to identify which steps are pending.
+   - If it does not exist, tell the user to run `/discover` first to initialize the pipeline, then stop.
+4. Read `.discovery/pipeline.lock.json` to identify which steps are pending.
 
 Say: "Running brownfield discovery..."
 
@@ -104,7 +103,7 @@ Discovery pipeline finished.
 7 artifacts generated in docs/discovery/. Ready for PRD generation.
 ```
 
-4. Tell the user: "Run `copilot-bootstrap generate` to produce project-specific Copilot configuration."
+4. Tell the user: "Run `/generate` to produce the project specification documents."
 
 ## Rules
 

@@ -1,6 +1,6 @@
 ---
 name: discover
-description: Initialize the brownfield discovery pipeline and run it automatically. Creates pipeline.lock.json (skipping steps whose outputs already exist), then runs all 7 capability extraction steps in sequence. Run after the brownfield bootstrap interview completes.
+description: Initialize the brownfield discovery pipeline and run it automatically. Creates pipeline.lock.json (skipping steps whose outputs already exist), then runs all 7 capability extraction steps in sequence. Run after /scan completes.
 tools: ['read', 'edit']
 ---
 
@@ -10,8 +10,7 @@ Initialize and run the brownfield discovery pipeline.
 
 1. Read `project.json`. If it doesn't exist: "project.json not found. Run `/init` first."
 2. If `approach` is not `"brownfield"`: "Discovery pipeline requires brownfield approach. Current: {approach}. For greenfield, use `/spec`."
-3. Check `.discovery/context.json` exists. If not: "context.json not found. Run `/scan` first (or `copilot-bootstrap scan`)."
-4. Check `.project/state/answers.json` contains `codebase_setup`. If not: "Codebase setup answers missing. Run `/bootstrap` to complete the interview first."
+3. Check `.discovery/context.json` exists. If not: "context.json not found. Run `/scan` first."
 
 ## Initialize or resume lock file
 

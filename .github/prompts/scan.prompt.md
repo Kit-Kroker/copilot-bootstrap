@@ -156,6 +156,5 @@ Tools:
   Formatter:       <value>
   Test runner:     <value>
 
-Next: run `/bootstrap` to start the codebase setup interview.
-The interview will use these detected values — confirm or correct them as you go.
+Next: run `/discover` to extract capabilities from the codebase.
 ```
