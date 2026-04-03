@@ -1,97 +1,97 @@
 ---
 name: generate-brownfield-hooks
-description: Configure Claude Code hooks in .claude/settings.json for a brownfield project. Generates PostToolUse hooks for the detected linter, formatter, and test runner so they run automatically after code edits.
+description: Configure VS Code workspace settings in .vscode/settings.json for a brownfield project. Enables format-on-save and linter integration for the detected stack so the IDE enforces conventions automatically.
 ---
 
 # Skill Instructions
 
-Configure hooks in `.claude/settings.json` based on the detected tools in `.discovery/context.json`.
+Configure `.vscode/settings.json` based on the detected tools in `.discovery/context.json`.
 
 ## Read inputs
 
-- `.discovery/context.json` — tools: linter, formatter, test_runner, package_manager
+- `.discovery/context.json` — tools: linter, formatter, test_runner, package_manager, stack
 - `project.json` — name
-- `.claude/settings.json` — read current contents if it exists (to merge, not overwrite)
+- `.vscode/settings.json` — read current contents if it exists (to merge, not overwrite)
 
-## Hook strategy
+## Settings strategy
 
-Hooks run automatically after Claude edits files. Generate hooks only for tools that are detected (confidence ≥ 0.50 in `.discovery/confidence.json` if present, otherwise use presence in `context.json → tools` as the signal).
+Generate only settings for tools that are actually detected in `context.json → tools`.
 
-### PostToolUse hooks to generate
+### Format-on-save
 
-| Tool | Trigger condition | Command |
-|---|---|---|
-| Linter | `linter` is not null | Run linter on the edited file |
-| Formatter | `formatter` is not null | Run formatter on the edited file |
+If `formatter` is detected, enable:
+```json
+"editor.formatOnSave": true
+```
 
-Do NOT add a test runner hook — tests should be explicit, not automatic.
+And set the default formatter per language:
 
-### Linter commands by tool
+| Formatter | Language IDs | VS Code setting |
+|-----------|-------------|-----------------|
+| `prettier` | javascript, typescript, json, css, html | `"editor.defaultFormatter": "esbenp.prettier-vscode"` |
+| `black` | python | `"editor.defaultFormatter": "ms-python.black-formatter"` |
+| `isort` | python | add `"editor.codeActionsOnSave": {"source.organizeImports": "explicit"}` |
+| `gofmt` | go | `"editor.defaultFormatter": "golang.go"` (gofmt is built in) |
+| `rustfmt` | rust | `"editor.defaultFormatter": "rust-lang.rust-analyzer"` |
 
-| Linter | Command |
+### Linter integration
+
+If `linter` is detected:
+
+| Linter | Setting |
 |--------|---------|
-| `eslint` | `npx eslint --fix {file}` |
-| `ruff` | `ruff check --fix {file}` |
-| `pylint` | `pylint {file}` |
-| `golangci-lint` | `golangci-lint run {file}` |
-| `checkstyle` | (skip — requires build integration, flag to user instead) |
-| `clippy` | `cargo clippy --fix {file}` |
+| `eslint` | `"eslint.enable": true`, `"editor.codeActionsOnSave": {"source.fixAll.eslint": "explicit"}` |
+| `ruff` | `"ruff.enable": true`, `"ruff.fixAll": true` |
+| `pylint` | `"pylint.enabled": true` |
+| `golangci-lint` | `"go.lintTool": "golangci-lint"`, `"go.lintOnSave": "file"` |
+| `clippy` | `"rust-analyzer.check.command": "clippy"` |
 
-### Formatter commands by tool
+### Language-specific extras
 
-| Formatter | Command |
-|-----------|---------|
-| `prettier` | `npx prettier --write {file}` |
-| `black` | `black {file}` |
-| `isort` | `isort {file}` |
-| `gofmt` | `gofmt -w {file}` |
-| `rustfmt` | `rustfmt {file}` |
+If `stack.languages[0]` is Python, also add:
+```json
+"python.languageServer": "Pylance"
+```
 
-## Output: `.claude/settings.json`
+If `stack.languages[0]` is Go, also add:
+```json
+"go.formatTool": "goimports"
+```
 
-Merge the hooks into the existing settings file. If the file doesn't exist, create it.
+## Output: `.vscode/settings.json`
 
-Structure:
+Merge the generated settings into the existing file. If the file doesn't exist, create it.
+
+Structure (example for a Python/ruff/black project):
 ```json
 {
-  "hooks": {
-    "PostToolUse": [
-      {
-        "matcher": "Edit|Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "<linter command with {file} replaced by the actual file path variable>"
-          }
-        ]
-      }
-    ]
-  }
+  "editor.formatOnSave": true,
+  "[python]": {
+    "editor.defaultFormatter": "ms-python.black-formatter",
+    "editor.codeActionsOnSave": {
+      "source.organizeImports": "explicit"
+    }
+  },
+  "ruff.enable": true,
+  "ruff.fixAll": true,
+  "python.languageServer": "Pylance"
 }
 ```
 
-**Important**: In Claude Code hooks, use `$CLAUDE_FILE_PATHS` as the environment variable for the edited file path, not `{file}`. Example:
-```json
-{ "type": "command", "command": "npx eslint --fix $CLAUDE_FILE_PATHS" }
-```
+Use language-scoped keys (`"[python]"`, `"[typescript]"`, etc.) for formatter and codeAction settings to avoid conflicts with other language settings.
 
-Only include hooks for tools that are actually detected. If neither linter nor formatter is detected, write an empty hooks object and note it.
+Only include settings for tools that are actually detected. If neither linter nor formatter is detected, write a minimal valid JSON object and note it.
 
 ## After writing
 
-If hooks were added:
+If settings were added:
 ```
-  ✔ .claude/settings.json — {N} hooks configured
-     - PostToolUse: {linter} on Edit/Write
-     - PostToolUse: {formatter} on Edit/Write
+  ✔ .vscode/settings.json — workspace settings configured
+     - format-on-save: {formatter}
+     - linter: {linter}
 ```
 
 If no tools detected:
 ```
-  ✔ .claude/settings.json — no linter or formatter detected, hooks skipped
-```
-
-If checkstyle was detected:
-```
-  ⚠  checkstyle detected but skipped — requires build integration. Add manually if needed.
+  ✔ .vscode/settings.json — no linter or formatter detected, minimal settings written
 ```

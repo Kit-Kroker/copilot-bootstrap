@@ -27,16 +27,12 @@ Check if `.discovery/generate.lock.json` exists.
     "generate_instructions": {"status": "pending", "output": ".github/copilot-instructions.md"},
     "generate_dev_skills":   {"status": "pending", "output": ".github/skills/"},
     "generate_dev_prompts":  {"status": "pending", "output": ".github/prompts/"},
-    "generate_hooks":        {"status": "pending", "output": ".claude/settings.json"}
+    "generate_hooks":        {"status": "pending", "output": ".vscode/settings.json"}
   }
 }
 ```
 
 **If the lock file already exists**, read it and say "Resuming generate pipeline (started {started_at})..."
-
-## Apply skip-if-exists
-
-For each step whose output file already exists and is non-empty, update its status to `"skipped"` in the lock file before running the pipeline.
 
 ## Run the pipeline
 

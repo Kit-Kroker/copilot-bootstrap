@@ -44,7 +44,7 @@ Execute each step in order. For each step:
 | `generate_instructions` | `generate-copilot-instructions` | `.github/copilot-instructions.md` | Copilot instructions generated |
 | `generate_dev_skills` | `generate-brownfield-skills` | `.github/skills/` | Dev skills generated |
 | `generate_dev_prompts` | `generate-brownfield-prompts` | `.github/prompts/` | Project prompts generated |
-| `generate_hooks` | `generate-brownfield-hooks` | `.claude/settings.json` | Hooks configured |
+| `generate_hooks` | `generate-brownfield-hooks` | `.vscode/settings.json` | VS Code workspace settings configured |
 
 ## Updating the Lock File
 
@@ -68,7 +68,7 @@ Copilot configuration generated.
   ✔ .github/copilot-instructions.md
   ✔ .github/skills/   ({N} skills)
   ✔ .github/prompts/  ({N} prompts)
-  ✔ .claude/settings.json (hooks)
+  ✔ .vscode/settings.json (workspace settings: format-on-save, linter)
 
 Your Copilot setup is ready. Open a PR or start using the skills directly in chat.
 ```
