@@ -17,7 +17,7 @@ Read:
 
 Build a single, traceable representation of what the system actually does. Both L1 capabilities and L2 operations, with each element backed by code-level evidence.
 
-The model answers not just what exists, but where it lives and how it is implemented.
+The model answers not just what exists, but **where it lives and how it is implemented**. Every capability, operation, and boundary must be traceable to specific files, entry points, and entities in the codebase. A capability map without traceability tells you "the system handles Payments." Useful for slides. With traceability, you know Payments spans N files across M packages, owns K entities, exposes N endpoints, and depends on Account Management through a specific service. That is a real boundary — something you can hand to a team and say "this is your migration slice."
 
 ## Output
 
@@ -62,32 +62,48 @@ Legend: OWNS = source of truth, CREATES = creates instances, MANAGES = full CRUD
 
 ## Capability Detail
 
-### BC-001: {Capability Name}
+Use this format for each L1 capability entry. It must be self-contained — a team handed a single entry should know exactly what to own, where to find it, and what it depends on.
 
-**Description**: {2-3 sentences}
-**Code Footprint**: {N} files, {N} LOC across {packages}
-**Owned Entities**: {list with tables}
+```
+BC-{NNN}: {Capability Name}                              {L2 count} L2s
+─────────────────────────────────────────────────────────────────────────
+{2-3 sentence description of what this capability orchestrates.
+ Name external integrations if present.}
 
-#### L2 Operations
+L2 Operations:
 
-**BC-001-01: {L2 Name}**
-- Code: {package/module path}
-- Entities: {OWNS EntityA, CREATES EntityB}
-- Operations:
-  - {operation} ({endpoint or trigger})
-  - {operation}
-- External: {third-party dependencies}
+  BC-{NNN}-01: {L2 Name}
+    Code:     {package/module path}
+    Entities: {OWNS EntityA, CREATES EntityB, MANAGES EntityC}
+    Operations:
+      - {operation description} ({HTTP method} {endpoint} or {trigger type})
+      - {operation description}
+    External: {third-party service} ({purpose}) — or omit if none
 
-**BC-001-02: {L2 Name}**
-- {same structure}
+  BC-{NNN}-02: {L2 Name}
+    Code:     {package/module path}
+    Entities: {OWNS EntityD, MANAGES EntityE}
+    Operations:
+      - {operation description}
+    External: {third-party service} ({purpose}) — or omit if none
 
-#### Cross-Capability Dependencies
-- → BC-002: {dependency description}
-- → BC-003: {dependency description}
+Cross-Capability Dependencies:
+  → BC-{NNN} {Capability Name} ({what is shared or created})
+  → BC-{NNN} {Capability Name} ({what is shared or created})
+```
+
+Entity ownership notation:
+- **OWNS** — source of truth, single writer
+- **CREATES** — creates new instances; another capability owns the record
+- **MANAGES** — full CRUD via an external API (no local table)
+- **TRACKS** — reads and monitors state owned elsewhere
+- **READS** — read-only consumer
+
+Omit `Cross-Capability Dependencies` block if there are none.
 
 ---
 
-{Repeat for each L1 capability}
+{Repeat the full entry block for each L1 capability}
 
 ## Dependency Graph
 

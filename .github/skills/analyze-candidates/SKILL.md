@@ -49,7 +49,9 @@ Force each candidate into exactly one action:
 - A delivery channel (mobile app, web portal) is NOT a capability — it's how capabilities are accessed
 - Infrastructure (logging, config, auth middleware) is NOT a capability — it's cross-cutting
 - If it has its own microservice but is a parameter variation of another capability (e.g. "scheduled payments" = payments + frequency), MERGE it
-- If deployment boundaries and business boundaries disagree, trust the business lens
+- **If deployment boundaries and business boundaries disagree, trust the business lens.** Systems deploy services based on technical constraints; business capabilities are defined by business meaning. A service boundary is not a capability boundary.
+
+**Warning — a half-right output is more dangerous than a wrong one.** A completely wrong model gets challenged in the first review. A model that correctly identifies half the capabilities and misclassifies the rest reads professionally, looks credible, and gets nodded through unless someone in the room knows the domain. When in doubt between CONFIRM and FLAG, prefer FLAG. Explicit ambiguity is more useful than false confidence.
 
 ### A2.3 — Consolidate Actions
 

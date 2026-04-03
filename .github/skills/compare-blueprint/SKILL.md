@@ -43,6 +43,8 @@ For each expected industry capability NOT found in the code:
 - Is it a genuine gap in the codebase?
 - Is it out of scope for this system?
 
+**The missing category is the most useful output of this step.** It drives targeted questions — not assumptions. A missing fraud detection capability changes the conversation: it tells the team to ask "is this handled externally?" before concluding it's absent. This is different from validation — the code remains the source of truth. The comparison adds context for modernization planning.
+
 ### A7.3 — Classify Results
 
 Categorize each capability:

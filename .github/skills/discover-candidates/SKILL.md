@@ -12,6 +12,16 @@ Read:
 - `.project/state/answers.json` (specifically `codebase_setup`: path, language, architecture, database_path, reports, has_frontend)
 - The existing codebase at the configured path
 
+## Pre-Generated External Inputs
+
+Check `codebase_setup.reports` for any externally generated analysis files the user has provided:
+- Package/module exports from tools like nDepend, Structure101, or JetBrains analyzers
+- Database schemas provided by a DBA (SQL DDL, ER diagrams, or schema dumps)
+- Entry point lists from IDE analyzers or API gateway exports
+- Architecture notes or existing documentation
+
+When pre-generated inputs are present, use them as high-quality anchoring signals in the relevant sub-steps. These inputs do not replace the analysis — they reduce guesswork and improve confidence ratings. Document which steps used pre-generated inputs in the output.
+
 ## Signal Extraction (6 sub-steps)
 
 ### A1.1 — Package Structure Analysis
