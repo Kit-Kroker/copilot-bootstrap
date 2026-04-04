@@ -31,9 +31,10 @@ project.json → approach = "brownfield"
 ### Generation (`/generate`)
 8. generate_instructions
 9. generate_dev_skills
-10. generate_dev_prompts
-11. generate_hooks
-12. done
+10. generate_stack_skills
+11. generate_dev_prompts
+12. generate_hooks
+13. done
 
 ## ADLC Extended Steps
 
@@ -56,7 +57,8 @@ Not applicable to the brownfield flow. Brownfield generates Copilot configuratio
 Generates configuration artifacts tailored to the detected stack and discovered domain. Does NOT re-generate analysis docs — those come from the discovery phase.
 
 - **generate_instructions**: Generate `.github/copilot-instructions.md` — stack-specific, domain-aware AI instructions
-- **generate_dev_skills**: Generate `.github/skills/` — dev skills matching the actual stack (e.g., `add-endpoint`, `add-migration`, `add-test`)
+- **generate_dev_skills**: Generate `.github/skills/` — operational dev skills matching the actual stack (e.g., `add-endpoint`, `add-migration`, `add-test`)
+- **generate_stack_skills**: Generate `.github/skills/` — stack-specific procedural skills with imperative instructions for implementing, refactoring, and documenting code in the project's exact technology stack (e.g., `modernize-go-handler`, `modernize-python-module`, `write-docs`, `add-migration`)
 - **generate_dev_prompts**: Generate `.github/prompts/` — slash commands for common operations on this codebase
 - **generate_hooks**: Configure `.claude/settings.json` — PostToolUse hooks for the detected linter and formatter
 - **done**: Bootstrap complete
@@ -81,6 +83,7 @@ Generates configuration artifacts tailored to the detected stack and discovered 
 |------|-------|--------|
 | `generate_instructions` | `generate-copilot-instructions` | .github/copilot-instructions.md |
 | `generate_dev_skills` | `generate-brownfield-skills` | .github/skills/ |
+| `generate_stack_skills` | `generate-stack-skills` | .github/skills/ |
 | `generate_dev_prompts` | `generate-brownfield-prompts` | .github/prompts/ |
 | `generate_hooks` | `generate-brownfield-hooks` | .claude/settings.json |
 
