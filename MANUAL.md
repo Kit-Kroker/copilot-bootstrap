@@ -547,22 +547,23 @@ Outputs are tailored to the actual stack and domain — not generic templates. R
 ---
 
 #### `/finish`
-Remove bootstrap scaffolding after `/generate` completes. Leaves only the project agent, generated skills, generated prompts, VS Code settings, and all docs.
+Remove bootstrap scaffolding after `/generate` completes. Works for both greenfield and brownfield. Leaves only the project agent, generated skills, generated prompts, VS Code settings, and all docs.
 
 ```
 /finish
 ```
 
-Pre-flight: verifies `.github/agents/project.agent.md`, `.github/copilot-instructions.md`, and at least one project skill exist before deleting anything. Shows a confirmation summary (what will be deleted, what will be kept) and waits for "yes" before proceeding.
+Pre-flight: verifies `.github/agents/project.agent.md`, `.github/copilot-instructions.md`, and at least one project-specific prompt exist before deleting anything. Shows a confirmation summary (what will be deleted, what will be kept) and waits for "yes" before proceeding.
 
 **Deleted by `/finish`:**
-- `.discovery/` — scan and pipeline state
-- `.project/` — workflow and answers state
+- Greenfield: `.greenfield/` — interview answers, context, pipeline state
+- Brownfield: `.discovery/` — scan outputs, pipeline state
+- Both: `.project/` — workflow and answers state
 - `project.json`, `MANUAL.md`
 - `docs/workflow/` — bootstrap workflow docs
 - `scripts/` — bootstrap init/next/step/ask scripts
 - All bootstrap agents (bootstrap, analyst, architect, designer, spec, script, evaluator, ops, discovery)
-- All bootstrap pipeline skills (39 skill directories)
+- All bootstrap pipeline and generate skills (44 skill directories)
 - All bootstrap prompts (16 prompt files including `finish.prompt.md` itself)
 
 **Kept by `/finish`:**
