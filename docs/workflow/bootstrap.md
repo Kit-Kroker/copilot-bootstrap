@@ -23,9 +23,10 @@ This is the default workflow for greenfield projects (building from scratch). Wh
 After `/spec` completes, run `/generate` to produce Copilot configuration:
 
 14. generate_instructions
-15. generate_dev_prompts
-16. generate_hooks
-17. generate_project_agent
+15. generate_dev_skills
+16. generate_dev_prompts
+17. generate_hooks
+18. generate_project_agent
 
 ## ADLC Extended Steps
 

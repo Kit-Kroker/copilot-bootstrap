@@ -54,8 +54,9 @@ Remove bootstrap scaffolding from this project, leaving only the generated proje
 `generate-stitch-screens`, `generate-wireframes`, `run-spec-pipeline`,
 `generate-copilot-instructions`, `generate-brownfield-skills`, `generate-brownfield-prompts`,
 `generate-brownfield-hooks`, `generate-project-agent`, `run-generate-pipeline`,
-`generate-greenfield-copilot-instructions`, `generate-greenfield-prompts`,
-`generate-greenfield-hooks`, `generate-greenfield-agent`, `run-greenfield-generate-pipeline`
+`generate-greenfield-copilot-instructions`, `generate-greenfield-skills`,
+`generate-greenfield-prompts`, `generate-greenfield-hooks`,
+`generate-greenfield-agent`, `run-greenfield-generate-pipeline`
 
 **Bootstrap prompts** (`.github/prompts/` files):
 `init.prompt.md`, `bootstrap.prompt.md`, `scan.prompt.md`, `discover.prompt.md`,
@@ -184,6 +185,7 @@ rm -rf .github/skills/generate-brownfield-hooks/
 rm -rf .github/skills/generate-project-agent/
 rm -rf .github/skills/run-generate-pipeline/
 rm -rf .github/skills/generate-greenfield-copilot-instructions/
+rm -rf .github/skills/generate-greenfield-skills/
 rm -rf .github/skills/generate-greenfield-prompts/
 rm -rf .github/skills/generate-greenfield-hooks/
 rm -rf .github/skills/generate-greenfield-agent/

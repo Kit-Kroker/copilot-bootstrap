@@ -143,6 +143,7 @@ This produces project-specific Copilot config tailored to your chosen stack:
 
 ```
 .github/copilot-instructions.md         project context: stack, entities, capabilities, conventions
+.github/skills/                         dev skills for the actual stack (e.g. add-endpoint, add-migration)
 .github/prompts/                        slash commands for common operations on this project
 .github/agents/project.agent.md        project-specific development agent
 .vscode/settings.json                  workspace settings: format-on-save, linter integration
@@ -313,7 +314,7 @@ After `copilot-bootstrap init` copies the framework files to your project, the e
 | `/bootstrap idea: <text>` | Start the interview. Collects answers for idea, project info, users, features, tech, complexity. |
 | `/build-context` | Derive `context.json`, `decisions.json`, `scope.json` from interview answers. |
 | `/spec` | Initialize the spec pipeline and run all generation steps automatically. |
-| `/generate` | Generate Copilot configuration from spec outputs: instructions, prompts, hooks, and project agent. |
+| `/generate` | Generate Copilot configuration from spec outputs: instructions, dev skills, prompts, hooks, and project agent. |
 | `/finish` | Remove bootstrap scaffolding after `/generate` completes. Keeps only the project agent, generated skills/prompts, and docs. |
 
 **Brownfield workflow**

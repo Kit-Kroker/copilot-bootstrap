@@ -123,7 +123,7 @@ This framework uses all VS Code Copilot customization types:
     Designer → docs/design/overview.md, ia.md, flows.md
     Spec     → docs/spec/api.md
     Script   → .github/skills/ (dev skills)
-/generate (chat)     → .github/copilot-instructions.md, prompts/, agents/, .vscode/settings.json
+/generate (chat)     → .github/copilot-instructions.md, skills/, prompts/, agents/, .vscode/settings.json
 ```
 
 **Brownfield**:
@@ -238,7 +238,7 @@ When `brownfield`: there is no interview. `/scan` auto-detects the stack; `/disc
 | Interview | `/bootstrap idea: <text>` in Copilot Chat | `.greenfield/answers.json` |
 | Context build | `/build-context` in Copilot Chat | `.greenfield/context.json`, `decisions.json`, `scope.json` |
 | Spec pipeline | `/spec` in Copilot Chat | `docs/analysis/`, `docs/domain/`, `docs/design/`, `docs/spec/`, `.github/skills/` |
-| Generate | `/generate` in Copilot Chat | `.github/copilot-instructions.md`, `.github/prompts/`, `.github/agents/project.agent.md`, `.vscode/settings.json` |
+| Generate | `/generate` in Copilot Chat | `.github/copilot-instructions.md`, `.github/skills/`, `.github/prompts/`, `.github/agents/project.agent.md`, `.vscode/settings.json` |
 
 #### Interview steps (6 steps)
 
@@ -269,11 +269,12 @@ When `brownfield`: there is no interview. `/scan` auto-detects the stack; `/disc
 
 Steps that already have output files are automatically skipped (resumable from any point).
 
-#### Generation steps (4 steps — run after spec pipeline via `/generate`)
+#### Generation steps (5 steps — run after spec pipeline via `/generate`)
 
 | Step | Skill | Output |
 |------|-------|--------|
 | `generate_instructions` | `generate-greenfield-copilot-instructions` | `.github/copilot-instructions.md` |
+| `generate_dev_skills` | `generate-greenfield-skills` | `.github/skills/` |
 | `generate_dev_prompts` | `generate-greenfield-prompts` | `.github/prompts/` |
 | `generate_hooks` | `generate-greenfield-hooks` | `.vscode/settings.json` |
 | `generate_project_agent` | `generate-greenfield-agent` | `.github/agents/project.agent.md` |
@@ -688,14 +689,16 @@ Used by `/generate` when `approach = greenfield`. Reads from `.greenfield/contex
 
 | Skill | Step | Output |
 |-------|------|--------|
-| `run-greenfield-generate-pipeline` | orchestrator | runs all 4 generation steps in sequence |
+| `run-greenfield-generate-pipeline` | orchestrator | runs all 5 generation steps in sequence |
 | `generate-greenfield-copilot-instructions` | `generate_instructions` | `.github/copilot-instructions.md` |
+| `generate-greenfield-skills` | `generate_dev_skills` | `.github/skills/` |
 | `generate-greenfield-prompts` | `generate_dev_prompts` | `.github/prompts/` |
 | `generate-greenfield-hooks` | `generate_hooks` | `.vscode/settings.json` |
 | `generate-greenfield-agent` | `generate_project_agent` | `.github/agents/project.agent.md` |
 
 **What each skill produces:**
 - `generate-greenfield-copilot-instructions` — project identity, chosen stack, architecture, domain entities, capability map, coding conventions, and hard constraints for this specific stack
+- `generate-greenfield-skills` — dev skills derived from the chosen stack (e.g. `add-endpoint` for FastAPI, `add-migration` for Prisma, `add-module` for NestJS); max 12 skills, plus up to 3 capability-derived skills; enhances stubs from the spec pipeline rather than duplicating them
 - `generate-greenfield-prompts` — slash commands for common operations: `/status`, `/review-code`, `/implement-capability`, `/scaffold-feature`, plus conditional prompts (DB migrations, component review, lint-fix) and 3 capability-derived prompts
 - `generate-greenfield-hooks` — VS Code workspace settings in `.vscode/settings.json` wiring the chosen linter and formatter to format-on-save
 - `generate-greenfield-agent` — the primary development agent for the project: capability list, entity ownership, available skills, and working rules derived from the spec docs
@@ -1017,6 +1020,7 @@ Checks: valid JSON, required fields present, `status` is a valid value, `project
     generate-brownfield-hooks/SKILL.md**
     run-greenfield-generate-pipeline/SKILL.md
     generate-greenfield-copilot-instructions/SKILL.md
+    generate-greenfield-skills/SKILL.md
     generate-greenfield-prompts/SKILL.md
     generate-greenfield-hooks/SKILL.md
     generate-greenfield-agent/SKILL.md

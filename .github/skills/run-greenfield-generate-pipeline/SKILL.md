@@ -42,6 +42,7 @@ Execute each step in order. For each step:
 | Step | Skill | Output | Display Label |
 |------|-------|--------|---------------|
 | `generate_instructions` | `generate-greenfield-copilot-instructions` | `.github/copilot-instructions.md` | Copilot instructions generated |
+| `generate_dev_skills` | `generate-greenfield-skills` | `.github/skills/` | Dev skills generated |
 | `generate_dev_prompts` | `generate-greenfield-prompts` | `.github/prompts/` | Project prompts generated |
 | `generate_hooks` | `generate-greenfield-hooks` | `.vscode/settings.json` | VS Code workspace settings configured |
 | `generate_project_agent` | `generate-greenfield-agent` | `.github/agents/project.agent.md` | Project agent generated |
@@ -66,6 +67,7 @@ After each state change, edit `.greenfield/generate.lock.json` directly.
 Copilot configuration generated.
 
   ✔ .github/copilot-instructions.md
+  ✔ .github/skills/   ({N} skills)
   ✔ .github/prompts/  ({N} prompts)
   ✔ .vscode/settings.json (workspace settings: format-on-save, linter)
   ✔ .github/agents/project.agent.md
