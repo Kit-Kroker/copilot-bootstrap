@@ -67,12 +67,7 @@ Answer 6 questions conversationally (idea, project info, users, features, tech, 
 ```
 /build-context   — derives context.json, decisions.json, scope.json from your answers
 /spec            — creates the pipeline lock and runs all spec generation steps automatically
-```
-
-When the pipeline finishes, run the generator once:
-
-```sh
-copilot-bootstrap generate
+/generate        — generates Copilot configuration tailored to your stack and project domain
 ```
 
 ### Brownfield — existing codebase
@@ -136,25 +131,21 @@ Spec        → docs/spec/api.md
 Script      → .github/skills/ (dev scaffolding skills)
 ```
 
-**Step 4 — Run generator**
+**Step 4 — Generate Copilot configuration**
 
-When `/spec` finishes, run:
+When `/spec` finishes, run in Copilot Chat:
 
-```sh
-copilot-bootstrap generate
+```
+/generate
 ```
 
 This produces project-specific Copilot config tailored to your chosen stack:
 
 ```
-.github/copilot-instructions.md         project-wide context
-.github/instructions/                   language + framework + architecture + decisions
-.github/agents/                         backend, frontend, test, refactor, devops, scaffold
-.github/skills/                         build, test, lint, format, deploy
-.github/prompts/                        /new-feature, /fix-bug, /write-tests, /review-pr,
-                                        /scaffold-project, /implement-feature
-.vscode/mcp.json                        MCP server config
-.github/docs/getting-started.md         onboarding guide for this project
+.github/copilot-instructions.md         project context: stack, entities, capabilities, conventions
+.github/prompts/                        slash commands for common operations on this project
+.github/agents/project.agent.md        project-specific development agent
+.vscode/settings.json                  workspace settings: format-on-save, linter integration
 ```
 
 **Step 5 — Start building**
@@ -289,11 +280,8 @@ copilot-bootstrap scan              # detect stack and write .discovery/context.
 copilot-bootstrap discover          # initialise the brownfield discovery pipeline
 copilot-bootstrap discovery-status  # show discovery pipeline progress
 
-# Greenfield generator (CLI — run after /spec)
-copilot-bootstrap generate          # generate Copilot config from .greenfield/context.json
-copilot-bootstrap generate status   # show generator progress
-copilot-bootstrap generate --force  # re-run all generators
-# Note: brownfield generation runs in Copilot Chat via /generate
+# Generation (both approaches — primary interface is /generate in Copilot Chat)
+copilot-bootstrap generate-status   # show generator progress
 
 # Navigation (manual / legacy)
 copilot-bootstrap sync              # update framework files to latest version
@@ -307,7 +295,7 @@ copilot-bootstrap validate          # validate state file integrity
 
 ## Copilot Chat
 
-After `copilot-bootstrap init` copies the framework files to your project, the entire **brownfield** workflow runs from Copilot Chat — no terminal needed after init. For **greenfield**, `copilot-bootstrap generate` (CLI) runs after `/spec` finishes.
+After `copilot-bootstrap init` copies the framework files to your project, the entire workflow runs from Copilot Chat — no terminal needed after init. This applies to both greenfield and brownfield projects.
 
 ### Slash commands
 
@@ -325,6 +313,8 @@ After `copilot-bootstrap init` copies the framework files to your project, the e
 | `/bootstrap idea: <text>` | Start the interview. Collects answers for idea, project info, users, features, tech, complexity. |
 | `/build-context` | Derive `context.json`, `decisions.json`, `scope.json` from interview answers. |
 | `/spec` | Initialize the spec pipeline and run all generation steps automatically. |
+| `/generate` | Generate Copilot configuration from spec outputs: instructions, prompts, hooks, and project agent. |
+| `/finish` | Remove bootstrap scaffolding after `/generate` completes. Keeps only the project agent, generated skills/prompts, and docs. |
 
 **Brownfield workflow**
 

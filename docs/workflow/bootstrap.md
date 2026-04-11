@@ -18,6 +18,15 @@ This is the default workflow for greenfield projects (building from scratch). Wh
 12. scripts
 13. done
 
+### Generation (`/generate`)
+
+After `/spec` completes, run `/generate` to produce Copilot configuration:
+
+14. generate_instructions
+15. generate_dev_prompts
+16. generate_hooks
+17. generate_project_agent
+
 ## ADLC Extended Steps
 
 When `project.json → adlc = true` (type is `agent` or `ai-system`), the following steps activate after `done`:
