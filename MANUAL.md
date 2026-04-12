@@ -20,11 +20,12 @@ Supports **greenfield** (build from scratch) and **brownfield** (modernize exist
 10. [File Structure](#10-file-structure)
 11. [Greenfield Pipeline](#11-greenfield-pipeline)
 12. [Brownfield Discovery Pipeline](#12-brownfield-discovery-pipeline)
-13. [Generator Orchestrator](#13-generator-orchestrator)
-14. [Google Stitch Integration](#14-google-stitch-integration)
-15. [ADLC Extended Workflow](#15-adlc-extended-workflow)
-16. [Extending the Framework](#16-extending-the-framework)
-17. [Troubleshooting](#17-troubleshooting)
+13. [EDCR Security Assessment Pipeline](#13-edcr-security-assessment-pipeline)
+14. [Generator Orchestrator](#14-generator-orchestrator)
+15. [Google Stitch Integration](#15-google-stitch-integration)
+16. [ADLC Extended Workflow](#16-adlc-extended-workflow)
+17. [Extending the Framework](#17-extending-the-framework)
+18. [Troubleshooting](#18-troubleshooting)
 
 ---
 
@@ -84,13 +85,15 @@ code .
 In Copilot Chat — the full workflow runs here, no terminal needed after init:
 
 ```
-/init            — initialize project state as brownfield
-/scan            — auto-detect language, framework, database, tools, architecture
-/discover        — run all 7 capability extraction steps automatically
-/generate        — generate Copilot configuration from the detected stack and discovered domain
+/init            — initialize project state as brownfield (includes security scope setup)
+/scan            — auto-detect language, framework, database, tools, architecture + extract security signals
+/discover        — run all 7 capability extraction steps + attach security context to each capability
+/assess          — STRIDE threat modeling, vulnerability detection, control mapping, risk scoring
+/generate        — generate AI-ready security context packages + Copilot configuration
+/finish          — generate security report + remove bootstrap scaffolding
 ```
 
-**No interview.** `/scan` captures the stack; `/discover` extracts capabilities from the code. `/generate` produces configuration specific to what was found — dev skills for the actual stack, prompts referencing real capabilities, hooks wiring the detected tools.
+**No interview.** `/scan` captures the stack and security signals; `/discover` extracts capabilities and attaches security context; `/assess` produces per-capability threat models and risk scores; `/generate` and `/finish` produce the final artifacts.
 
 ---
 
@@ -129,10 +132,12 @@ This framework uses all VS Code Copilot customization types:
 **Brownfield**:
 
 ```
-/init (chat)         → project.json (approach: brownfield)
-/scan (chat)         → .discovery/context.json + confidence.json
-/discover (chat)     → creates pipeline.lock.json, then runs Discovery (7 steps)
-/generate (chat)     → .github/copilot-instructions.md, skills/, prompts/, .claude/settings.json
+/init (chat)         → project.json (approach: brownfield) + security_scope in answers.json
+/scan (chat)         → .discovery/context.json + confidence.json + docs/security/security-signals.json
+/discover (chat)     → creates pipeline.lock.json, then runs Discovery (7 steps + attach-security-context)
+/assess (chat)       → docs/security/threats/, vulnerabilities/, controls/, risk-scores.json
+/generate (chat)     → docs/security/generate/ + .github/copilot-instructions.md, skills/, prompts/, .claude/settings.json
+/finish (chat)       → docs/security/security-report.md + domain-model-secured.md, then removes scaffolding
 ```
 
 **ADLC extension** (appends when type = `agent` or `ai-system`):
@@ -171,6 +176,7 @@ Brownfield uses a discovery chain instead of the interview:
 
 ```
 .discovery/context.json (from /scan)
+  └─► docs/security/security-signals.json (from /scan, parallel)
   └─► docs/discovery/candidates.md
         └─► docs/discovery/analysis.md
               └─► docs/discovery/coverage.md
@@ -178,11 +184,18 @@ Brownfield uses a discovery chain instead of the interview:
                           └─► docs/discovery/l2-capabilities.md
                                 └─► docs/discovery/domain-model.md
                                       └─► docs/discovery/blueprint-comparison.md
-                                            └─► .github/copilot-instructions.md
-                                                .github/skills/ (stack-specific dev skills)
-                                                .github/prompts/ (domain-aware slash commands)
-                                                .github/agents/project.agent.md (project development agent)
-                                                .vscode/settings.json (tool hooks)
+                                            └─► docs/security/capability-security-contexts.json
+                                                  └─► docs/security/threats/ (/assess)
+                                                        └─► docs/security/vulnerabilities/
+                                                              └─► docs/security/controls/
+                                                                    └─► docs/security/risk-scores.json
+                                                                          └─► docs/security/generate/ (/generate)
+                                                                                └─► docs/security/security-report.md (/finish)
+                                                                                    .github/copilot-instructions.md
+                                                                                    .github/skills/
+                                                                                    .github/prompts/
+                                                                                    .github/agents/project.agent.md
+                                                                                    .claude/settings.json
 ```
 
 ADLC extends with:
@@ -314,6 +327,13 @@ Steps that already have output files are automatically skipped (resumable from a
 
 ### Brownfield workflow (replaces greenfield entirely — no interview)
 
+**Scan phase** (`/scan`) — runs parallel signal extraction:
+
+| Step | Skill | Output |
+|------|-------|--------|
+| `seed_candidates` | `discover-candidates` | docs/discovery/candidates.md |
+| `scan_security` | `scan-security-signals` | docs/security/security-signals.json |
+
 **Discovery phase** (`/discover`):
 
 | # | Step | Skill | Output |
@@ -325,17 +345,34 @@ Steps that already have output files are automatically skipped (resumable from a
 | 5 | `define_l2` | `define-l2` | docs/discovery/l2-capabilities.md |
 | 6 | `discovery_domain` | `generate-discovery-domain` | docs/discovery/domain-model.md |
 | 7 | `blueprint_comparison` | `compare-blueprint` | docs/discovery/blueprint-comparison.md |
+| 8 | `attach_security_context` | `attach-security-context` | docs/security/capability-security-contexts.json |
+
+**Security assessment phase** (`/assess`):
+
+| # | Step | Skill | Output |
+|---|------|-------|--------|
+| 1 | `threat_model` | `threat-model` | docs/security/threats/BC-{NNN}.json + threat-summary.md |
+| 2 | `vulnerability_detection` | `detect-vulnerabilities` | docs/security/vulnerabilities/catalog.json + summary |
+| 3 | `map_controls` | `map-controls` | docs/security/controls/control-map.json + summary |
+| 4 | `score_risks` | `score-risks` | docs/security/risk-scores.json + cross-capability-risks.json + gaps.json |
 
 **Generation phase** (`/generate`):
 
 | # | Step | Skill | Output |
 |---|------|-------|--------|
-| 8 | `generate_instructions` | `generate-copilot-instructions` | .github/copilot-instructions.md |
-| 9 | `generate_dev_skills` | `generate-brownfield-skills` | .github/skills/ |
-| 10 | `generate_stack_skills` | `generate-stack-skills` | .github/skills/ |
-| 11 | `generate_dev_prompts` | `generate-brownfield-prompts` | .github/prompts/ |
-| 12 | `generate_hooks` | `generate-brownfield-hooks` | .vscode/settings.json |
-| 13 | `generate_project_agent` | `generate-project-agent` | .github/agents/project.agent.md |
+| 1 | `generate_security_contexts` | `generate-security-contexts` | docs/security/generate/ (AI context packages + remediation prompts + spec seeds) |
+| 2 | `generate_instructions` | `generate-copilot-instructions` | .github/copilot-instructions.md |
+| 3 | `generate_dev_skills` | `generate-brownfield-skills` | .github/skills/ |
+| 4 | `generate_stack_skills` | `generate-stack-skills` | .github/skills/ |
+| 5 | `generate_dev_prompts` | `generate-brownfield-prompts` | .github/prompts/ |
+| 6 | `generate_hooks` | `generate-brownfield-hooks` | .vscode/settings.json |
+| 7 | `generate_project_agent` | `generate-project-agent` | .github/agents/project.agent.md |
+
+**Finish phase** (`/finish`) — report generation before cleanup:
+
+| Step | Skill | Output |
+|------|-------|--------|
+| `security_report` | `generate-security-report` | docs/security/security-report.md, security-risk-map.json, threat-catalog.json, domain-model-secured.md |
 
 **Cleanup** (`/finish`):
 
@@ -463,7 +500,7 @@ Type `/` in Copilot Chat to access these commands. All commands run entirely in 
 ### Setup
 
 #### `/init`
-Initialize a new project. Creates `.project/state/workflow.json`, `.project/state/answers.json`, `project.json`, and `.greenfield/answers.json`. Safe — exits if state already exists.
+Initialize a new project. Creates `.project/state/workflow.json`, `.project/state/answers.json`, `project.json`, and `.greenfield/answers.json`. For brownfield projects, also collects security scope (standard, compliance targets, risk tolerance) and creates the `docs/security/` directory structure. Safe — exits if state already exists.
 
 ```
 /init
@@ -522,13 +559,30 @@ Requires `project.json → approach = "greenfield"` and `.greenfield/context.jso
 ### Brownfield workflow
 
 #### `/discover`
-Initialize the brownfield discovery pipeline and run it automatically. Creates `.discovery/pipeline.lock.json`, applies skip-if-exists, then runs all 7 capability extraction steps in sequence.
+Initialize the brownfield discovery pipeline and run it automatically. Creates `.discovery/pipeline.lock.json`, applies skip-if-exists, then runs all 7 capability extraction steps plus security context attachment in sequence.
 
 ```
 /discover
 ```
 
-Requires `project.json → approach = "brownfield"` and `.discovery/context.json` (from `/scan`). No interview needed. Re-run to resume after an interruption.
+Requires `project.json → approach = "brownfield"` and `.discovery/context.json` (from `/scan`). Also requires `docs/security/security-signals.json` (from `/scan`) for security context attachment. No interview needed. Re-run to resume after an interruption.
+
+---
+
+#### `/assess`
+Run the EDCR security assessment pipeline. Applies STRIDE threat modeling to each capability, detects and classifies vulnerabilities, maps existing controls, and calculates per-capability risk scores with cross-capability systemic risk analysis. **Brownfield only.**
+
+```
+/assess
+```
+
+Requires `docs/security/capability-security-contexts.json` (from `/discover`). Runs 4 steps in sequence: threat modeling, vulnerability detection, control mapping, risk scoring. Outputs all artifacts to `docs/security/`. Re-run to resume after an interruption.
+
+Steps:
+- `threat_model` → `docs/security/threats/BC-{NNN}.json` + `threat-summary.md`
+- `vulnerability_detection` → `docs/security/vulnerabilities/catalog.json` + summary
+- `map_controls` → `docs/security/controls/control-map.json` + summary
+- `score_risks` → `docs/security/risk-scores.json`, `cross-capability-risks.json`, `gaps.json`
 
 ---
 
@@ -541,7 +595,7 @@ Generate project-specific Copilot configuration. Works for both greenfield and b
 
 **Greenfield**: requires `.greenfield/context.json` and `docs/analysis/capabilities.md` (from `/spec`). Creates `.greenfield/generate.lock.json` and runs 4 steps: copilot instructions, project prompts, VS Code workspace settings, and the project agent.
 
-**Brownfield**: requires `.discovery/context.json` and `docs/discovery/l1-capabilities.md` (from `/discover`). Creates `.discovery/generate.lock.json` and runs 5 steps: copilot instructions, dev skills, stack skills, project prompts, workspace settings, and the project agent.
+**Brownfield**: requires `.discovery/context.json` and `docs/discovery/l1-capabilities.md` (from `/discover`). Creates `.discovery/generate.lock.json` and runs: security context packages (if `/assess` was run), copilot instructions, dev skills, stack skills, project prompts, workspace settings, and the project agent.
 
 Outputs are tailored to the actual stack and domain — not generic templates. Re-run to resume after an interruption.
 
@@ -682,6 +736,33 @@ Used by `/discover` when `approach = brownfield`.
 | `define-l2` | `define_l2` | `docs/discovery/l2-capabilities.md` |
 | `generate-discovery-domain` | `discovery_domain` | `docs/discovery/domain-model.md` |
 | `compare-blueprint` | `blueprint_comparison` | `docs/discovery/blueprint-comparison.md` |
+
+### EDCR security assessment skills
+
+Used by `/assess` when `approach = brownfield`. Each skill checks for pre-generated input (skip if output exists) so externally generated security analysis can be fed in.
+
+| Skill | Step | Output |
+|-------|------|--------|
+| `scan-security-signals` | `scan_security` | `docs/security/security-signals.json` |
+| `attach-security-context` | `attach_security_context` | `docs/security/capability-security-contexts.json` |
+| `threat-model` | `threat_model` | `docs/security/threats/BC-{NNN}.json` + `threat-summary.md` |
+| `detect-vulnerabilities` | `vulnerability_detection` | `docs/security/vulnerabilities/catalog.json` + summary |
+| `map-controls` | `map_controls` | `docs/security/controls/control-map.json` + summary |
+| `score-risks` | `score_risks` | `docs/security/risk-scores.json`, `cross-capability-risks.json`, `gaps.json` |
+| `generate-security-contexts` | `generate_security_contexts` | `docs/security/generate/` |
+| `generate-security-report` | `security_report` | `docs/security/security-report.md`, `security-risk-map.json`, `threat-catalog.json`, `domain-model-secured.md` |
+
+**What each skill produces:**
+- `scan-security-signals` — 4 signal sources (SS1–SS4): authentication/authorization patterns, dependency vulnerability flags, configuration risks, data sensitivity classification. Writes a single structured JSON with confidence levels and file references.
+- `attach-security-context` — maps all security signals to each L1 and L2 capability; detects trust boundaries (where capabilities cross to external services or change privilege levels)
+- `threat-model` — STRIDE threat model per capability, prioritized by criticality; one JSON file per capability plus a summary markdown
+- `detect-vulnerabilities` — classifies each finding as confirmed (code evidence), probable (strong pattern), or potential (theoretical); maps every finding to a capability and code location
+- `map-controls` — inventories existing controls from security signals, maps them to threats and vulnerabilities, identifies gaps where HIGH/CRITICAL threats have no mitigation
+- `score-risks` — likelihood × impact × exposure composite score per capability; also detects shared vulnerabilities, cascading failure paths, and compliance gaps
+- `generate-security-contexts` — per-capability AI context packages (self-contained files for Cursor/Copilot/Claude Code), targeted remediation prompts with file:line references, and spec seeds for high-risk capabilities
+- `generate-security-report` — executive summary report, machine-readable risk map, complete threat catalog, and the domain model enriched with security overlay per capability
+
+---
 
 ### Greenfield generation skills
 
@@ -1012,6 +1093,14 @@ Checks: valid JSON, required fields present, `status` is a valid value, `project
     define-l2/SKILL.md**
     generate-discovery-domain/SKILL.md**
     compare-blueprint/SKILL.md**
+    scan-security-signals/SKILL.md**
+    attach-security-context/SKILL.md**
+    threat-model/SKILL.md**
+    detect-vulnerabilities/SKILL.md**
+    map-controls/SKILL.md**
+    score-risks/SKILL.md**
+    generate-security-contexts/SKILL.md**
+    generate-security-report/SKILL.md**
     run-discovery-pipeline/SKILL.md**
     run-generate-pipeline/SKILL.md**
     generate-copilot-instructions/SKILL.md**
@@ -1087,6 +1176,32 @@ docs/
     l2-capabilities.md**          L2 sub-capabilities
     domain-model.md**             Code-derived domain model
     blueprint-comparison.md**     Industry reference comparison
+  security/**                     EDCR security assessment artifacts (brownfield only)
+    security-signals.json**       Extracted security signals (SS1–SS4) with confidence levels
+    capability-security-contexts.json**  Per-capability security context and trust boundaries
+    risk-scores.json**            Per-capability risk scores (likelihood, impact, exposure, composite)
+    cross-capability-risks.json** Shared vulnerabilities, cascading risks, weak boundaries
+    gaps.json**                   Prioritized actionable security gaps
+    security-report.md**          Executive security summary (/finish output)
+    security-risk-map.json**      Machine-readable risk map (/finish output)
+    threat-catalog.json**         Complete threat catalog (/finish output)
+    domain-model-secured.md**     Domain model with security overlay (/finish output)
+    threats/**                    STRIDE threat models, one file per capability
+      BC-{NNN}.json**
+      threat-summary.md**
+    vulnerabilities/**
+      catalog.json**              Classified vulnerability catalog
+      vulnerability-summary.md**
+    controls/**
+      control-map.json**          Control-to-threat mapping
+      control-summary.md**
+    findings/**                   Reserved for additional findings
+    generate/**                   AI-ready artifacts for downstream tooling
+      security-prompts.md**       Targeted security remediation prompts
+      capability-contexts/**      Per-capability AI context packages
+        BC-{NNN}-context.md**
+      spec-seeds/**               Functional + security specification seeds
+        BC-{NNN}-spec-seed.md**
   analysis/
     prd.md                        Product Requirements Document
     capabilities.md               Capability map
@@ -1125,7 +1240,7 @@ project.json                      Project metadata (name, type, domain, approach
 ```
 
 `*` = ADLC only (type is `agent` or `ai-system`)
-`**` = brownfield only (approach is `brownfield`) or generated by `generate` command
+`**` = brownfield only (approach is `brownfield`) or generated by `generate`/`assess`/`finish` commands
 `†` = greenfield pipeline only (generated by `generate` when `.greenfield/context.json` is present)
 
 ---
@@ -1204,7 +1319,7 @@ Both are distinct outputs that complement each other. Dev skills are created onc
 
 ## 12. Brownfield Discovery Pipeline
 
-The brownfield discovery pipeline extracts a complete business capability map from an existing codebase in 7 steps. Each step reads one input, produces one output, and feeds the next.
+The brownfield discovery pipeline extracts a complete business capability map from an existing codebase in 7 steps, then attaches security context to every capability. Each step reads one input, produces one output, and feeds the next.
 
 ### When it activates
 
@@ -1245,6 +1360,7 @@ In Copilot Chat:
 | A5: Define L2 | Per L1: define executable sub-capabilities mapped to code locations and entities | `docs/discovery/l2-capabilities.md` |
 | A6: Domain model | Consolidated model with capability hierarchy, entity ownership, cross-capability dependencies, code traceability | `docs/discovery/domain-model.md` |
 | A7: Blueprint comparison | Compare against industry reference (BIAN, TM Forum, APQC): aligned / org-specific / missing-from-code | `docs/discovery/blueprint-comparison.md` |
+| A8: Security context attachment | Map security signals from `/scan` to each L1 and L2 capability; detect trust boundaries; assess criticality | `docs/security/capability-security-contexts.json` |
 
 ### Design principles
 
@@ -1264,17 +1380,95 @@ In Copilot Chat:
 
 ### After pipeline complete
 
-When all 7 steps finish, run in Copilot Chat:
+When all 8 steps finish (including security context attachment), run in Copilot Chat:
+
+```
+/assess
+```
+
+This runs STRIDE threat modeling, vulnerability detection, control mapping, and risk scoring across all capabilities. See [Section 13 — EDCR Security Assessment Pipeline](#13-edcr-security-assessment-pipeline) for details.
+
+After `/assess`, run:
 
 ```
 /generate
 ```
 
-This produces project-specific Copilot configuration from the discovered stack and capabilities — tailored instructions, dev skills for the actual stack, domain-aware prompts, and tool hooks. No generic templates.
+This produces AI-ready security context packages and project-specific Copilot configuration — tailored instructions, dev skills for the actual stack, domain-aware prompts, and tool hooks. No generic templates.
 
 ---
 
-## 13. Generator Orchestrator
+## 13. EDCR Security Assessment Pipeline
+
+The EDCR (Evidence-Driven Capability Reconstruction) Security Assessment extends the brownfield discovery pipeline with capability-aware security intelligence. Threats, vulnerabilities, and risks are always mapped to specific capabilities, not to the system as a whole.
+
+### When it runs
+
+After `/discover` completes (which ends with `attach-security-context`), run:
+
+```
+/assess
+```
+
+### Design principles
+
+- **Capability-aware** — Every threat, vulnerability, and risk score is tied to a specific capability (BC-NNN). A SQL injection in a public payment endpoint and one in an internal admin tool are not the same risk. Context determines priority.
+- **Evidence-driven** — Every finding traces back to a specific file, line, and detection method. No finding exists without evidence. Confidence levels (HIGH/MEDIUM/LOW) are explicit.
+- **Pre-generated inputs accepted** — Each skill checks whether its output file already exists. Feed in results from external tools (Snyk, SonarQube, Checkmarx) and the skill skips regeneration.
+- **Composite scoring** — Risk scores combine likelihood, impact, and exposure. High vulnerability count alone does not make a capability high-risk; business criticality and attack surface also matter.
+- **False positive management** — Theoretical vulnerabilities, mitigated patterns, and unreachable code paths are flagged separately — never silently removed, but not mixed with real findings.
+
+### Pipeline steps
+
+| Phase | Step | What it produces |
+|-------|------|-----------------|
+| `/scan` | `scan_security` | Security signals: auth patterns, dependency risks, config issues, data sensitivity classifications |
+| `/discover` | `attach_security_context` | Per-capability security context: data sensitivity, auth, exposure, criticality, trust boundaries |
+| `/assess` | `threat_model` | STRIDE threat model per capability: 6 categories × per-capability security context |
+| `/assess` | `vulnerability_detection` | Classified vulnerability catalog: confirmed / probable / potential, each mapped to a capability and code location |
+| `/assess` | `map_controls` | Control inventory mapped to threats; coverage gaps for CRITICAL/HIGH unmitigated threats |
+| `/assess` | `score_risks` | Composite risk scores (likelihood × impact × exposure), cross-capability systemic risks, compliance gaps |
+| `/generate` | `generate_security_contexts` | AI-ready context packages per capability, targeted remediation prompts, spec seeds for high-risk capabilities |
+| `/finish` | `security_report` | Executive security report, machine-readable risk map, threat catalog, domain model with security overlay |
+
+### Key output: domain-model-secured.md
+
+The primary handoff artifact. Contains the full discovery domain model enriched with a security overlay for each capability:
+
+```
+BC-001: Customer Onboarding                                    3 L2s
+─────────────────────────────────────────────────────────────────────
+{capability description from discovery}
+
+{L2 operations...}
+
+Security Assessment:
+  Risk Score:       0.63 (#2 of 12)
+  Criticality:      high
+  Data Handled:     PII, Authentication
+  Top Threats:      Spoofing: Account creation with stolen identity (HIGH)
+                    Information Disclosure: PII leak via verbose errors (MEDIUM)
+  Confirmed Vulns:  1 — VULN-003: Hardcoded API key at config/kyc.js:14
+  Control Gaps:     2 — Rate limiting on registration endpoint missing
+  Priority:         SHORT-TERM
+```
+
+### Security scope configuration
+
+During `/init` (brownfield), the following is collected and saved to `answers.json → security_scope`:
+
+| Setting | Default | Options |
+|---------|---------|---------|
+| `standard` | `OWASP_ASVS` | `OWASP_ASVS`, `NIST`, `custom` |
+| `threat_modeling` | `true` | Always enabled |
+| `compliance_targets` | `[]` | `GDPR`, `PCI-DSS`, `HIPAA`, `SOC2` |
+| `risk_tolerance` | `medium` | `low`, `medium`, `high` |
+
+Compliance targets affect gap analysis: GDPR gaps check PII-handling capabilities for data minimization and audit logging; PCI-DSS gaps check financial capabilities for encryption and access control.
+
+---
+
+## 14. Generator Orchestrator
 
 The generator orchestrator differs by approach:
 
@@ -1348,7 +1542,7 @@ Progress tracked in `.discovery/generate.lock.json`. Re-run `/generate` to resum
 
 ---
 
-## 14. Google Stitch Integration
+## 15. Google Stitch Integration
 
 Google Stitch generates high-fidelity HTML + TailwindCSS screens from natural language prompts via an MCP server.
 
@@ -1394,7 +1588,7 @@ If Stitch is not configured, Designer logs a warning in `screens/index.md` and c
 
 ---
 
-## 15. ADLC Extended Workflow
+## 16. ADLC Extended Workflow
 
 The Agentic Development Lifecycle (ADLC) extends the standard bootstrap with phases designed for building and operating AI systems in production.
 
@@ -1442,7 +1636,7 @@ Bootstrap → Discovery → Analyst → Architect → Designer → Spec → Eval
 
 ---
 
-## 16. Extending the Framework
+## 17. Extending the Framework
 
 ### Add a new bootstrap step
 
@@ -1510,7 +1704,7 @@ model: ['Claude Opus 4.6', 'GPT-4o']
 
 ---
 
-## 17. Troubleshooting
+## 18. Troubleshooting
 
 ### Agent is not visible in the chat selector
 
@@ -1579,6 +1773,22 @@ Check `.discovery/context.json → paths.src` is a valid path accessible from th
 ### Brownfield steps are not activating
 
 Check both `project.json → approach` and `workflow.json → approach` are `"brownfield"`. If set after initialization, update both files manually.
+
+### `/assess` says security signals not found
+
+`/assess` requires `docs/security/security-signals.json` (from `/scan`). If scan ran before the security skills were added, re-run `/scan` or manually trigger `scan-security-signals` to generate the file.
+
+### Security context was not attached after `/discover`
+
+Check `workflow.json → step` after `/discover` completes. If it shows `prd` (old pipeline) rather than `attach_security_context`, the security signals file may not exist. Create `docs/security/security-signals.json` (run `scan-security-signals` manually), then re-run `/discover`.
+
+### Risk scores look identical for all capabilities
+
+The scoring formula needs differentiated inputs. If all capabilities score the same, check: (1) `capability-security-contexts.json` has varying criticality levels, (2) the vulnerability catalog has findings mapped to specific capabilities (not all cross-cutting), (3) the domain model dependency graph shows varied dependency counts.
+
+### `/finish` did not generate the security report
+
+`generate-security-report` requires `docs/security/risk-scores.json` (from `/assess`). If `/assess` was skipped, run it before `/finish`. The report step runs first in `/finish` before any cleanup.
 
 ### `next` or `step` says step not found
 

@@ -8,7 +8,7 @@ A structured workflow that takes a project idea — or an existing codebase — 
 
 copilot-bootstrap is a **specification generator driven by Copilot agents**. You describe a project, answer a short series of targeted questions, and a pipeline of specialized agents produces every document you need before writing a line of code: PRD, domain model, RBAC policy, API spec, design flows, and dev scaffolding.
 
-For **existing codebases**, a 7-step discovery pipeline reads your source tree and extracts the business capability map before generating any documents — so the output reflects what the code actually does, not what you think it does.
+For **existing codebases**, a full EDCR (Evidence-Driven Capability Reconstruction) pipeline reads your source tree, extracts the business capability map, and layers a first-class security assessment on top — so the output reflects what the code actually does, not what you think it does, including what security risks come with it.
 
 For **agent and AI system projects**, the workflow extends with the Agentic Development Lifecycle (ADLC): KPI thresholds, human-agent responsibility mapping, agent architecture patterns, evaluation frameworks, Proof of Value plans, monitoring specs, and governance policies.
 
@@ -20,7 +20,7 @@ Starting a project with Copilot usually means free-form conversation: you descri
 
 copilot-bootstrap front-loads the thinking. It produces a consistent set of documents that developers, designers, and stakeholders can review before implementation starts. When you hand these to Copilot for actual coding, it has context: the domain model, the RBAC rules, the API contracts. The generated code is more coherent from the start.
 
-For brownfield projects the problem is different: you have a codebase but no clear map of what it does. The discovery pipeline produces that map as a structured artifact, not a vague summary.
+For brownfield projects the problem is different: you have a codebase but no clear map of what it does or what security risks it carries. The EDCR pipeline produces both — a capability map and a per-capability security assessment — as structured, traceable artifacts.
 
 ---
 
@@ -81,11 +81,12 @@ code .
 In Copilot Chat:
 
 ```
-/init            — initialize project state as brownfield
-/scan            — detect language, framework, database, tools, architecture
-/discover        — run all 7 capability extraction steps automatically
-/generate        — generate Copilot configuration tailored to this stack and domain
-/finish          — remove bootstrap scaffolding, keeping only the project agent and generated config
+/init            — initialize project state as brownfield (includes security scope setup)
+/scan            — detect language, framework, database, tools, architecture + extract security signals
+/discover        — run all 7 capability extraction steps + attach security context to each capability
+/assess          — run STRIDE threat modeling, vulnerability detection, control mapping, and risk scoring
+/generate        — generate AI-ready security context packages + Copilot configuration
+/finish          — generate final security report + remove bootstrap scaffolding
 ```
 
 ---
@@ -246,23 +247,32 @@ Confidence: HIGH
 Evidence: CustomerService, customers/ package, CUSTOMERS table
 ```
 
+Then run the security assessment:
+
+```
+/assess
+```
+
+Produces per-capability STRIDE threat models, a classified vulnerability catalog, a control coverage map, and risk scores with cross-capability systemic risk analysis — all in `docs/security/`.
+
 Then:
 
 ```
 /generate
 ```
 
-Produces Copilot configuration tailored to the detected stack and discovered domain — not generic templates:
+Produces Copilot configuration tailored to the detected stack and discovered domain, plus AI-ready security context packages — not generic templates:
 
 ```
-.github/copilot-instructions.md    project context: stack, entities, capabilities, conventions
-.github/skills/                    dev skills for the actual stack (e.g. add-endpoint, add-migration)
-.github/prompts/                   slash commands: /explain-capability, /trace-flow, /review-code
-.github/agents/project.agent.md   project-specific development agent with capability map and entity ownership
-.claude/settings.json              hooks: linter + formatter run automatically after file edits
+.github/copilot-instructions.md          project context: stack, entities, capabilities, conventions
+.github/skills/                          dev skills for the actual stack (e.g. add-endpoint, add-migration)
+.github/prompts/                         slash commands: /explain-capability, /trace-flow, /review-code
+.github/agents/project.agent.md         project-specific development agent with capability map and entity ownership
+.claude/settings.json                    hooks: linter + formatter run automatically after file edits
+docs/security/generate/                  per-capability AI context packages + security remediation prompts
 ```
 
-Then run `/finish` to remove the bootstrap scaffolding — all pipeline machinery, bootstrap agents, and state files are deleted, leaving only the project agent and generated config.
+Then run `/finish` to generate the security report and remove bootstrap scaffolding — a `docs/security/security-report.md` executive summary and `docs/security/domain-model-secured.md` are produced before cleanup.
 
 ---
 
@@ -321,9 +331,10 @@ After `copilot-bootstrap init` copies the framework files to your project, the e
 
 | Command | Description |
 |---------|-------------|
-| `/discover` | Initialize the discovery pipeline and run all 7 capability extraction steps automatically. Requires `/scan` first. |
-| `/generate` | Generate Copilot configuration from discovery outputs: instructions, dev skills, prompts, project agent, and hooks. |
-| `/finish` | Remove bootstrap scaffolding after `/generate` completes. Keeps only the project agent, generated skills/prompts, and docs. |
+| `/discover` | Initialize the discovery pipeline and run all 7 capability extraction steps + security context attachment automatically. Requires `/scan` first. |
+| `/assess` | Run STRIDE threat models per capability, detect vulnerabilities, map controls, and score per-capability risks. Requires `/discover` first. |
+| `/generate` | Generate AI-ready security context packages and Copilot configuration from discovery + assessment outputs. |
+| `/finish` | Generate final security report and domain model with security overlay, then remove bootstrap scaffolding. |
 
 **Status and review**
 
