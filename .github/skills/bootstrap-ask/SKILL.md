@@ -326,11 +326,61 @@ If the user prefers to continue without scanning, ask all questions as normal.
 
 ---
 
+**Security Scope Questions (always ask — cannot be auto-detected):**
+
+7. What security standard should be used for assessment?
+   - `OWASP_ASVS` — OWASP Application Security Verification Standard (default for web applications)
+   - `NIST` — NIST Cybersecurity Framework (recommended for enterprise/government systems)
+   - `custom` — no standard; assess against project-specific threat model
+   - Default if skipped: `OWASP_ASVS`
+
+8. Are there compliance requirements this system must meet? (Select all that apply, or press Enter to skip)
+   - `GDPR` — EU personal data protection
+   - `PCI-DSS` — payment card data security
+   - `HIPAA` — US health information privacy
+   - `SOC2` — service organization controls
+   - `none` — no specific compliance targets
+   - Default if skipped: none
+
+9. What is the risk tolerance for this system?
+   - `low` — any confirmed vulnerability is blocking; probable vulnerabilities require remediation plan
+   - `medium` — CRITICAL and HIGH confirmed findings are blocking; others tracked for remediation
+   - `high` — only CRITICAL confirmed findings are blocking; others tracked as technical debt
+   - Default if skipped: `medium`
+
+If the user wants to skip security scope setup entirely, apply all defaults and note them in the output.
+
+---
+
 **After collecting answers:**
 
 Save to `answers.json → codebase_setup`. Also update `project.json → codebase_path` with the codebase path.
 
+Save security scope to `answers.json → security_scope`:
+```json
+{
+  "standard": "OWASP_ASVS | NIST | custom",
+  "threat_modeling": true,
+  "compliance_targets": ["GDPR", "PCI-DSS"],
+  "risk_tolerance": "low | medium | high"
+}
+```
+
+`threat_modeling` is always `true` — it is not configurable and does not need to be asked.
+
 If the user corrected any auto-detected values, update `.discovery/context.json` with the corrections and set the corresponding confidence scores to `1.0` in `.discovery/confidence.json`.
+
+Create the security evidence directory structure (create directories, not files):
+```
+docs/security/
+  findings/
+  threats/
+  vulnerabilities/
+  controls/
+  generate/
+    capability-contexts/
+    spec-seeds/
+```
 
 ### users
 - Who are the users of this system?

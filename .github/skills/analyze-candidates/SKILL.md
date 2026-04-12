@@ -53,6 +53,34 @@ Force each candidate into exactly one action:
 
 **Warning — a half-right output is more dangerous than a wrong one.** A completely wrong model gets challenged in the first review. A model that correctly identifies half the capabilities and misclassifies the rest reads professionally, looks credible, and gets nodded through unless someone in the room knows the domain. When in doubt between CONFIRM and FLAG, prefer FLAG. Explicit ambiguity is more useful than false confidence.
 
+### Oversized Candidate Rule
+
+If a candidate exceeds 20% of the total codebase (by LOC), it almost certainly contains multiple capabilities regardless of how cohesive it appears at the surface level. Apply this rule:
+
+- **If LOC > 30% of codebase**: Force SPLIT. A single capability does not account for a third of a system. Investigate internal module boundaries, sub-packages, or distinct entry point groups to identify the split points.
+- **If LOC 20-30% of codebase**: Strongly prefer SPLIT unless the candidate is genuinely a single monolithic domain (rare). Document why it should remain unified if you CONFIRM it.
+- **If a delivery channel (mobile app, web portal) is this large**: DE-SCOPE it. Redistribute its business logic to the actual domain capabilities it serves.
+
+The banking prototype example: a "Mobile Banking Channel" package at 87K LOC (43% of codebase) is not a capability — it's a delivery channel that wraps the real capabilities. De-scope it and ensure the business logic it contains is attributed to the correct domain capabilities.
+
+**Parameter variation test**: If Candidate A and Candidate B share the same core entities, the same fundamental operation, and differ primarily by a configuration parameter (frequency, channel, product type), they are one capability. The distinguishing parameter becomes a dimension within the capability, not a separate capability.
+
+Example: "Payments - Domestic" and "Payments - Scheduling" share the same payment entities and the same transfer logic. Scheduling adds a frequency parameter and a cron trigger. MERGE "Payments - Scheduling" into "Payments - Domestic" as an L2 sub-capability. The system may deploy them as separate services — deployment boundaries do not define business boundaries.
+
+Concrete test: Ask "would a product owner describe these as separate products/features, or as variations of the same product?" If the answer is variations → MERGE.
+
+### Cross-Validation Check
+
+Before finalizing actions, perform a consistency check across all candidates:
+
+1. **No orphaned merges.** If Candidate X is merged into Candidate Y, verify that Y is CONFIRMED (not itself merged or de-scoped). Merge chains (A → B → C) indicate the analysis needs rethinking.
+
+2. **Split consistency.** If Candidate X is split into X1 and X2, verify that both X1 and X2 would independently pass the CONFIRM criteria (high cohesion, clear boundaries). A split that produces one strong capability and one weak fragment is wrong — the fragment should be merged elsewhere.
+
+3. **Coverage sanity check.** After all actions, estimate whether confirmed + split capabilities account for the majority of business code. If confirmed capabilities only cover 50% of the codebase, either too many candidates were de-scoped or there are missing candidates. Flag this for the coverage step.
+
+4. **Duplicate detection.** Check whether two confirmed candidates are actually the same capability discovered through different signal paths. If BC-X from package analysis and BC-Y from entry point analysis describe the same business domain, merge them.
+
 ### A2.3 — Consolidate Actions
 
 Generate `docs/discovery/analysis.md` using this structure:
@@ -103,11 +131,14 @@ Generate `docs/discovery/analysis.md` using this structure:
 
 ### {Candidate Name}
 
+**Code Footprint**: {N} files, ~{N} LOC, {%} of codebase
 **Cohesion**: {HIGH/MEDIUM/LOW} — {evidence}
-**Coupling**: {LOW/MEDIUM/HIGH} — depends on: {list}
-**Boundary**: {CLEAR/PARTIAL/UNCLEAR} — {evidence}
+**Coupling**: {LOW/MEDIUM/HIGH} — depends on: {list with specific file/class references}
+**Boundary**: {CLEAR/PARTIAL/UNCLEAR} — {evidence with specific interface/API references}
 **Action**: {CONFIRM/SPLIT/MERGE/DE-SCOPE/FLAG}
 **Rationale**: {detailed justification with code references}
+**Key Entry Points**: {list of controllers/handlers/consumers that belong to this candidate}
+**Key Entities**: {list of entities/tables this candidate manages}
 
 {Repeat for each candidate}
 ```

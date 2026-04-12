@@ -32,6 +32,52 @@ IDs are assigned in logical domain order (not discovery order):
 - Group related capabilities together
 - Core capabilities first, supporting capabilities after
 
+### ID Assignment Strategy
+
+Group capabilities by business domain, then assign sequential IDs within groups. The grouping creates natural reading order and makes the capability hierarchy intuitive.
+
+Suggested grouping (adapt to the actual domain):
+
+1. **Customer-facing core**: The primary business operations that external users interact with (onboarding, account management, transactions)
+2. **Product domains**: Distinct product lines the system supports (deposits, lending, insurance, investments)
+3. **Operational support**: Internal operations that support the core (reporting, administration, compliance)
+4. **Platform services**: Capabilities that serve other capabilities (notifications, document generation, integrations)
+
+Within each group, order by dependency: capabilities that others depend on come first. This means if BC-003 (Account Management) is a dependency for BC-007 (Payments), Account Management gets the lower number.
+
+The ID assignment is a one-time decision. Once locked, IDs never change — even if capabilities are later reordered or regrouped. Stability of IDs is more important than perfect ordering.
+
+### Pre-Lock Validation
+
+Before locking the L1 list, verify:
+
+1. **No overlapping scope.** No two L1 capabilities should own the same entity or cover the same business operation. If they do, one should be merged into the other. Check the entity lists from analysis.md.
+
+2. **No gaps in confirmed capabilities.** Every CONFIRMED candidate from analysis.md must appear in the L1 list (or be accounted for as absorbed by a split). Count: confirmed + split outputs + coverage discoveries = total L1.
+
+3. **Reasonable count.** For most systems:
+   - 8-12 L1 capabilities: typical for a focused product
+   - 12-20 L1 capabilities: typical for a platform with multiple product lines
+   - 20-30 L1 capabilities: large enterprise system
+   - 30+: likely over-granular — review whether some L1s should be merged
+
+4. **No L1 without code.** Every L1 must have at least one package/module with business logic. A capability that exists only as a database table cluster or only as an API endpoint without implementation is suspicious — flag it.
+
+5. **Flagged items documented.** All FLAG candidates from analysis.md must appear in the "Flagged (Pending Review)" section with their original question. Flagged items do not silently disappear.
+
+### Capability Description Quality
+
+Each L1 description should answer three questions in 2-3 sentences:
+
+1. **What business operation does this capability perform?** (not what code it contains)
+2. **Who or what triggers it?** (user action, scheduled job, event from another capability)
+3. **What is the primary business outcome?** (account created, payment processed, report generated)
+
+Bad: "Contains the customer-related services and controllers for managing customer data."
+Good: "Orchestrates customer acquisition from registration through KYC verification and account activation. Triggered by new customer sign-up. Results in a verified customer with an active primary account."
+
+The description is the first thing a team reads when they receive their migration slice. It must communicate business meaning, not code structure.
+
 ## Output
 
 Generate `docs/discovery/l1-capabilities.md`:

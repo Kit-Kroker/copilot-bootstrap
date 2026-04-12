@@ -24,6 +24,28 @@ For each confirmed capability (from analysis.md):
 
 For split capabilities, map files to the new post-split capability names.
 
+### File Significance Rules
+
+Count and map these as significant source files:
+- All files containing business logic (services, controllers, handlers, models, entities, repositories)
+- All configuration files that define business behavior (routing, feature flags, business rules)
+- All database migrations and schema definitions
+
+Exclude from coverage counting (but note their existence):
+- Unit and integration test files
+- Build scripts and CI/CD configuration
+- IDE configuration and editor settings
+- Documentation files (README, CHANGELOG)
+- Static assets (images, fonts, CSS unless it's a frontend capability)
+- Generated code (auto-generated clients, compiled output)
+- Dependency lock files
+
+When reporting coverage percentage, report both:
+- **Business file coverage**: significant files mapped / total significant files
+- **LOC coverage**: significant LOC mapped / total significant LOC
+
+The >90% target applies to business file coverage, not total file count.
+
 ### A3.2 — Orphan Resolution
 
 Identify all significant source files NOT mapped to any capability:
@@ -33,6 +55,39 @@ For each orphan file/directory:
 - **Create new capability** — if it represents undiscovered business functionality
 - **Mark as infrastructure** — if it's cross-cutting (logging, config, middleware, build scripts)
 - **Mark as dead code** — if it appears unused or is a leftover artifact
+
+### Coupling Analysis from Shared Files
+
+Shared files are not just a coverage accounting detail — they are the strongest signal for coupling between capabilities. For each shared file:
+
+1. **Determine the sharing pattern**:
+   - **Shared utility**: Generic helper used by many capabilities (e.g., date formatting, validation helpers). Not a coupling concern.
+   - **Shared entity**: A domain entity read or written by multiple capabilities. This is coupling — document which capability OWNS the entity and which READS it.
+   - **Shared service**: A service class called by multiple capabilities. This is coupling — it may indicate a missing capability or a cross-cutting concern.
+   - **Circular dependency**: Capability A calls Capability B's internals, and B calls A's internals. This is a boundary problem — flag for the L1 locking step.
+
+2. **Record coupling strength**:
+   - STRONG: Shared entity with write access from multiple capabilities
+   - MODERATE: Shared service or shared entity with read-only access
+   - WEAK: Shared utility with no domain semantics
+
+This coupling data feeds directly into the dependency graph in the domain model and into migration complexity scoring in L2.
+
+### Dead Code Identification
+
+Mark as dead code if ANY of these apply:
+- No references from other source files (no imports, no calls, no inheritance)
+- Last modified date is >2 years ago AND no other file references it
+- Sits in a package named `deprecated`, `old`, `legacy`, `v1` (when v2+ exists)
+- Contains commented-out code blocks that constitute >50% of the file
+- Is a copy/clone of another file with minor differences (likely a failed refactor)
+
+Mark as "Investigate" (not dead code) if:
+- It's referenced only through reflection, dependency injection, or configuration (common in Java/C# — the code IS used, just not through static references)
+- It's a plugin or extension loaded dynamically
+- It's a scheduled job that runs infrequently
+
+When in doubt, mark as "Investigate" — removing live code is worse than keeping dead code.
 
 ## Output
 

@@ -14,13 +14,19 @@ Read:
 
 ## Pre-Generated External Inputs
 
-Check `codebase_setup.reports` for any externally generated analysis files the user has provided:
-- Package/module exports from tools like nDepend, Structure101, or JetBrains analyzers
-- Database schemas provided by a DBA (SQL DDL, ER diagrams, or schema dumps)
-- Entry point lists from IDE analyzers or API gateway exports
-- Architecture notes or existing documentation
+Check `codebase_setup.reports` for externally generated analysis files.
 
-When pre-generated inputs are present, use them as high-quality anchoring signals in the relevant sub-steps. These inputs do not replace the analysis — they reduce guesswork and improve confidence ratings. Document which steps used pre-generated inputs in the output.
+When pre-generated inputs are present:
+- **They anchor confidence upward.** A candidate corroborated by an external tool (nDepend, Structure101, IDE analyzer) AND by code signals gets HIGH confidence even if it only appears in 2 code-level sources.
+- **They resolve ambiguity.** If a DBA-provided schema groups tables differently than the code packages suggest, the schema is a stronger signal for data domain boundaries — note the disagreement and prefer the schema grouping.
+- **They do not replace analysis.** External inputs supplement signal extraction. Run all applicable sub-steps regardless.
+- **Document usage.** In the output, record which sub-steps used pre-generated inputs and how they affected confidence ratings.
+
+## Critical Rule — Business Operations, Not Technical Types
+
+Before extracting signals, internalize this: a `PaymentController`, a `RecurringPaymentJob`, a `PaymentEventConsumer`, and a `MoneyTransferPage` are NOT four candidates. They are all evidence of the same "Payments" capability. Group by what the business does, not by how the code is organized.
+
+This rule applies across ALL signal sources. A table cluster, a controller group, and a frontend route that serve the same business operation are one candidate with strong cross-source corroboration — not three separate candidates.
 
 ## Signal Extraction (6 sub-steps)
 
@@ -35,8 +41,9 @@ Look for domain-suggestive names:
 
 For each package/module, note:
 - Package name and path
-- Approximate file count and line count
+- File count and estimated line count
 - Whether it contains business logic or is infrastructure
+- **Size flag**: If a single package exceeds 20% of the total codebase, flag it as "OVERSIZED — likely contains multiple capabilities, candidate for splitting in A2"
 
 ### A1.2 — Database Schema Analysis
 
@@ -85,7 +92,19 @@ Flag ambiguous candidates with the specific reason:
 - "Is this active in the system or a leftover artifact?"
 - "Is this a business capability or infrastructure/cross-cutting concern?"
 
-### A1.6 — Format Candidate List
+### A1.6 — Common Misclassification Traps
+
+Before formatting the candidate list, review for these patterns:
+
+1. **Delivery channels disguised as capabilities.** A "Mobile Banking" or "Web Portal" package that spans 40%+ of the codebase is almost certainly a delivery channel, not a capability. It's how capabilities are accessed, not a capability itself. Flag as MEDIUM confidence with ambiguity reason: "Likely delivery channel, not a business capability."
+
+2. **Infrastructure disguised as capabilities.** "Core Banking Integration", "Product Catalog" (when it's a config layer), "Customer Communications" (when it's a notification service) — these serve other capabilities, they don't represent independent business operations. Flag with reason: "Possible infrastructure/cross-cutting concern."
+
+3. **Test harnesses and demo environments.** Any package named `demo`, `test`, `sandbox`, `mock`, or `seed` that contains business-like code. Flag with reason: "Test harness or demo environment, not production capability."
+
+4. **Parameter variations.** "Scheduled Payments" vs "Payments", "Group Deposits" vs "Personal Deposits" — these may be the same capability with different parameters. If the code shares >70% of its logic, they're likely one capability. Flag with reason: "Possible parameter variation of {other candidate}."
+
+### A1.7 — Format Candidate List
 
 Generate `docs/discovery/candidates.md` using this structure:
 
@@ -105,9 +124,9 @@ Generate `docs/discovery/candidates.md` using this structure:
 
 ### HIGH Confidence ({count})
 
-| # | Candidate Name | Signal Sources | Package(s) | Entry Points | DB Tables | Evidence Summary |
-|---|---------------|----------------|------------|--------------|-----------|-----------------|
-| 1 | {name} | pkg, db, api, ui | {paths} | {count} endpoints | {tables} | {1-line summary} |
+| # | Candidate Name | Signal Sources | Package(s) | Entry Points | DB Tables | Est. LOC | Evidence Summary |
+|---|---------------|----------------|------------|--------------|-----------|----------|-----------------|
+| 1 | {name} | pkg, db, api, ui | {paths} | {count} endpoints | {tables} | {count} | {1-line summary} |
 
 ### MEDIUM Confidence ({count})
 
@@ -137,6 +156,15 @@ Generate `docs/discovery/candidates.md` using this structure:
 
 ## Pre-Generated Inputs Used
 {list any external reports that were included, or "None"}
+
+## Size Distribution
+
+| Candidate | Est. Files | Est. LOC | % of Codebase | Size Flag |
+|-----------|-----------|----------|---------------|-----------|
+| {name} | {count} | {count} | {%} | {NORMAL / OVERSIZED / TINY} |
+
+Total codebase: {files} files, {loc} lines of code.
+Candidates cover: {covered_loc} lines ({coverage_pct}% — rough pre-coverage estimate).
 ```
 
 Target: 15-25 raw candidates total across all confidence levels.
