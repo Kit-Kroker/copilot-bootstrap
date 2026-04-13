@@ -23,6 +23,8 @@ Read:
 
 Write for solutions architects and enterprise architects. Assume fluency with DDD, bounded contexts, coupling metrics, and decomposition patterns. Be precise — use technical terms, IDs, and actual metric values. No hand-waving.
 
+Every section that draws from a specific discovery artifact must include a source line immediately below the section heading, in the form `*Source: [filename](relative-path-from-docs/discovery/)*`. The report lives in `docs/discovery/` so links to other files in that folder are just the filename; links to security artifacts use `../security/filename`. Multiple sources are separated with ` · `.
+
 ## Output
 
 Write to: `docs/discovery/architect-report.md`
@@ -48,6 +50,7 @@ Write to: `docs/discovery/architect-report.md`
 ---
 
 ## System Overview
+*Sources: [domain-model.md](domain-model.md) · [l1-capabilities.md](l1-capabilities.md)*
 
 {Derive from domain-model.md → System Overview. Include:
 - Technology stack (languages, frameworks, persistence layers)
@@ -58,6 +61,7 @@ Write to: `docs/discovery/architect-report.md`
 ---
 
 ## Capability Topology
+*Sources: [l1-capabilities.md](l1-capabilities.md) · [l2-capabilities.md](l2-capabilities.md) · [analysis.md](analysis.md)*
 
 ### L1 Capabilities
 
@@ -81,6 +85,7 @@ Write to: `docs/discovery/architect-report.md`
 ---
 
 ## Bounded Context Analysis
+*Sources: [domain-model.md](domain-model.md) · [analysis.md](analysis.md)*
 
 {From domain-model.md → Bounded Context Candidates. For each candidate:}
 
@@ -100,6 +105,7 @@ Write to: `docs/discovery/architect-report.md`
 ---
 
 ## Decomposition Options
+*Sources: [analysis.md](analysis.md) · [domain-model.md](domain-model.md)*
 
 Ranked by feasibility given the current coupling topology. Use these as starting-point options — not prescriptions.
 
@@ -123,6 +129,7 @@ Ranked by feasibility given the current coupling topology. Use these as starting
 ---
 
 ## Modernisation Positioning
+*Sources: [analysis.md](analysis.md) · [blueprint-comparison.md](blueprint-comparison.md)*
 
 | Capability | Posture | Cohesion | Coupling | Rationale |
 |-----------|---------|----------|----------|-----------|
@@ -135,6 +142,7 @@ Ranked by feasibility given the current coupling topology. Use these as starting
 ---
 
 ## Industry Blueprint Gaps
+*Source: [blueprint-comparison.md](blueprint-comparison.md)*
 
 {From blueprint-comparison.md. Architect-relevant framing — focus on which gaps imply integration work vs. net-new capability vs. vendor decision.}
 
@@ -145,6 +153,7 @@ Ranked by feasibility given the current coupling topology. Use these as starting
 ---
 
 ## Code Coverage & Orphan Zones
+*Source: [coverage.md](coverage.md)*
 
 {From coverage.md}
 
@@ -162,6 +171,7 @@ Ranked by feasibility given the current coupling topology. Use these as starting
 ---
 
 ## Security Risk Overlay
+*Source: [../security/domain-model-secured.md](../security/domain-model-secured.md)*
 
 {If docs/security/domain-model-secured.md exists: include a condensed per-capability risk summary for architectural planning.}
 
@@ -185,16 +195,17 @@ Ranked by feasibility given the current coupling topology. Use these as starting
 
 ## Discovery Artifacts
 
-| Artifact | Path | Contents |
-|---------|------|----------|
-| L1 Capabilities | docs/discovery/l1-capabilities.md | Capability inventory with metrics |
-| L2 Capabilities | docs/discovery/l2-capabilities.md | Sub-capability detail |
-| Domain Model | docs/discovery/domain-model.md | Code-derived entities, bounded contexts |
-| Coupling Analysis | docs/discovery/analysis.md | Cohesion/coupling per capability |
-| Blueprint Comparison | docs/discovery/blueprint-comparison.md | Industry alignment |
-| Coverage Report | docs/discovery/coverage.md | Orphan code analysis |
-| Stakeholder Report | docs/discovery/stakeholder-report.md | Non-technical summary |
-| Dev Report | docs/discovery/dev-report.md | Engineering team guide |
+| Artifact | Contents |
+|---------|----------|
+| [l1-capabilities.md](l1-capabilities.md) | Capability inventory with confidence and evidence |
+| [l2-capabilities.md](l2-capabilities.md) | Sub-capability and operation detail |
+| [domain-model.md](domain-model.md) | Code-derived entities, bounded contexts |
+| [analysis.md](analysis.md) | Cohesion/coupling metrics per capability |
+| [blueprint-comparison.md](blueprint-comparison.md) | Industry alignment detail |
+| [coverage.md](coverage.md) | Code coverage and orphan zone analysis |
+| [stakeholder-report.md](stakeholder-report.md) | Non-technical summary for executives and PMs |
+| [dev-report.md](dev-report.md) | Engineering team guide with file-level detail |
+| [../security/domain-model-secured.md](../security/domain-model-secured.md) | Domain model with full security overlay *(if available)* |
 ```
 
 After writing the file:

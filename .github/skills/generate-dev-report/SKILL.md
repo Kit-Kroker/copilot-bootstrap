@@ -23,6 +23,8 @@ Read:
 
 Write for the engineering team — developers, tech leads, and engineering managers. Be concrete: use file paths, capability IDs, metric values, and line counts. No abstraction. Every finding should be actionable by a developer today.
 
+Every section that draws from a specific discovery artifact must include a source line immediately below the section heading, in the form `*Source: [filename](relative-path-from-docs/discovery/)*`. The report lives in `docs/discovery/` so links to other files in that folder are just the filename; links to security artifacts use `../security/filename`. Multiple sources are separated with ` · `.
+
 ## Output
 
 Write to: `docs/discovery/dev-report.md`
@@ -47,6 +49,7 @@ Write to: `docs/discovery/dev-report.md`
 ---
 
 ## Capability Map
+*Sources: [l1-capabilities.md](l1-capabilities.md) · [l2-capabilities.md](l2-capabilities.md) · [analysis.md](analysis.md) · [domain-model.md](domain-model.md)*
 
 Capability-to-code mapping. Use this as the authoritative reference for "what owns what."
 
@@ -73,6 +76,7 @@ Capability-to-code mapping. Use this as the authoritative reference for "what ow
 ---
 
 ## Ownership Assignments
+*Source: [domain-model.md](domain-model.md)*
 
 Based on bounded context analysis. Use as a starting point for team/squad assignments.
 
@@ -85,6 +89,7 @@ Based on bounded context analysis. Use as a starting point for team/squad assign
 ---
 
 ## Health Dashboard
+*Source: [analysis.md](analysis.md)*
 
 Quick-scan view for sprint planning and tech debt backlog prioritisation.
 
@@ -102,6 +107,7 @@ Health signal:
 ---
 
 ## Refactor Targets
+*Source: [analysis.md](analysis.md)*
 
 Capabilities where structural problems will slow down feature work. Ordered by risk.
 
@@ -118,6 +124,7 @@ Capabilities where structural problems will slow down feature work. Ordered by r
 ---
 
 ## Orphan Code
+*Source: [coverage.md](coverage.md)*
 
 Code with no capability owner. Orphan zones are tech debt indicators — they may be dead code, shared utilities with no clear home, or hidden capability fragments.
 
@@ -134,6 +141,7 @@ Code with no capability owner. Orphan zones are tech debt indicators — they ma
 ---
 
 ## Coverage Breakdown
+*Source: [coverage.md](coverage.md)*
 
 | Capability | LOC | % of Total | Coverage |
 |-----------|-----|------------|----------|
@@ -144,6 +152,7 @@ Code with no capability owner. Orphan zones are tech debt indicators — they ma
 ---
 
 ## Security Findings for Developers
+*Sources: [../security/vulnerabilities/catalog.json](../security/vulnerabilities/catalog.json) · [../security/gaps.json](../security/gaps.json)*
 
 {If docs/security/vulnerabilities/catalog.json exists:}
 
@@ -182,16 +191,17 @@ These findings require code changes. Ordered by severity.
 
 ## Discovery Artifacts
 
-| Artifact | Path | Use For |
-|---------|------|---------|
-| Full capability inventory | docs/discovery/l1-capabilities.md | Authoritative capability list |
-| Sub-capability detail | docs/discovery/l2-capabilities.md | Operation-level ownership |
-| Domain model | docs/discovery/domain-model.md | Entity and bounded context reference |
-| Coupling analysis | docs/discovery/analysis.md | Raw cohesion/coupling metrics |
-| Coverage report | docs/discovery/coverage.md | Orphan code detail |
-| Vulnerability catalog | docs/security/vulnerabilities/catalog.json | Full security findings |
-| Architect report | docs/discovery/architect-report.md | Decomposition and topology view |
-| Stakeholder report | docs/discovery/stakeholder-report.md | Business summary |
+| Artifact | Use For |
+|---------|---------|
+| [l1-capabilities.md](l1-capabilities.md) | Authoritative capability list |
+| [l2-capabilities.md](l2-capabilities.md) | Operation-level ownership |
+| [domain-model.md](domain-model.md) | Entity and bounded context reference |
+| [analysis.md](analysis.md) | Raw cohesion/coupling metrics |
+| [coverage.md](coverage.md) | Orphan code detail |
+| [../security/vulnerabilities/catalog.json](../security/vulnerabilities/catalog.json) | Full security findings *(if available)* |
+| [../security/gaps.json](../security/gaps.json) | Control gap detail *(if available)* |
+| [architect-report.md](architect-report.md) | Decomposition and topology view |
+| [stakeholder-report.md](stakeholder-report.md) | Business summary |
 ```
 
 After writing the file:

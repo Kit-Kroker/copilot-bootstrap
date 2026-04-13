@@ -21,6 +21,8 @@ Read:
 
 Write for a non-technical audience — executives, product managers, business analysts, and engineering managers. No jargon, no file paths, no code snippets. Replace technical terms with business equivalents:
 
+Every section that draws from a specific discovery artifact must include a source line immediately below the section heading, in the form `*Source: [filename](relative-path-from-docs/discovery/)*`. Use relative paths — the report lives in `docs/discovery/` so links to other files in that folder are just the filename. Multiple sources are separated with ` · `.
+
 | Technical | Business-friendly |
 |-----------|------------------|
 | L1 capability | business capability |
@@ -56,10 +58,12 @@ Write to: `docs/discovery/stakeholder-report.md`
 ---
 
 ## What This System Does
+*Source: [domain-model.md](domain-model.md)*
 
 {1–2 paragraphs describing the system's business purpose in plain language. Derive from domain-model.md → System Overview. No technical terms. Answer: what problem does this system solve, who uses it, and what are its core business outcomes.}
 
 ### Core Business Capabilities
+*Sources: [l1-capabilities.md](l1-capabilities.md) · [analysis.md](analysis.md)*
 
 List all L1 capabilities. Use the business name only. Add a one-sentence plain-language description for each, derived from l1-capabilities.md → Capability Details. Group by business domain (customer-facing, product, operational, platform) if the grouping is natural.
 
@@ -75,6 +79,7 @@ Health signal mapping (derive from analysis.md cohesion/coupling per capability)
 ---
 
 ## System Health Overview
+*Sources: [analysis.md](analysis.md) · [coverage.md](coverage.md)*
 
 {2–3 sentences: overall assessment of the system's structural health. Translate coverage percentage and orphan code into business risk. Example: "88% of the codebase is mapped to business capabilities, leaving 12% as unclaimed code with no clear ownership — a moderate technical debt signal."}
 
@@ -94,6 +99,7 @@ Health signal mapping (derive from analysis.md cohesion/coupling per capability)
 ---
 
 ## Industry Alignment
+*Source: [blueprint-comparison.md](blueprint-comparison.md)*
 
 {2–3 sentences: how this system compares to {framework name} industry standards for {domain}. Summarise the overall alignment score in plain language. Example: "The system covers 14 of 18 expected capabilities for a digital banking platform. 3 are handled by external vendors. 1 is a genuine gap worth investigating."}
 
@@ -127,6 +133,7 @@ Health signal mapping (derive from analysis.md cohesion/coupling per capability)
 ---
 
 ## Key Findings
+*Sources: [analysis.md](analysis.md) · [blueprint-comparison.md](blueprint-comparison.md) · [coverage.md](coverage.md)*
 
 ### Strengths
 
@@ -146,6 +153,7 @@ Keep each finding actionable: name the capability and describe the business risk
 ---
 
 ## Modernisation Positioning
+*Sources: [analysis.md](analysis.md) · [blueprint-comparison.md](blueprint-comparison.md)*
 
 Based on discovery, each capability has been positioned for future roadmap planning. Use this as input for modernisation or migration conversations — not as a final decision.
 
@@ -167,6 +175,7 @@ Posture definitions:
 ---
 
 ## Proposed Team Ownership
+*Source: [domain-model.md](domain-model.md)*
 
 Based on the domain model's bounded context analysis, the system naturally groups into {N} ownership areas. This is a starting-point recommendation — adjust based on team size, skill, and organisational structure.
 
@@ -192,8 +201,18 @@ Keep each action concrete: who should do it, what the decision or output is.}
 
 This report was generated automatically using code-level capability extraction. All findings are derived from the actual codebase — no assumptions, no surveys. The source of truth is the code. Industry blueprint comparison adds context for modernisation planning but does not override what the code contains.
 
-**Discovery artifacts** (for technical teams): `docs/discovery/`
-**Domain model** (for architecture teams): `docs/discovery/domain-model.md`
+**Discovery artifacts** (full technical detail):
+
+| Artifact | What it contains |
+|---------|-----------------|
+| [l1-capabilities.md](l1-capabilities.md) | Full capability inventory with confidence and evidence |
+| [l2-capabilities.md](l2-capabilities.md) | Sub-capability and operation detail |
+| [domain-model.md](domain-model.md) | Code-derived entities, relationships, bounded contexts |
+| [analysis.md](analysis.md) | Cohesion and coupling metrics per capability |
+| [coverage.md](coverage.md) | Code coverage and orphan zone analysis |
+| [blueprint-comparison.md](blueprint-comparison.md) | Industry alignment detail |
+| [architect-report.md](architect-report.md) | Technical decomposition and coupling analysis |
+| [dev-report.md](dev-report.md) | Engineering team guide with file-level detail |
 ```
 
 After writing the file:
