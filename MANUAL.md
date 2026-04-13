@@ -88,12 +88,13 @@ In Copilot Chat — the full workflow runs here, no terminal needed after init:
 /init            — initialize project state as brownfield (includes security scope setup)
 /scan            — auto-detect language, framework, database, tools, architecture + extract security signals
 /discover        — run all 7 capability extraction steps + attach security context to each capability
+/report          — generate stakeholder report: capability map, health signals, industry alignment  [optional]
 /assess          — STRIDE threat modeling, vulnerability detection, control mapping, risk scoring
 /generate        — generate AI-ready security context packages + Copilot configuration
 /finish          — generate security report + remove bootstrap scaffolding
 ```
 
-**No interview.** `/scan` captures the stack and security signals; `/discover` extracts capabilities and attaches security context; `/assess` produces per-capability threat models and risk scores; `/generate` and `/finish` produce the final artifacts.
+**No interview.** `/scan` captures the stack and security signals; `/discover` extracts capabilities and attaches security context; `/report` (optional) produces a non-technical stakeholder document; `/assess` produces per-capability threat models and risk scores; `/generate` and `/finish` produce the final artifacts.
 
 ---
 
@@ -135,6 +136,7 @@ This framework uses all VS Code Copilot customization types:
 /init (chat)         → project.json (approach: brownfield) + security_scope in answers.json
 /scan (chat)         → .discovery/context.json + confidence.json + docs/security/security-signals.json
 /discover (chat)     → creates pipeline.lock.json, then runs Discovery (7 steps + attach-security-context)
+/report (chat)       → docs/discovery/stakeholder-report.md  [optional — run after /discover]
 /assess (chat)       → docs/security/threats/, vulnerabilities/, controls/, risk-scores.json
 /generate (chat)     → docs/security/generate/ + .github/copilot-instructions.md, skills/, prompts/, .claude/settings.json
 /finish (chat)       → docs/security/security-report.md + domain-model-secured.md, then removes scaffolding
@@ -184,6 +186,7 @@ Brownfield uses a discovery chain instead of the interview:
                           └─► docs/discovery/l2-capabilities.md
                                 └─► docs/discovery/domain-model.md
                                       └─► docs/discovery/blueprint-comparison.md
+                                            ├─► docs/discovery/stakeholder-report.md (/report, optional)
                                             └─► docs/security/capability-security-contexts.json
                                                   └─► docs/security/threats/ (/assess)
                                                         └─► docs/security/vulnerabilities/
@@ -346,6 +349,12 @@ Steps that already have output files are automatically skipped (resumable from a
 | 6 | `discovery_domain` | `generate-discovery-domain` | docs/discovery/domain-model.md |
 | 7 | `blueprint_comparison` | `compare-blueprint` | docs/discovery/blueprint-comparison.md |
 | 8 | `attach_security_context` | `attach-security-context` | docs/security/capability-security-contexts.json |
+
+**Stakeholder report** (`/report`) — optional, standalone:
+
+| Step | Skill | Output |
+|------|-------|--------|
+| `generate_stakeholder_report` | `generate-stakeholder-report` | docs/discovery/stakeholder-report.md |
 
 **Security assessment phase** (`/assess`):
 
@@ -569,6 +578,29 @@ Requires `project.json → approach = "brownfield"` and `.discovery/context.json
 
 ---
 
+#### `/report`
+Generate a stakeholder report from completed brownfield discovery results. Produces a single non-technical document — no jargon, no file paths, no code — readable by executives, product managers, and business analysts. **Optional — run after `/discover` completes.**
+
+```
+/report
+```
+
+Output: `docs/discovery/stakeholder-report.md`
+
+Sections:
+- **Executive Summary** — overall posture and top finding in 3–5 sentences
+- **What This System Does** — plain-language description of the system's business purpose
+- **Core Business Capabilities** — full capability list with health signal per capability (Strong / Needs Attention / At Risk)
+- **System Health Overview** — code coverage and unclaimed code translated into business risk
+- **Industry Alignment** — how the system compares to the industry reference framework; genuine gaps flagged separately from externally-handled capabilities
+- **Key Findings** — strengths and areas requiring attention with capability names and business impact
+- **Modernisation Positioning** — Retain / Extend / Refactor / Evaluate / Replace posture per capability
+- **Proposed Team Ownership** — recommended ownership areas derived from bounded context analysis
+
+Requires `docs/discovery/blueprint-comparison.md` — all 7 discovery steps must be complete. Share `docs/discovery/stakeholder-report.md` as a standalone document; it has no dependency on the security assessment or generation phases.
+
+---
+
 #### `/assess`
 Run the EDCR security assessment pipeline. Applies STRIDE threat modeling to each capability, detects and classifies vulnerabilities, maps existing controls, and calculates per-capability risk scores with cross-capability systemic risk analysis. **Brownfield only.**
 
@@ -736,6 +768,17 @@ Used by `/discover` when `approach = brownfield`.
 | `define-l2` | `define_l2` | `docs/discovery/l2-capabilities.md` |
 | `generate-discovery-domain` | `discovery_domain` | `docs/discovery/domain-model.md` |
 | `compare-blueprint` | `blueprint_comparison` | `docs/discovery/blueprint-comparison.md` |
+
+### Brownfield reporting skills
+
+Used by `/report` when `approach = brownfield`. Runs after `/discover` completes — independent of the security assessment and generation phases.
+
+| Skill | Step | Output |
+|-------|------|--------|
+| `generate-stakeholder-report` | `generate_stakeholder_report` | `docs/discovery/stakeholder-report.md` |
+
+**What the skill produces:**
+- `generate-stakeholder-report` — non-technical report synthesising all 7 discovery outputs into sections readable by executives and business stakeholders: capability list with health signals (Strong / Needs Attention / At Risk), industry alignment summary with genuine gaps separated from externally-handled capabilities, modernisation posture (Retain / Extend / Refactor / Evaluate / Replace) per capability, and proposed team ownership areas derived from bounded context analysis. No jargon, no file paths, no code. Skips generation if `docs/discovery/stakeholder-report.md` already exists.
 
 ### EDCR security assessment skills
 
