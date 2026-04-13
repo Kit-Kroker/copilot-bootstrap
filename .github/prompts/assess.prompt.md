@@ -10,8 +10,9 @@ Run the EDCR security assessment pipeline.
 
 1. Read `project.json`. If it doesn't exist: "project.json not found. Run `/init` first."
 2. If `approach` is not `"brownfield"`: "Security assessment requires brownfield approach. Current: {approach}."
-3. Check `docs/security/capability-security-contexts.json` exists. If not: "capability-security-contexts.json not found. Run `/discover` first — the discovery pipeline must complete all 7 steps including security context attachment."
-4. Check `docs/security/security-signals.json` exists. If not: "security-signals.json not found. Run `/scan` first, then `/discover`."
+3. Check `docs/security/security-signals.json` exists. If not: "security-signals.json not found. Run `/scan` first."
+4. Check `docs/discovery/l1-capabilities.md` exists. If not: "l1-capabilities.md not found. Run `/discover` first — the discovery pipeline must complete all 7 steps."
+5. Check `docs/discovery/domain-model.md` exists. If not: "domain-model.md not found. Run `/discover` first — the discovery pipeline must complete all 7 steps."
 
 ## Initialize or resume lock file
 
@@ -24,10 +25,11 @@ Check if `.discovery/assess.lock.json` exists.
   "version": "1",
   "started_at": "<current UTC timestamp as YYYY-MM-DDTHH:MM:SSZ>",
   "steps": {
-    "threat_model":           {"status": "pending", "output": "docs/security/threats/threat-summary.md"},
+    "attach_security_context": {"status": "pending", "output": "docs/security/capability-security-contexts.json"},
+    "threat_model":            {"status": "pending", "output": "docs/security/threats/threat-summary.md"},
     "vulnerability_detection": {"status": "pending", "output": "docs/security/vulnerabilities/catalog.json"},
-    "map_controls":           {"status": "pending", "output": "docs/security/controls/control-map.json"},
-    "score_risks":            {"status": "pending", "output": "docs/security/risk-scores.json"}
+    "map_controls":            {"status": "pending", "output": "docs/security/controls/control-map.json"},
+    "score_risks":             {"status": "pending", "output": "docs/security/risk-scores.json"}
   }
 }
 ```
@@ -42,25 +44,31 @@ For each step whose output file already exists and is non-empty, update its stat
 
 Run all pending steps in sequence. Do NOT wait for user confirmation before starting.
 
-### Step 1 — `threat_model`
+### Step 1 — `attach_security_context`
+
+Use the `attach-security-context` skill.
+
+After the skill completes, update `.discovery/assess.lock.json`: set `attach_security_context.status` to `"done"`.
+
+### Step 2 — `threat_model`
 
 Use the `threat-model` skill.
 
 After the skill completes, update `.discovery/assess.lock.json`: set `threat_model.status` to `"done"`.
 
-### Step 2 — `vulnerability_detection`
+### Step 3 — `vulnerability_detection`
 
 Use the `detect-vulnerabilities` skill.
 
 After the skill completes, update `.discovery/assess.lock.json`: set `vulnerability_detection.status` to `"done"`.
 
-### Step 3 — `map_controls`
+### Step 4 — `map_controls`
 
 Use the `map-controls` skill.
 
 After the skill completes, update `.discovery/assess.lock.json`: set `map_controls.status` to `"done"`.
 
-### Step 4 — `score_risks`
+### Step 5 — `score_risks`
 
 Use the `score-risks` skill.
 
