@@ -88,13 +88,13 @@ In Copilot Chat — the full workflow runs here, no terminal needed after init:
 /init            — initialize project state as brownfield (includes security scope setup)
 /scan            — auto-detect language, framework, database, tools, architecture + extract security signals
 /discover        — run all 7 capability extraction steps + attach security context to each capability
-/report          — generate stakeholder report: capability map, health signals, industry alignment  [optional]
+/report          — generate stakeholder, architect, dev, and security reports  [optional]
 /assess          — STRIDE threat modeling, vulnerability detection, control mapping, risk scoring
 /generate        — generate AI-ready security context packages + Copilot configuration
 /finish          — generate security report + remove bootstrap scaffolding
 ```
 
-**No interview.** `/scan` captures the stack and security signals; `/discover` extracts capabilities and attaches security context; `/report` (optional) produces a non-technical stakeholder document; `/assess` produces per-capability threat models and risk scores; `/generate` and `/finish` produce the final artifacts.
+**No interview.** `/scan` captures the stack and security signals; `/discover` extracts capabilities and attaches security context; `/report` (optional) produces four audience-specific reports; `/assess` produces per-capability threat models and risk scores; `/generate` and `/finish` produce the final artifacts.
 
 ---
 
@@ -136,10 +136,11 @@ This framework uses all VS Code Copilot customization types:
 /init (chat)         → project.json (approach: brownfield) + security_scope in answers.json
 /scan (chat)         → .discovery/context.json + confidence.json + docs/security/security-signals.json
 /discover (chat)     → creates pipeline.lock.json, then runs Discovery (7 steps + attach-security-context)
-/report (chat)       → docs/discovery/stakeholder-report.md  [optional — run after /discover]
+/report (chat)       → docs/discovery/stakeholder-report.md, architect-report.md, dev-report.md  [optional — run after /discover]
+                       docs/security/security-report.md  [only if /assess has been run]
 /assess (chat)       → docs/security/threats/, vulnerabilities/, controls/, risk-scores.json
 /generate (chat)     → docs/security/generate/ + .github/copilot-instructions.md, skills/, prompts/, .claude/settings.json
-/finish (chat)       → docs/security/security-report.md + domain-model-secured.md, then removes scaffolding
+/finish (chat)       → removes scaffolding
 ```
 
 **ADLC extension** (appends when type = `agent` or `ai-system`):
@@ -186,14 +187,16 @@ Brownfield uses a discovery chain instead of the interview:
                           └─► docs/discovery/l2-capabilities.md
                                 └─► docs/discovery/domain-model.md
                                       └─► docs/discovery/blueprint-comparison.md
-                                            ├─► docs/discovery/stakeholder-report.md (/report, optional)
+                                            ├─► docs/discovery/stakeholder-report.md  (/report, optional)
+                                            ├─► docs/discovery/architect-report.md   (/report, optional)
+                                            ├─► docs/discovery/dev-report.md          (/report, optional)
                                             └─► docs/security/capability-security-contexts.json
                                                   └─► docs/security/threats/ (/assess)
                                                         └─► docs/security/vulnerabilities/
                                                               └─► docs/security/controls/
                                                                     └─► docs/security/risk-scores.json
                                                                           └─► docs/security/generate/ (/generate)
-                                                                                └─► docs/security/security-report.md (/finish)
+                                                                                └─► docs/security/security-report.md (/report, optional)
                                                                                     .github/copilot-instructions.md
                                                                                     .github/skills/
                                                                                     .github/prompts/
@@ -350,11 +353,14 @@ Steps that already have output files are automatically skipped (resumable from a
 | 7 | `blueprint_comparison` | `compare-blueprint` | docs/discovery/blueprint-comparison.md |
 | 8 | `attach_security_context` | `attach-security-context` | docs/security/capability-security-contexts.json |
 
-**Stakeholder report** (`/report`) — optional, standalone:
+**Report suite** (`/report`) — optional, standalone:
 
 | Step | Skill | Output |
 |------|-------|--------|
 | `generate_stakeholder_report` | `generate-stakeholder-report` | docs/discovery/stakeholder-report.md |
+| `generate_architect_report` | `generate-architect-report` | docs/discovery/architect-report.md |
+| `generate_dev_report` | `generate-dev-report` | docs/discovery/dev-report.md |
+| `generate_security_report` | `generate-security-report` | docs/security/security-report.md *(only if `/assess` has been run)* |
 
 **Security assessment phase** (`/assess`):
 
@@ -376,12 +382,6 @@ Steps that already have output files are automatically skipped (resumable from a
 | 5 | `generate_dev_prompts` | `generate-brownfield-prompts` | .github/prompts/ |
 | 6 | `generate_hooks` | `generate-brownfield-hooks` | .vscode/settings.json |
 | 7 | `generate_project_agent` | `generate-project-agent` | .github/agents/project.agent.md |
-
-**Finish phase** (`/finish`) — report generation before cleanup:
-
-| Step | Skill | Output |
-|------|-------|--------|
-| `security_report` | `generate-security-report` | docs/security/security-report.md, security-risk-map.json, threat-catalog.json, domain-model-secured.md |
 
 **Cleanup** (`/finish`):
 
@@ -579,25 +579,49 @@ Requires `project.json → approach = "brownfield"` and `.discovery/context.json
 ---
 
 #### `/report`
-Generate a stakeholder report from completed brownfield discovery results. Produces a single non-technical document — no jargon, no file paths, no code — readable by executives, product managers, and business analysts. **Optional — run after `/discover` completes.**
+Generate the full discovery report suite from completed brownfield discovery results. Runs four report skills in sequence. **Optional — run after `/discover` completes.**
 
 ```
 /report
 ```
 
-Output: `docs/discovery/stakeholder-report.md`
+Produces three reports unconditionally (requires all 7 discovery steps complete):
 
-Sections:
-- **Executive Summary** — overall posture and top finding in 3–5 sentences
-- **What This System Does** — plain-language description of the system's business purpose
-- **Core Business Capabilities** — full capability list with health signal per capability (Strong / Needs Attention / At Risk)
-- **System Health Overview** — code coverage and unclaimed code translated into business risk
-- **Industry Alignment** — how the system compares to the industry reference framework; genuine gaps flagged separately from externally-handled capabilities
-- **Key Findings** — strengths and areas requiring attention with capability names and business impact
-- **Modernisation Positioning** — Retain / Extend / Refactor / Evaluate / Replace posture per capability
-- **Proposed Team Ownership** — recommended ownership areas derived from bounded context analysis
+**`docs/discovery/stakeholder-report.md`** — audience: executives, PMs, BAs
+- Plain language throughout — no jargon, no file paths, no code
+- Capability list with health signals (Strong / Needs Attention / At Risk)
+- Industry alignment summary with genuine gaps flagged separately
+- Modernisation posture (Retain / Extend / Refactor / Evaluate / Replace) per capability
+- Proposed team ownership areas from bounded context analysis
 
-Requires `docs/discovery/blueprint-comparison.md` — all 7 discovery steps must be complete. Share `docs/discovery/stakeholder-report.md` as a standalone document; it has no dependency on the security assessment or generation phases.
+**`docs/discovery/architect-report.md`** — audience: solutions architects, enterprise architects
+- Capability topology with cohesion/coupling metrics and dependency graph
+- Bounded context analysis with cross-context dependency table
+- Decomposition options ranked by feasibility given current coupling
+- Modernisation posture with metric-level rationale
+- Orphan code hotspots with architectural risk assessment
+- Security risk overlay per capability (if `/assess` has been run)
+
+**`docs/discovery/dev-report.md`** — audience: developers, tech leads, engineering managers
+- Capability-to-code map with exact file/module paths per capability
+- Ownership assignments derived from bounded context candidates
+- Health dashboard for sprint planning and tech debt backlog
+- Refactor targets with specific techniques and scope estimates
+- Orphan code hotspots with recommended actions
+- Confirmed vulnerabilities and critical control gaps (if `/assess` has been run)
+- Sprint recommendations as ticket-ready action items
+
+Produces a fourth report if `/assess` has been run:
+
+**`docs/security/security-report.md`** — audience: security team, tech leads
+- Risk-ranked findings with CRITICAL/HIGH vulnerabilities and specific file:line references
+- Mitigation priorities split into Immediate / Short-term / Medium-term
+- Compliance posture per target standard (GDPR, PCI-DSS, HIPAA)
+- Systemic risks spanning multiple capabilities
+- Full capability risk map with composite scores
+- Also produces: `docs/security/security-risk-map.json`, `docs/security/threat-catalog.json`, `docs/security/domain-model-secured.md`
+
+If `/assess` has not been run, the security report step is skipped and the completion message directs to `/assess`.
 
 ---
 
@@ -771,14 +795,20 @@ Used by `/discover` when `approach = brownfield`.
 
 ### Brownfield reporting skills
 
-Used by `/report` when `approach = brownfield`. Runs after `/discover` completes — independent of the security assessment and generation phases.
+Used by `/report` when `approach = brownfield`. Runs after `/discover` completes — independent of the generation phase. Security report requires `/assess` to have completed first.
 
 | Skill | Step | Output |
 |-------|------|--------|
 | `generate-stakeholder-report` | `generate_stakeholder_report` | `docs/discovery/stakeholder-report.md` |
+| `generate-architect-report` | `generate_architect_report` | `docs/discovery/architect-report.md` |
+| `generate-dev-report` | `generate_dev_report` | `docs/discovery/dev-report.md` |
+| `generate-security-report` | `generate_security_report` | `docs/security/security-report.md` + `security-risk-map.json` + `threat-catalog.json` + `domain-model-secured.md` |
 
-**What the skill produces:**
-- `generate-stakeholder-report` — non-technical report synthesising all 7 discovery outputs into sections readable by executives and business stakeholders: capability list with health signals (Strong / Needs Attention / At Risk), industry alignment summary with genuine gaps separated from externally-handled capabilities, modernisation posture (Retain / Extend / Refactor / Evaluate / Replace) per capability, and proposed team ownership areas derived from bounded context analysis. No jargon, no file paths, no code. Skips generation if `docs/discovery/stakeholder-report.md` already exists.
+**What each skill produces:**
+- `generate-stakeholder-report` — non-technical report for executives, PMs, and BAs. Synthesises all 7 discovery outputs: capability list with health signals (Strong / Needs Attention / At Risk), industry alignment summary with genuine gaps separated from externally-handled capabilities, modernisation posture (Retain / Extend / Refactor / Evaluate / Replace) per capability, and proposed team ownership areas from bounded context analysis. No jargon, no file paths, no code.
+- `generate-architect-report` — technical report for solutions and enterprise architects. Covers capability topology with cohesion/coupling metrics, bounded context analysis with cross-context dependency table, decomposition options ranked by feasibility, orphan code hotspots with architectural risk, and security risk overlay per capability (if available).
+- `generate-dev-report` — engineering team report. Provides capability-to-code mapping with exact file paths, ownership assignments, a health dashboard for sprint planning, refactor targets with specific techniques and scope estimates, orphan code hotspots with recommended actions, and confirmed vulnerabilities with sprint-ready ticket items.
+- `generate-security-report` — security and risk report for the security team and tech leads. Produces an executive security summary, risk-ranked CRITICAL/HIGH findings with file:line references, mitigation priorities (Immediate / Short-term / Medium-term), compliance posture per target standard, systemic cross-capability risks, and the domain model enriched with full security overlay per capability. Requires `/assess` to have completed.
 
 ### EDCR security assessment skills
 
@@ -793,7 +823,6 @@ Used by `/assess` when `approach = brownfield`. Each skill checks for pre-genera
 | `map-controls` | `map_controls` | `docs/security/controls/control-map.json` + summary |
 | `score-risks` | `score_risks` | `docs/security/risk-scores.json`, `cross-capability-risks.json`, `gaps.json` |
 | `generate-security-contexts` | `generate_security_contexts` | `docs/security/generate/` |
-| `generate-security-report` | `security_report` | `docs/security/security-report.md`, `security-risk-map.json`, `threat-catalog.json`, `domain-model-secured.md` |
 
 **What each skill produces:**
 - `scan-security-signals` — 4 signal sources (SS1–SS4): authentication/authorization patterns, dependency vulnerability flags, configuration risks, data sensitivity classification. Writes a single structured JSON with confidence levels and file references.
@@ -803,7 +832,6 @@ Used by `/assess` when `approach = brownfield`. Each skill checks for pre-genera
 - `map-controls` — inventories existing controls from security signals, maps them to threats and vulnerabilities, identifies gaps where HIGH/CRITICAL threats have no mitigation
 - `score-risks` — likelihood × impact × exposure composite score per capability; also detects shared vulnerabilities, cascading failure paths, and compliance gaps
 - `generate-security-contexts` — per-capability AI context packages (self-contained files for Cursor/Copilot/Claude Code), targeted remediation prompts with file:line references, and spec seeds for high-risk capabilities
-- `generate-security-report` — executive summary report, machine-readable risk map, complete threat catalog, and the domain model enriched with security overlay per capability
 
 ---
 

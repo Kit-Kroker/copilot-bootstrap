@@ -84,10 +84,10 @@ In Copilot Chat:
 /init            — initialize project state as brownfield (includes security scope setup)
 /scan            — detect language, framework, database, tools, architecture + extract security signals
 /discover        — run all 7 capability extraction steps + attach security context to each capability
-/report          — generate stakeholder report (capability map, health signals, industry alignment, modernisation posture)
+/report          — generate stakeholder, architect, dev, and security reports from discovery results
 /assess          — run STRIDE threat modeling, vulnerability detection, control mapping, and risk scoring
 /generate        — generate AI-ready security context packages + Copilot configuration
-/finish          — generate final security report + remove bootstrap scaffolding
+/finish          — remove bootstrap scaffolding
 ```
 
 ---
@@ -248,13 +248,19 @@ Confidence: HIGH
 Evidence: CustomerService, customers/ package, CUSTOMERS table
 ```
 
-Optionally, generate a stakeholder report before moving to the security assessment:
+Optionally, generate the full report suite before moving to the security assessment:
 
 ```
 /report
 ```
 
-Produces `docs/discovery/stakeholder-report.md` — a non-technical summary of capabilities, health signals (Strong / Needs Attention / At Risk), industry alignment, and modernisation posture per capability. Ready to share with executives, product managers, and business analysts without any technical context.
+Produces three reports from discovery outputs:
+- `docs/discovery/stakeholder-report.md` — plain-language capability summary for executives, PMs, and BAs
+- `docs/discovery/architect-report.md` — bounded context analysis, coupling detail, decomposition options
+- `docs/discovery/dev-report.md` — capability-to-code mapping, refactor targets, orphan hotspots, sprint actions
+
+If `/assess` has already been run, a fourth report is also generated:
+- `docs/security/security-report.md` — risk-ranked findings, compliance posture, remediation priorities
 
 Then run the security assessment:
 
@@ -281,7 +287,7 @@ Produces Copilot configuration tailored to the detected stack and discovered dom
 docs/security/generate/                  per-capability AI context packages + security remediation prompts
 ```
 
-Then run `/finish` to generate the security report and remove bootstrap scaffolding — a `docs/security/security-report.md` executive summary and `docs/security/domain-model-secured.md` are produced before cleanup.
+Then run `/finish` to remove bootstrap scaffolding.
 
 ---
 
@@ -341,10 +347,10 @@ After `copilot-bootstrap init` copies the framework files to your project, the e
 | Command | Description |
 |---------|-------------|
 | `/discover` | Initialize the discovery pipeline and run all 7 capability extraction steps + security context attachment automatically. Requires `/scan` first. |
-| `/report` | Generate a stakeholder report from discovery results: capability map, health signals, industry alignment, and modernisation posture. Optional — run after `/discover`. |
+| `/report` | Generate stakeholder, architect, dev, and security reports from discovery results. Security report only generated if `/assess` has been run. Optional — run after `/discover`. |
 | `/assess` | Run STRIDE threat models per capability, detect vulnerabilities, map controls, and score per-capability risks. Requires `/discover` first. |
 | `/generate` | Generate AI-ready security context packages and Copilot configuration from discovery + assessment outputs. |
-| `/finish` | Generate final security report and domain model with security overlay, then remove bootstrap scaffolding. |
+| `/finish` | Remove bootstrap scaffolding after `/generate` completes. Keeps only the project agent, generated skills/prompts, and docs. |
 
 **Status and review**
 
