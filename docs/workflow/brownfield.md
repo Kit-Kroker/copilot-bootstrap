@@ -15,6 +15,7 @@ project.json → approach = "brownfield"
 | `/init brownfield` | Initialize project as brownfield |
 | `/scan` | Auto-detect stack and write `.discovery/context.json` |
 | `/discover` | Run 7-phase capability extraction pipeline |
+| `/report` | Generate stakeholder report from discovery results |
 | `/generate` | Run specification generation pipeline |
 
 ## Steps
@@ -28,13 +29,16 @@ project.json → approach = "brownfield"
 6. discovery_domain
 7. blueprint_comparison
 
+### Stakeholder Report (`/report`)
+8. generate_stakeholder_report (optional, standalone — run after `/discover`)
+
 ### Generation (`/generate`)
-8. generate_instructions
-9. generate_dev_skills
-10. generate_stack_skills
-11. generate_dev_prompts
-12. generate_hooks
-13. done
+9. generate_instructions
+10. generate_dev_skills
+11. generate_stack_skills
+12. generate_dev_prompts
+13. generate_hooks
+14. done
 
 ## ADLC Extended Steps
 
@@ -52,7 +56,11 @@ Not applicable to the brownfield flow. Brownfield generates Copilot configuratio
 - **discovery_domain**: (A6) Generate consolidated domain model with capability hierarchy, entity ownership, cross-capability dependencies, and full code traceability.
 - **blueprint_comparison**: (A7) Compare code-derived capabilities against industry reference framework (BIAN for banking, TM Forum for telecom, APQC cross-industry). Flag: aligned / org-specific / missing-from-code.
 
-### Generation Phase (steps 8-11) — Copilot Configuration
+### Stakeholder Report (optional) — Communication Artifact
+
+- **generate_stakeholder_report**: Generate `docs/discovery/stakeholder-report.md` — a non-technical report for executives, product managers, and business analysts. Synthesises capability map, health signals (Strong / Needs Attention / At Risk), industry alignment summary, modernisation posture per capability, and proposed team ownership areas. No jargon, no file paths. Ready to share as a standalone document.
+
+### Generation Phase (steps 9-12) — Copilot Configuration
 
 Generates configuration artifacts tailored to the detected stack and discovered domain. Does NOT re-generate analysis docs — those come from the discovery phase.
 
@@ -76,6 +84,12 @@ Generates configuration artifacts tailored to the detected stack and discovered 
 | `define_l2` | `define-l2` | docs/discovery/l2-capabilities.md |
 | `discovery_domain` | `generate-discovery-domain` | docs/discovery/domain-model.md |
 | `blueprint_comparison` | `compare-blueprint` | docs/discovery/blueprint-comparison.md |
+
+### Stakeholder Report (`/report`)
+
+| Step | Skill | Output |
+|------|-------|--------|
+| `generate_stakeholder_report` | `generate-stakeholder-report` | docs/discovery/stakeholder-report.md |
 
 ### Generation (`/generate`)
 

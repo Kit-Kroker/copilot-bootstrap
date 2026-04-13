@@ -29,6 +29,7 @@ If `project.json → approach = "brownfield"`, also check:
 - `docs/discovery/l2-capabilities.md`
 - `docs/discovery/domain-model.md`
 - `docs/discovery/blueprint-comparison.md`
+- `docs/discovery/stakeholder-report.md`
 
 If `project.json → adlc = true`, also check:
 - `docs/analysis/kpis.md`

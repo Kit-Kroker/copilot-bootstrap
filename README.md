@@ -84,6 +84,7 @@ In Copilot Chat:
 /init            — initialize project state as brownfield (includes security scope setup)
 /scan            — detect language, framework, database, tools, architecture + extract security signals
 /discover        — run all 7 capability extraction steps + attach security context to each capability
+/report          — generate stakeholder report (capability map, health signals, industry alignment, modernisation posture)
 /assess          — run STRIDE threat modeling, vulnerability detection, control mapping, and risk scoring
 /generate        — generate AI-ready security context packages + Copilot configuration
 /finish          — generate final security report + remove bootstrap scaffolding
@@ -247,6 +248,14 @@ Confidence: HIGH
 Evidence: CustomerService, customers/ package, CUSTOMERS table
 ```
 
+Optionally, generate a stakeholder report before moving to the security assessment:
+
+```
+/report
+```
+
+Produces `docs/discovery/stakeholder-report.md` — a non-technical summary of capabilities, health signals (Strong / Needs Attention / At Risk), industry alignment, and modernisation posture per capability. Ready to share with executives, product managers, and business analysts without any technical context.
+
 Then run the security assessment:
 
 ```
@@ -332,6 +341,7 @@ After `copilot-bootstrap init` copies the framework files to your project, the e
 | Command | Description |
 |---------|-------------|
 | `/discover` | Initialize the discovery pipeline and run all 7 capability extraction steps + security context attachment automatically. Requires `/scan` first. |
+| `/report` | Generate a stakeholder report from discovery results: capability map, health signals, industry alignment, and modernisation posture. Optional — run after `/discover`. |
 | `/assess` | Run STRIDE threat models per capability, detect vulnerabilities, map controls, and score per-capability risks. Requires `/discover` first. |
 | `/generate` | Generate AI-ready security context packages and Copilot configuration from discovery + assessment outputs. |
 | `/finish` | Generate final security report and domain model with security overlay, then remove bootstrap scaffolding. |
