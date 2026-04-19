@@ -21,6 +21,8 @@ Read:
 - `docs/qa/qa-signals.json` (if present — surface testability findings)
 - `docs/qa/capability-qa-contexts.json` (if present)
 - `docs/qa/qa-gaps.json` (if present — surface QA gaps needing code changes)
+- `docs/dev/dev-readiness-scores.json` (if present — surface implementation blockers and readiness status)
+- `docs/dev/dev-blockers.json` (if present — surface CRITICAL and HIGH blockers)
 
 ## Report Generation
 
@@ -218,6 +220,29 @@ These findings require code changes (testability refactors or new tests). Ordere
 
 ---
 
+## Dev Readiness Overview
+*Sources: [../dev/dev-readiness-scores.json](../dev/dev-readiness-scores.json) · [../dev/dev-blockers.json](../dev/dev-blockers.json)*
+
+{If docs/dev/dev-readiness-scores.json exists:}
+
+Implementation readiness status per capability. For the full breakdown (dependency health, environment setup guide, architecture fitness, estimation anchors) see `docs/dev/dev-readiness-report.md`.
+
+| Capability | Readiness | Blockers | Top Risk Driver |
+|-----------|-----------|---------|----------------|
+| BC-{NNN}: {name} | READY / NEEDS_ATTENTION / BLOCKED | {N or none} | {dimension name or none} |
+
+{If any CRITICAL or HIGH blockers in dev-blockers.json:}
+
+**Blockers requiring resolution before implementation starts:**
+
+| ID | Severity | Scope | Issue | Resolution |
+|----|---------|-------|-------|-----------|
+| DEV-BLK-{NNN} | CRITICAL/HIGH | BC-{NNN}/global | {description} | {resolution} |
+
+{If no dev signals: "Dev readiness scan not yet run. Run `/assess` (dev lane) and re-run `/report` to surface implementation blockers, dependency health, and environment setup requirements."}
+
+---
+
 ## Sprint Recommendations
 
 {5–7 concrete engineering actions, prioritised. Each should be a ticket-ready task.}
@@ -243,6 +268,8 @@ These findings require code changes (testability refactors or new tests). Ordere
 | [../qa/sdet-report.md](../qa/sdet-report.md) | SDET view — test posture, coverage, testability |
 | [../qa/qa-signals.json](../qa/qa-signals.json) | Raw QA signals *(if available)* |
 | [../qa/qa-gaps.json](../qa/qa-gaps.json) | QA gap detail *(if available)* |
+| [../dev/dev-readiness-report.md](../dev/dev-readiness-report.md) | Dev readiness — blockers, setup guide, estimation anchors *(if available)* |
+| [../dev/dev-blockers.json](../dev/dev-blockers.json) | Implementation blockers *(if available)* |
 | [architect-report.md](architect-report.md) | Decomposition and topology view |
 | [stakeholder-report.md](stakeholder-report.md) | Business summary |
 ```

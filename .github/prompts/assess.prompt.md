@@ -22,7 +22,7 @@ Check if `.discovery/assess.lock.json` exists.
 
 ```json
 {
-  "version": "2",
+  "version": "3",
   "started_at": "<current UTC timestamp as YYYY-MM-DDTHH:MM:SSZ>",
   "steps": {
     "scan_security":           {"status": "pending", "output": "docs/security/security-signals.json",             "lane": "security"},
@@ -33,14 +33,19 @@ Check if `.discovery/assess.lock.json` exists.
     "scan_qa":                 {"status": "pending", "output": "docs/qa/qa-signals.json",                         "lane": "qa"},
     "attach_qa_context":       {"status": "pending", "output": "docs/qa/capability-qa-contexts.json",             "lane": "qa"},
     "qa_risk_analysis":        {"status": "pending", "output": "docs/qa/qa-risk-scores.json",                     "lane": "qa"},
+    "scan_dev":                {"status": "pending", "output": "docs/dev/dev-signals.json",                       "lane": "dev"},
+    "attach_dev_context":      {"status": "pending", "output": "docs/dev/capability-dev-contexts.json",           "lane": "dev"},
+    "analyze_dev_readiness":   {"status": "pending", "output": "docs/dev/dev-readiness-scores.json",              "lane": "dev"},
     "score_risks":             {"status": "pending", "output": "docs/security/risk-scores.json",                  "lane": "unified"}
   }
 }
 ```
 
-**If the lock file already exists** and version is `"1"` (legacy, security-only), migrate it in place: add the `scan_qa`, `attach_qa_context`, and `qa_risk_analysis` steps with `"status": "pending"` and `"lane": "qa"`, add `"lane": "security"` to existing security steps, add `"lane": "unified"` to `score_risks`, and bump `version` to `"2"`. Then say "Resuming assessment pipeline (started {started_at}, migrated from v1 to v2 to add QA lane)..."
+**If the lock file already exists** and version is `"1"` (legacy, security-only), migrate it in place: add the `scan_qa`, `attach_qa_context`, `qa_risk_analysis` steps with `"status": "pending"` and `"lane": "qa"`, add the `scan_dev`, `attach_dev_context`, `analyze_dev_readiness` steps with `"status": "pending"` and `"lane": "dev"`, add `"lane": "security"` to existing security steps, add `"lane": "unified"` to `score_risks`, and bump `version` to `"3"`. Then say "Resuming assessment pipeline (started {started_at}, migrated from v1 to v3 to add QA and dev lanes)..."
 
-**If the lock file already exists** at version `"2"`, read it and say "Resuming assessment pipeline (started {started_at})..."
+**If the lock file already exists** at version `"2"` (security + QA only), migrate it in place: add the `scan_dev`, `attach_dev_context`, `analyze_dev_readiness` steps with `"status": "pending"` and `"lane": "dev"`, and bump `version` to `"3"`. Then say "Resuming assessment pipeline (started {started_at}, migrated from v2 to v3 to add dev lane)..."
+
+**If the lock file already exists** at version `"3"`, read it and say "Resuming assessment pipeline (started {started_at})..."
 
 ## Apply skip-if-exists
 
@@ -104,9 +109,29 @@ Use the `analyze-qa-risk` skill.
 
 After the skill completes, update `.discovery/assess.lock.json`: set `qa_risk_analysis.status` to `"done"`.
 
+### Dev lane
+
+#### Step 10 — `scan_dev`
+
+Use the `scan-dev-signals` skill.
+
+After the skill completes, update `.discovery/assess.lock.json`: set `scan_dev.status` to `"done"`.
+
+#### Step 11 — `attach_dev_context`
+
+Use the `attach-dev-context` skill.
+
+After the skill completes, update `.discovery/assess.lock.json`: set `attach_dev_context.status` to `"done"`.
+
+#### Step 12 — `analyze_dev_readiness`
+
+Use the `analyze-dev-readiness` skill.
+
+After the skill completes, update `.discovery/assess.lock.json`: set `analyze_dev_readiness.status` to `"done"`.
+
 ### Unified scoring
 
-#### Step 9 — `score_risks`
+#### Step 13 — `score_risks`
 
 Use the `score-risks` skill. If `docs/qa/qa-risk-scores.json` exists (it should, unless the QA lane was entirely skipped), this skill will also compute the unified security+QA composite and emit `docs/risk/unified-risk-map.json`.
 
@@ -114,7 +139,7 @@ After the skill completes, update `.discovery/assess.lock.json`: set `score_risk
 
 ## Complete
 
-After all 9 steps finish, tell the user:
+After all steps finish, tell the user:
 
 ```
 Assessment complete.
@@ -133,10 +158,16 @@ Assessment complete.
     QA risk scores:         docs/qa/qa-risk-scores.json
     QA gaps:                docs/qa/qa-gaps.json
 
+  Dev lane
+    Dev signals:            docs/dev/dev-signals.json
+    Capability dev contexts: docs/dev/capability-dev-contexts.json
+    Dev readiness scores:   docs/dev/dev-readiness-scores.json
+    Dev blockers:           docs/dev/dev-blockers.json
+
   Unified
     Unified risk map:       docs/risk/unified-risk-map.json
 
-Next: run `/report` to produce stakeholder, architect, dev, SDET, and security reports, then `/generate` to produce AI-ready context packages and project configuration.
+Next: run `/report` to produce stakeholder, architect, dev, SDET, dev readiness, and security reports, then `/generate` to produce AI-ready context packages and project configuration.
 ```
 
 If the QA lane was entirely skipped (e.g., user disabled via `qa_scope` or all outputs pre-existed as empty), replace the QA lane block with:
@@ -144,4 +175,10 @@ If the QA lane was entirely skipped (e.g., user disabled via `qa_scope` or all o
 ```
   QA lane                   skipped — no QA signals collected
   Unified                   not generated (requires both lanes)
+```
+
+If the dev lane was entirely skipped (e.g., all outputs pre-existed), replace the dev lane block with:
+
+```
+  Dev lane                  skipped — dev signals already present
 ```

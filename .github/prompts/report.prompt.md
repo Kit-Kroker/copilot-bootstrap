@@ -2,7 +2,7 @@
 name: report
 description: Generate all discovery reports (stakeholder, architect, dev, SDET, and security if available) from brownfield discovery results. Runs all report skills in sequence. SDET report is always emitted (never gated); security report is conditional on /assess having run. Run after /discover completes.
 tools: ['read', 'edit']
-skills: ['generate-stakeholder-report', 'generate-architect-report', 'generate-dev-report', 'generate-sdet-report', 'generate-security-report']
+skills: ['generate-stakeholder-report', 'generate-architect-report', 'generate-dev-report', 'generate-sdet-report', 'generate-security-report', 'generate-dev-readiness-report']
 ---
 
 Generate the full discovery report suite from completed brownfield discovery.
@@ -16,6 +16,7 @@ Generate the full discovery report suite from completed brownfield discovery.
 5. Check that `docs/discovery/blueprint-comparison.md` exists. If not: "Blueprint comparison not found. Discovery pipeline must complete all 7 steps before generating reports. Run `/discover` to finish."
 6. Check whether `docs/security/risk-scores.json` exists. Record the result as `security_available` (true/false) — do not fail if absent.
 7. Check whether `docs/qa/qa-signals.json` exists. Record the result as `qa_signals_present` (true/false) — do not fail if absent. (The SDET report is emitted either way; this flag just influences the completion message.)
+8. Check whether `docs/dev/dev-readiness-scores.json` exists. Record the result as `dev_signals_present` (true/false) — do not fail if absent. (The dev readiness report is only generated when dev signals are present.)
 
 ## Generate the reports
 
@@ -45,6 +46,12 @@ If `security_available` is true: use the `generate-security-report` skill to pro
 
 If `security_available` is false: skip this step and note it in the completion message.
 
+### Report 6 — Dev Readiness (conditional)
+
+If `dev_signals_present` is true: use the `generate-dev-readiness-report` skill to produce `docs/dev/dev-readiness-report.md`.
+
+If `dev_signals_present` is false: skip this step and note it in the completion message.
+
 ## Complete
 
 After all applicable reports are generated, tell the user:
@@ -52,20 +59,27 @@ After all applicable reports are generated, tell the user:
 ```
 Discovery reports generated:
 
-  Stakeholder  docs/discovery/stakeholder-report.md   — executives, PMs, BAs
-  Architect    docs/discovery/architect-report.md     — solutions and enterprise architects
-  Dev          docs/discovery/dev-report.md            — engineering teams
-  SDET         docs/qa/sdet-report.md                  — SDETs, QA leads, test architects
-  Security     docs/security/security-report.md        — security team, tech leads
-               docs/security/domain-model-secured.md  — architecture handoff with risk overlays
+  Stakeholder   docs/discovery/stakeholder-report.md    — executives, PMs, BAs
+  Architect     docs/discovery/architect-report.md      — solutions and enterprise architects
+  Dev           docs/discovery/dev-report.md             — engineering teams (capability map, ownership)
+  SDET          docs/qa/sdet-report.md                   — SDETs, QA leads, test architects
+  Dev Readiness docs/dev/dev-readiness-report.md         — developers, tech leads (blockers, setup, estimation)
+  Security      docs/security/security-report.md         — security team, tech leads
+                docs/security/domain-model-secured.md   — architecture handoff with risk overlays
 
-Share the stakeholder report as a standalone document. Use the architect, dev, SDET, and security reports as internal planning artifacts.
+Share the stakeholder report as a standalone document. Use the architect, dev, SDET, dev readiness, and security reports as internal planning artifacts.
 ```
 
 If `security_available` was false, replace the Security lines with:
 
 ```
-  Security     not generated — run `/assess` first, then re-run `/report`
+  Security      not generated — run `/assess` first, then re-run `/report`
+```
+
+If `dev_signals_present` was false, replace the Dev Readiness line with:
+
+```
+  Dev Readiness not generated — run `/assess` (dev lane) first, then re-run `/report`
 ```
 
 If `qa_signals_present` was false, append this note at the bottom:
