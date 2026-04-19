@@ -14,6 +14,8 @@ Read:
 - `docs/security/capability-security-contexts.json` ← required
 - `docs/discovery/domain-model.md` ← for dependency graph and blast radius
 - `.project/state/answers.json` (security_scope: compliance_targets, risk_tolerance)
+- `.discovery/context.json` ← optional, for `risk_scope.weights.unified` overrides
+- `docs/qa/qa-risk-scores.json` ← optional; when present, this skill also emits a unified security+QA risk map
 
 ## Process
 
@@ -121,6 +123,31 @@ Synthesize actionable gaps:
 - GDPR: PII-handling capabilities without data minimization, audit logging, or consent management signals
 - PCI-DSS: Financial data capabilities without encryption, access control, and audit logging
 - HIPAA: Health data capabilities without access controls and audit logs
+
+### RS5 — Unified Security + QA Composite (conditional)
+
+If `docs/qa/qa-risk-scores.json` exists, compute a unified composite per capability.
+
+Read QA composite weights from `.discovery/context.json` at `risk_scope.weights.unified`. Defaults:
+```
+security: 0.55
+qa:       0.45
+```
+If the overrides do not sum to 1.0, normalize and record the adjustment in `weights_normalized_from`.
+
+For each L1 capability (and each L2):
+
+1. Look up the security `composite` score from this skill's own per-capability output.
+2. Look up the QA `qa_composite` and `qa_composite_status` from `qa-risk-scores.json`.
+3. Compute `unified_composite`:
+   - If both are numeric: `unified_composite = (security × w.security) + (qa × w.qa)`, `unified_status = "complete"`
+   - If QA status is `"partial"` (QA composite is numeric but some dimensions were not-collected): compute the weighted sum as above, set `unified_status = "partial"`
+   - If QA composite is the string `"unknown"`: set `unified_composite` to security × w.security (renormalized over the present component — i.e., `unified_composite = security`), `unified_status = "partial"`, and record `missing_components = ["qa"]`
+   - If security composite is missing (shouldn't happen during /assess, but possible if score is `null`): analogous handling with `missing_components = ["security"]`
+
+4. Record `drivers_unified`: the top 2 contributors across security (likelihood/impact/exposure) and QA (coverage_gap/testability/defect_density/change_velocity) that pushed this capability's unified score up.
+
+If `docs/qa/qa-risk-scores.json` does NOT exist, skip RS5 entirely. The `unified-risk-map.json` is not written. The stakeholder, architect, and dev reports will still render a security-only view.
 
 ## Output
 
@@ -239,6 +266,52 @@ Generate `docs/security/gaps.json`:
 }
 ```
 
+If RS5 ran, also generate `docs/risk/unified-risk-map.json`:
+
+```json
+{
+  "generated_at": "{ISO 8601 timestamp}",
+  "weights_applied": {
+    "security": 0.55,
+    "qa": 0.45
+  },
+  "weights_source": "default | override",
+  "weights_normalized_from": null,
+  "capability_unified_scores": [
+    {
+      "capability_id": "BC-{NNN}",
+      "capability_name": "{name}",
+      "security_composite": 0.0,
+      "qa_composite": 0.0,
+      "qa_composite_status": "complete | partial | unknown",
+      "unified_composite": 0.0,
+      "unified_status": "complete | partial",
+      "missing_components": [],
+      "drivers_unified": ["security.exposure", "qa.coverage_gap"],
+      "l2_unified": {
+        "BC-{NNN}-{NN}": {
+          "unified_composite": 0.0,
+          "unified_status": "complete | partial"
+        }
+      }
+    }
+  ],
+  "unified_ranking": ["BC-{NNN}"],
+  "summary": {
+    "capabilities_scored": 0,
+    "complete_unified_scores": 0,
+    "partial_unified_scores": 0,
+    "highest_unified_risk_capability": "BC-{NNN}",
+    "average_unified_composite": 0.0,
+    "capabilities_above_0_7": 0,
+    "capabilities_above_0_5": 0
+  }
+}
+```
+
+Create the `docs/risk/` directory if it does not exist.
+
 After generating the files:
 - Update `.project/state/workflow.json`: set `step` to `generate_security_contexts`, `status` to `in_progress`
-- Tell the user: "Risk scoring complete. Highest risk: BC-{NNN} ({name}, composite {score}). {high_risk_count} capabilities above 0.7 composite. {gaps_count} actionable gaps identified. Next: generate AI-ready security context packages."
+- Tell the user: "Risk scoring complete. Highest risk: BC-{NNN} ({name}, composite {score}). {high_risk_count} capabilities above 0.7 composite. {gaps_count} actionable gaps identified.{unified_msg} Next: generate AI-ready security context packages."
+  - Where `{unified_msg}` is " Unified security+QA risk map written to docs/risk/unified-risk-map.json ({complete} complete, {partial} partial)." when RS5 ran, or empty string otherwise.

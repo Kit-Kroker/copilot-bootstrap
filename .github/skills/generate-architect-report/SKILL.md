@@ -17,7 +17,10 @@ Read:
 - `docs/discovery/coverage.md` (for orphan/unmapped code)
 - `.discovery/context.json` (for system metadata)
 - `.project/state/answers.json` (for project name, domain, tech stack)
-- `docs/security/domain-model-secured.md` (if present — enrich with risk overlays)
+- `docs/security/domain-model-secured.md` (if present — enrich with security risk overlays)
+- `docs/qa/qa-risk-scores.json` (if present — enrich with QA risk overlays)
+- `docs/qa/qa-gaps.json` (if present)
+- `docs/risk/unified-risk-map.json` (if present — surface unified security+QA ranking)
 
 ## Report Generation
 
@@ -183,6 +186,42 @@ Ranked by feasibility given the current coupling topology. Use these as starting
 
 ---
 
+## QA Risk Overlay
+*Sources: [../qa/qa-risk-scores.json](../qa/qa-risk-scores.json) · [../qa/qa-gaps.json](../qa/qa-gaps.json)*
+
+{If docs/qa/qa-risk-scores.json exists: include a condensed per-capability QA posture summary. The architect-facing framing is "which capabilities cannot be safely restructured because we don't trust their tests".}
+
+| Capability | qa_composite | Status | Drivers | Architectural Implication |
+|-----------|-------------:|--------|---------|--------------------------|
+| BC-{NNN}: {name} | {score or `not-collected`} | complete/partial/unknown | {drivers} | {e.g., "high qa_composite — refactor blocked until test suite stabilized", "unknown posture — add coverage before boundary move"} |
+
+**Unknown-posture capabilities** *(require signal collection before trustworthy architectural decisions)*:
+
+| Capability | Missing Dimensions | What To Collect First |
+|-----------|-------------------|----------------------|
+| BC-{NNN} | {dimensions} | {specific action from qa-gaps.json signal-missing entries} |
+
+{If docs/qa/qa-risk-scores.json does not exist: "QA risk analysis not yet run. Run `/assess` to add QA risk overlays (QA risk analysis is part of the assessment pipeline when QA signals are present)."}
+
+---
+
+## Unified Risk Map
+*Source: [../risk/unified-risk-map.json](../risk/unified-risk-map.json)*
+
+{If docs/risk/unified-risk-map.json exists: surface the top 10 unified-ranked capabilities. This is the architect's primary prioritization view — it fuses security risk and QA risk into a single rank.}
+
+**Weights applied**: security={w}, qa={w} ({default or override})
+
+| # | Capability | Unified | Security | QA | Status | Top Drivers | Architectural Implication |
+|---|-----------|--------:|---------:|---:|--------|-------------|--------------------------|
+| 1 | BC-{NNN}: {name} | {score} | {score} | {score or "unknown"} | complete/partial | {drivers_unified} | {1-sentence implication} |
+
+*(Sorted by `unified_composite` descending; include top 10, or all if fewer than 10)*
+
+{If docs/risk/unified-risk-map.json does not exist: "Unified risk map not yet generated. It is produced by `/assess` when both security and QA risk scores are available."}
+
+---
+
 ## Recommended Next Steps
 
 {4–6 concrete, architect-targeted actions. Examples:
@@ -206,6 +245,9 @@ Ranked by feasibility given the current coupling topology. Use these as starting
 | [stakeholder-report.md](stakeholder-report.md) | Non-technical summary for executives and PMs |
 | [dev-report.md](dev-report.md) | Engineering team guide with file-level detail |
 | [../security/domain-model-secured.md](../security/domain-model-secured.md) | Domain model with full security overlay *(if available)* |
+| [../qa/sdet-report.md](../qa/sdet-report.md) | SDET view of test posture, coverage, and testability |
+| [../qa/qa-risk-scores.json](../qa/qa-risk-scores.json) | Per-capability QA risk scores *(if available)* |
+| [../risk/unified-risk-map.json](../risk/unified-risk-map.json) | Unified security+QA risk ranking *(if available)* |
 ```
 
 After writing the file:

@@ -18,6 +18,9 @@ Read:
 - `.project/state/answers.json` (for project name, tech stack)
 - `docs/security/vulnerabilities/catalog.json` (if present — surface confirmed/probable findings)
 - `docs/security/gaps.json` (if present — surface critical control gaps)
+- `docs/qa/qa-signals.json` (if present — surface testability findings)
+- `docs/qa/capability-qa-contexts.json` (if present)
+- `docs/qa/qa-gaps.json` (if present — surface QA gaps needing code changes)
 
 ## Report Generation
 
@@ -178,6 +181,43 @@ These findings require code changes. Ordered by severity.
 
 ---
 
+## QA Findings for Developers
+*Sources: [../qa/qa-signals.json](../qa/qa-signals.json) · [../qa/qa-gaps.json](../qa/qa-gaps.json) · [../qa/capability-qa-contexts.json](../qa/capability-qa-contexts.json)*
+
+{If docs/qa/qa-signals.json exists:}
+
+These findings require code changes (testability refactors or new tests). Ordered by severity.
+
+### Testability Refactors
+
+*(HIGH-severity testability findings — each one blocks unit-level isolation and typically forces integration tests.)*
+
+| ID | Capability | Category | File:Line | Issue | Suggested Fix |
+|----|-----------|----------|-----------|-------|---------------|
+| QS3-{cat}-{NNN} | BC-{NNN} | {category} | {file:line} | {details} | {hint} |
+
+*(Include all HIGH. For the full list — including MEDIUM and LOW — see docs/qa/qa-signals.json.)*
+
+### Coverage Gaps Worth Code Work
+
+*(Capabilities with `coverage_gap_indicator` of `high` or `moderate` where the fastest win is adding a small number of focused tests in code.)*
+
+| Capability | Gap Indicator | Tests/KLOC | Suggested Test Level | Scenario |
+|-----------|---------------|-----------:|---------------------|----------|
+| BC-{NNN}: {name} | high/moderate | {x.x or `not-collected`} | unit / integration / e2e | {what scenario is under-covered — derived from QAGAP description} |
+
+### QA Gaps Requiring Code Changes
+
+{From docs/qa/qa-gaps.json — HIGH and CRITICAL, excluding INFO-severity signal-collection gaps:}
+
+| Gap | Capability | Description | Action | Effort |
+|-----|-----------|-------------|--------|--------|
+| QAGAP-{NNN} | BC-{NNN} | {description} | {recommendation} | LOW/MED/HIGH |
+
+{If no QA assessment: "QA signals not yet scanned. Run `/assess` to surface testability findings and QA gaps (also visible standalone in docs/qa/sdet-report.md when `/report` has run)."}
+
+---
+
 ## Sprint Recommendations
 
 {5–7 concrete engineering actions, prioritised. Each should be a ticket-ready task.}
@@ -200,6 +240,9 @@ These findings require code changes. Ordered by severity.
 | [coverage.md](coverage.md) | Orphan code detail |
 | [../security/vulnerabilities/catalog.json](../security/vulnerabilities/catalog.json) | Full security findings *(if available)* |
 | [../security/gaps.json](../security/gaps.json) | Control gap detail *(if available)* |
+| [../qa/sdet-report.md](../qa/sdet-report.md) | SDET view — test posture, coverage, testability |
+| [../qa/qa-signals.json](../qa/qa-signals.json) | Raw QA signals *(if available)* |
+| [../qa/qa-gaps.json](../qa/qa-gaps.json) | QA gap detail *(if available)* |
 | [architect-report.md](architect-report.md) | Decomposition and topology view |
 | [stakeholder-report.md](stakeholder-report.md) | Business summary |
 ```
