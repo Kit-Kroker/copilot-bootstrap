@@ -2,9 +2,9 @@
 
 ## Overview
 
-This framework reconstructs business capabilities directly from existing codebases, then layers a first-class security assessment on top of the same evidence. It replaces both manual architecture discovery and generic security scanning with a single, traceable pipeline.
+This framework reconstructs business capabilities directly from existing codebases, then layers first-class security and QA assessments on top of the same evidence. It replaces manual architecture discovery, generic security scanning, and disconnected test audits with a single, traceable pipeline.
 
-The result is a unified model that maps **business capabilities, implementation structure, and security posture** — with shared evidence, stable identifiers, and full code traceability.
+The result is a unified model that maps **business capabilities, implementation structure, security posture, and QA readiness** — with shared evidence, stable identifiers, and full code traceability.
 
 ---
 
@@ -16,7 +16,7 @@ See [EDRC-glossary.md](EDRC-glossary.md) for the full term reference — capabil
 
 ## Core Principles
 
-1. **Security is capability-aware.** Vulnerabilities are assessed per capability, not per system. A threat mapped to a capability, its data, and its trust boundary is actionable. A threat without that context is noise.
+1. **Security and QA are capability-aware.** Vulnerabilities and test gaps are both assessed per capability, not per system. A threat mapped to a capability, its data, and its trust boundary is actionable; a coverage gap mapped to a capability, its criticality, and its change velocity is actionable. A finding without that context — security or QA — is noise.
 
 2. **Evidence over assertion.** Every capability, threat, and risk score traces back to specific files, entry points, entities, and configurations in the codebase. No capability exists without code-level proof. No security finding exists without a detection method and confidence level.
 
@@ -50,7 +50,8 @@ Establish the project context, configure the security scope, and prepare the evi
 
 - Project metadata: codebase path, primary language, architecture style (monolith / modular-monolith / microservices), database path (if available), whether a frontend layer exists
 - Security scope parameters: compliance targets, threat modeling standard, risk tolerance
-- Pre-generated external inputs (optional): package exports from nDepend or Structure101, database schemas from a DBA, entry point lists from IDE analyzers, architecture notes or existing documentation
+- QA scope parameters: coverage targets, automation targets, test pyramid expectations, environment inventory
+- Pre-generated external inputs (optional): package exports from nDepend or Structure101, database schemas from a DBA, entry point lists from IDE analyzers, architecture notes or existing documentation, coverage reports (JaCoCo/Cobertura/Istanbul), test result exports (JUnit/TRX/xUnit), flaky-test history from CI, defect exports from issue trackers (Jira/Azure DevOps/Linear)
 
 ## Process
 
@@ -91,6 +92,33 @@ Define the security assessment scope. This determines what the `/assess` phase e
 }
 ```
 
+### QA Context
+
+Define the QA assessment scope. This determines what the QA signal extraction in `/scan` and the QA risk scoring in `/assess` evaluate against:
+
+```json
+{
+  "qa_scope": {
+    "coverage_targets": {
+      "unit": 0.70,
+      "integration": 0.40,
+      "e2e": 0.20
+    },
+    "automation_targets": {
+      "regression": 0.80,
+      "smoke": 1.00
+    },
+    "test_pyramid": "standard | inverted | trophy | custom",
+    "environments": ["dev", "staging", "pre-prod", "prod"],
+    "test_frameworks_expected": ["junit", "jest", "playwright"],
+    "defect_tracker": "jira | azure_devops | linear | none",
+    "ci_system": "github_actions | jenkins | azure_pipelines | none"
+  }
+}
+```
+
+The QA scope is informational — missing fields do not block the pipeline, they surface as "not-collected" markers in the SDET report rather than gating it.
+
 ### Evidence Store Initialization
 
 Create the directory structure that all phases write into:
@@ -111,6 +139,13 @@ Create the directory structure that all phases write into:
   │   ├── vulnerabilities/
   │   ├── controls/
   │   └── security-signals.json
+  ├── qa/
+  │   ├── test-inventory.json
+  │   ├── coverage/
+  │   ├── testability/
+  │   ├── defects/
+  │   ├── environments/
+  │   └── qa-signals.json
   └── state/
       └── workflow.json
 ```
@@ -121,7 +156,7 @@ When externally generated analysis files are provided (nDepend exports, DBA sche
 
 ## Output
 
-- `context.json` — project metadata, codebase setup, security scope
+- `context.json` — project metadata, codebase setup, security scope, QA scope
 - `workflow.json` — pipeline state tracker (current phase, status, completion timestamps)
 - Initialized directory structure for all evidence artifacts
 
@@ -255,9 +290,73 @@ From schema and code, classify entities by sensitivity:
 - Health data (if applicable)
 - Regulatory data (anything subject to GDPR, PCI-DSS, HIPAA)
 
+### QA Signals (4 sub-steps)
+
+Extracted in parallel with capability and security signals, using the same codebase pass. QA signals are adaptive: each sub-step emits a "not-collected" marker with reason when its inputs are absent (no tests, no coverage report, no CI config) rather than skipping silently — the SDET report surfaces these gaps as explicit evidence rather than hiding them.
+
+#### QS1 — Test Inventory
+
+Enumerate all existing tests and classify by level:
+
+- **Unit tests** — test files alongside production code, framework signatures (JUnit, xUnit, pytest, Jest, Mocha)
+- **Integration tests** — tests that wire multiple units, hit a real dependency (DB, broker, container), live in `integration/`, `it/`, `*IntegrationTest*`, or are tagged via framework annotations
+- **Contract tests** — Pact, Spring Cloud Contract, WireMock contracts, OpenAPI-driven
+- **End-to-end / UI tests** — Playwright, Cypress, Selenium, Appium, Espresso, XCUITest
+- **Performance / load tests** — k6, JMeter, Gatling, Locust
+- **Manual test artifacts** — checklists, test cases in `docs/`, Gherkin features without automation glue
+
+For each test file/suite, record: path, framework, level, approximate LOC, target production code (by import or convention), whether it is currently runnable (based on the CI config and visible skip/ignore attributes).
+
+Output: `evidence/qa/test-inventory.json` and a test-to-code mapping that downstream steps can join against the capability model.
+
+#### QS2 — Coverage Signals
+
+Extract or compute code coverage per module:
+
+- Parse coverage reports when registered as pre-generated input (JaCoCo `jacoco.xml`, Cobertura, Istanbul `lcov.info`, coverlet `coverage.opencover.xml`)
+- When no report is available, compute a proxy: `proxy_coverage = min(1.0, tested_files / significant_files)` per package, flagged as LOW confidence and labeled "proxy"
+- Record per-file and per-package coverage: line %, branch % (if available), test-file presence flag
+
+Extract coverage gaps:
+
+- Untested packages (0% or near-0%)
+- Untested critical paths — entry points (from S3/S4) with no test reaching them
+- Asymmetric coverage — high line % but low branch %, indicating happy-path-only testing
+
+Output: `evidence/qa/coverage/coverage-map.json` — per-file coverage with confidence rating (report-sourced = HIGH, proxy = LOW).
+
+#### QS3 — Testability Signals
+
+Identify code patterns that make a capability hard to test. These drive the testability dimension of the QA risk score:
+
+- **Hidden dependencies** — static method calls to external resources (`DateTime.Now`, `new HttpClient()`, static singletons, service locators)
+- **Direct instantiation** — `new` calls to concrete infrastructure classes inside business code (databases, HTTP clients, file system)
+- **Global state** — static mutable fields, thread-locals, process-wide caches
+- **Untestable constructs** — sealed classes with no interfaces, non-virtual methods in mockable languages, private methods doing critical work with no public seam
+- **Missing seams** — no dependency injection, no factory, no interface boundary between business logic and infrastructure
+- **Time / randomness / IO coupling** — direct use of system clock, RNG, file IO, network without an injectable abstraction
+- **Test hostility** — `[Ignore]`, `@Disabled`, `.skip()`, `xit()`, `xdescribe()` clusters; commented-out assertions; try/catch that swallows assertion failures
+
+For each finding: file:line, pattern category, severity (blocks / impedes / smell).
+
+Output: `evidence/qa/testability/testability-findings.json`.
+
+#### QS4 — Environment & CI Signals
+
+Extract signals about how and where tests run:
+
+- **CI pipelines** — parse `.github/workflows/*.yml`, `azure-pipelines.yml`, `Jenkinsfile`, `.gitlab-ci.yml`; enumerate stages (build, lint, unit, integration, e2e, deploy), triggers, gates, and which test levels are mandatory vs. optional
+- **Flaky-test history** — if CI run history is registered as pre-generated input, compute per-test flakiness rate (failures / runs over the last N builds); flag tests with rate > 5%
+- **Environment inventory** — compare configured environments (`application-*.yml`, `appsettings.*.json`, `.env.*`, Helm values) against the `qa_scope.environments` list; flag environments referenced in code but not in scope, and vice versa
+- **Environment parity** — diff config keys between dev/staging/prod; flag keys present in one but not others (config drift) and keys with divergent values for security- or test-sensitive settings (`feature.*`, `timeout.*`, `mock.*`)
+- **Test data / fixtures** — seed scripts, factories, builders, test containers, docker-compose test stacks
+- **Gate configuration** — required checks on protected branches, coverage thresholds enforced in CI, merge-blocking test stages
+
+Output: `evidence/qa/environments/environment-map.json`, `evidence/qa/environments/ci-map.json`, and (if flaky data is present) `evidence/qa/defects/flaky-tests.json`.
+
 ### Signal Quality Requirements
 
-All signals — capability and security — must include:
+All signals — capability, security, and QA — must include:
 
 - **Confidence level**: HIGH / MEDIUM / LOW
 - **Detection method**: static analysis, pattern inference, external database lookup, pre-generated input
@@ -268,10 +367,16 @@ All signals — capability and security — must include:
 - `evidence/discovery/candidates.md` — 15–25 raw capability candidates with confidence ratings and evidence trails
 - `evidence/security/security-signals.json` — all security signals, classified and confidence-rated
 - `evidence/security/security-dependencies.json` — dependency vulnerability report
+- `evidence/qa/qa-signals.json` — consolidated QA signals across QS1–QS4
+- `evidence/qa/test-inventory.json` — classified test inventory with test-to-code mapping
+- `evidence/qa/coverage/coverage-map.json` — per-file coverage (report-sourced or proxy)
+- `evidence/qa/testability/testability-findings.json` — testability findings with severity
+- `evidence/qa/environments/environment-map.json` — environment inventory and parity diff
+- `evidence/qa/environments/ci-map.json` — CI pipeline map with test stages and gates
 
 ## Exit Criteria
 
-All applicable signal sources have been extracted independently. Each candidate and security signal has a confidence rating and traceable evidence. The pipeline is ready for capability synthesis and analysis.
+All applicable signal sources have been extracted independently. Each candidate, security signal, and QA signal has a confidence rating and traceable evidence. QA signals that cannot be collected are emitted with explicit "not-collected" markers and a reason. The pipeline is ready for capability synthesis and analysis.
 
 ---
 
@@ -287,6 +392,8 @@ This is where structural signals meet business judgment. The pipeline does not j
 
 - `evidence/discovery/candidates.md` — raw candidates from `/scan`
 - `evidence/security/security-signals.json` — security signals from `/scan`
+- `evidence/qa/qa-signals.json` — QA signals from `/scan`
+- `evidence/qa/test-inventory.json`, `evidence/qa/coverage/coverage-map.json`, `evidence/qa/testability/testability-findings.json`
 - `context.json` — codebase setup
 - The codebase itself (for deep code analysis)
 
@@ -391,6 +498,57 @@ Extend each capability (L1 and L2) with security context derived from `/scan` si
 
 Link security signals to capabilities: auth flows, sensitive data usage, external endpoints, configuration exposures.
 
+### D6a — QA Context Attachment
+
+Extend each capability (L1 and L2) with QA context derived from `/scan` signals. The shape mirrors `security_context` so downstream reports can render the two overlays side-by-side:
+
+```json
+"qa_context": {
+  "test_coverage": {
+    "unit": 0.62,
+    "integration": 0.18,
+    "e2e": 0.05,
+    "source": "jacoco | proxy | not-collected",
+    "confidence": "HIGH | MEDIUM | LOW"
+  },
+  "automation_status": {
+    "regression": "full | partial | manual | none",
+    "smoke": "full | partial | manual | none",
+    "contract": "present | absent | not-applicable"
+  },
+  "testability": {
+    "rating": "good | impeded | blocked",
+    "findings_count": 12,
+    "top_issues": ["static HttpClient", "no DI seam for PaymentGateway"]
+  },
+  "defect_profile": {
+    "open_defects": 4,
+    "flaky_tests": 2,
+    "change_velocity": "high | medium | low",
+    "source": "jira | git-log | not-collected"
+  },
+  "environments": {
+    "coverage": ["dev", "staging"],
+    "missing": ["pre-prod"],
+    "parity_issues": ["timeout.payments differs prod vs staging"]
+  },
+  "test_strategy_gaps": [
+    "no contract tests against external KYC provider",
+    "no load test for scheduled-payments batch"
+  ]
+}
+```
+
+For each capability:
+
+1. Join test inventory (QS1) against the capability's code locations to attribute tests
+2. Aggregate coverage (QS2) over those files; if no coverage data exists, set `source: "not-collected"` and coverage values to `null` — **do not fabricate**
+3. Pull testability findings (QS3) inside the capability's files; set rating by severity (any "blocks" → `blocked`; any "impedes" → `impeded`; else `good`)
+4. Attach defect / flaky-test data (QS4) when available; otherwise mark `source: "not-collected"`
+5. Cross-reference environments and CI stages that gate the capability's code
+
+"Not-collected" is a first-class value — it flows through to the SDET report as an explicit evidence gap, not an omission.
+
 ### D7 — Domain Model Generation
 
 Build a consolidated domain model — a single, traceable representation of what the system does. Each capability entry must be self-contained: a team handed a single entry should know exactly what to own, where to find it, what it depends on, and what its security profile is.
@@ -417,6 +575,14 @@ Security Context:
   Auth Required:    {yes/no — mechanism}
   Exposure:         {public / internal}
   Criticality:      {low / medium / high}
+
+QA Context:
+  Coverage:         unit {x%} · integration {x%} · e2e {x%}   [source: jacoco | proxy | not-collected]
+  Automation:       regression {full/partial/manual/none} · smoke {…} · contract {…}
+  Testability:      {good / impeded / blocked}  ({N findings})
+  Defect Profile:   {open defects} open · {N} flaky tests · velocity {high/med/low}
+  Environments:     covers {dev, staging, …} · missing {pre-prod, …}
+  Strategy Gaps:    {bulleted list or "none flagged"}
 
 Cross-Capability Dependencies:
   → BC-{NNN} {Capability Name} ({what is shared or created})
@@ -450,8 +616,9 @@ The MISSING category is the most useful output. It drives targeted questions: is
 - `evidence/discovery/coverage.md` — file-to-capability mapping, orphan resolution
 - `evidence/discovery/l1-capabilities.md` — locked L1 list with stable IDs
 - `evidence/discovery/l2-capabilities.md` — L2 sub-capabilities per L1
-- `evidence/discovery/domain-model.md` — consolidated domain model with security contexts
+- `evidence/discovery/domain-model.md` — consolidated domain model with security and QA contexts
 - `evidence/discovery/blueprint-comparison.md` — industry alignment analysis
+- `evidence/qa/qa-context.json` — per-capability QA context (coverage, automation, testability, defects, environments)
 
 ## Exit Criteria
 
@@ -460,8 +627,9 @@ The MISSING category is the most useful output. It drives targeted questions: is
 3. L1 capabilities are locked with stable IDs
 4. L2 sub-capabilities are defined with code traceability
 5. Security context is attached to every capability
-6. Domain model is generated with full evidence
-7. Industry comparison is complete
+6. QA context is attached to every capability (with explicit "not-collected" markers where signals were absent)
+7. Domain model is generated with full evidence
+8. Industry comparison is complete
 
 ---
 
@@ -469,17 +637,24 @@ The MISSING category is the most useful output. It drives targeted questions: is
 
 ## Purpose
 
-Translate the evidence produced by `/discover` (and optionally `/assess`) into four audience-specific documents. Each report is derived directly from the discovery artifacts and includes inline source links so every conclusion traces back to the file it came from.
+Translate the evidence produced by `/discover` (and optionally `/assess`) into five audience-specific documents. Each report is derived directly from the discovery artifacts and includes inline source links so every conclusion traces back to the file it came from.
 
-This phase is **optional and non-blocking** — it does not alter pipeline state and can be re-run at any time after `/discover` completes. The security report is conditionally generated: if `/assess` has not been run, that step is skipped with a note directing to `/assess`.
+This phase is **optional and non-blocking** — it does not alter pipeline state and can be re-run at any time after `/discover` completes. Report gating:
+
+- **Stakeholder, architect, dev reports** — always emitted after `/discover`
+- **SDET report** — always emitted after `/discover`. QA content degrades gracefully: capabilities with no collected QA signals appear with explicit "not-collected" rows and a reason, rather than being omitted. The report renders with whatever signals exist.
+- **Security report** — conditionally emitted (requires `/assess` to have run); if missing, a note directs the reader to run `/assess`
 
 ## Inputs
 
-- `evidence/discovery/l1-capabilities.md` — required for all three discovery reports
-- `evidence/discovery/blueprint-comparison.md` — required (all 7 discovery steps must be complete)
+- `evidence/discovery/l1-capabilities.md` — required for all discovery reports
+- `evidence/discovery/blueprint-comparison.md` — required (all discovery steps must be complete)
 - `evidence/discovery/domain-model.md`, `analysis.md`, `coverage.md`, `l2-capabilities.md`
+- `evidence/qa/qa-context.json` — used by the SDET report and QA overlays in architect/dev reports
+- `evidence/qa/qa-signals.json`, `evidence/qa/coverage/coverage-map.json`, `evidence/qa/testability/testability-findings.json`, `evidence/qa/environments/*.json` — used when present; missing data is reported as "not-collected"
 - `evidence/security/risk-scores.json` — checked to determine whether security report is available
-- All `/assess` outputs — if present, used by both the architect report (security overlay) and the security report
+- `evidence/qa/qa-risk-scores.json` and `evidence/risk/unified-risk-map.json` — used by SDET, architect, and dev reports when `/assess` has run
+- All `/assess` outputs — if present, used by the architect report (security overlay), dev report, and the security report
 
 ## Process
 
@@ -518,6 +693,8 @@ Technical report using DDD terminology, capability IDs, and metric values. Every
 - **Industry Blueprint Gaps** — architect-framed gap analysis (net-new vs. vendor vs. integration) `[blueprint-comparison.md]`
 - **Code Coverage & Orphan Zones** — orphan hotspots with architectural risk assessment `[coverage.md]`
 - **Security Risk Overlay** — condensed per-capability risk summary for architectural planning `[../security/domain-model-secured.md]` *(if available)*
+- **QA Risk Overlay** — per-capability coverage / testability / automation posture and release-readiness classification; drawn from `qa-context.json` and (if available) `qa-risk-scores.json` `[../qa/qa-context.json · ../qa/qa-risk-scores.json]`
+- **Unified Risk Map** — capabilities ranked by unified composite (security + QA) with drivers, for prioritising architectural remediation `[../risk/unified-risk-map.json]` *(if `/assess` has run)*
 
 Discovery artifacts table at the bottom links to all source files.
 
@@ -536,11 +713,37 @@ Engineering-focused report using exact file paths, capability IDs, metric values
 - **Orphan Code** — hotspots with paths, LOC, and recommended action per zone `[coverage.md]`
 - **Coverage Breakdown** — per-capability LOC and coverage percentage `[coverage.md]`
 - **Security Findings for Developers** — confirmed CRITICAL/HIGH vulnerabilities with file:line references and specific fixes; critical control gaps with where-to-add guidance `[../security/vulnerabilities/catalog.json · ../security/gaps.json]` *(if available)*
-- **Sprint Recommendations** — 5–7 ticket-ready action items with scope estimates
+- **QA Findings for Developers** — testability blockers with file:line references and specific refactoring hints (inject this seam, extract this interface); coverage gaps against highest-churn files; flaky tests to stabilise or delete `[../qa/testability/testability-findings.json · ../qa/coverage/coverage-map.json · ../qa/defects/flaky-tests.json]`
+- **Sprint Recommendations** — 5–7 ticket-ready action items with scope estimates, including testability and coverage work alongside security and refactor work
 
 Discovery artifacts table at the bottom links to all source files.
 
-### Report 4 — Security Report
+### Report 4 — SDET Report
+
+**Audience**: SDETs, QA engineers, QA leads, test architects, release managers
+
+**Writes to**: `evidence/qa/sdet-report.md`
+
+**Always emitted** after `/discover`. The report is never skipped — capabilities without collected QA signals appear with explicit "not-collected" rows and a reason, so the absence of data is itself a finding. The report renders a degraded but still useful view when only partial QA inputs were registered.
+
+Technical report using capability IDs, exact file paths, test framework names, and metric values. Every section includes a `*Source:*` citation:
+
+- **Test Strategy Snapshot** — current test pyramid shape (unit / integration / contract / e2e / perf counts and LOC) vs. the `qa_scope.test_pyramid` target; gap narrative `[../qa/test-inventory.json · ../qa/qa-signals.json]`
+- **Capability Test Coverage Map** — per-capability table: L1 name, code LOC, unit %, integration %, e2e %, coverage source (report vs proxy vs not-collected), automation status. Capabilities with no data show `not-collected` and the reason `[../qa/qa-context.json · ../qa/coverage/coverage-map.json]`
+- **Automation Status Matrix** — per-capability regression / smoke / contract / performance status (full / partial / manual / none / not-applicable) `[../qa/qa-context.json]`
+- **Testability Hotspots** — ranked list of capabilities by testability severity, with file:line pointers to top findings and recommended seams (introduce interface, extract adapter, inject clock) `[../qa/testability/testability-findings.json]`
+- **Defect & Flakiness Profile** — per-capability open-defect counts, flaky-test rate, top-N flaky tests with file paths. Sections marked `not-collected` when the defect tracker or CI history was not registered `[../qa/defects/flaky-tests.json]`
+- **Environment Readiness** — environment inventory and parity issues per capability; missing environments flagged; config drift between prod and lower environments listed with keys `[../qa/environments/environment-map.json · ../qa/environments/ci-map.json]`
+- **CI Quality Gates** — which test levels are mandatory on the default branch, which are optional, which are absent; coverage thresholds enforced; merge-blocking stages `[../qa/environments/ci-map.json]`
+- **QA Risk Ranking** — capabilities sorted by QA composite (or `unknown`) with drivers and recommended posture: release-ready / needs work / high-risk / unknown `[../qa/qa-risk-scores.json]` *(if `/assess` has run)*
+- **Unified Risk View for QA** — the unified composite from `/assess` with the QA dimension highlighted; used to align QA prioritisation with architectural and security priorities `[../risk/unified-risk-map.json]` *(if `/assess` has run)*
+- **Test Strategy Recommendations per Capability** — for each capability, the recommended next test investment: which level to add (unit vs integration vs contract vs e2e), which testability seam to unlock first, whether to adopt a new tool (contract testing, load testing), whether manual coverage should be retained
+- **Sprint-Ready QA Backlog** — 5–10 ticket-ready items: "Add contract tests for BC-002-01 against KYC provider (est. 5d)", "Introduce clock seam in `PaymentScheduler.cs:142` to unlock unit coverage of recurrence rules (est. 2d)", "Stabilise or retire flaky tests in `checkout.e2e.spec.ts` (4 flakes, 12% rate)"
+- **Not-Collected Summary** — explicit enumeration of QA signals that could not be collected, with reason per capability (no coverage report registered, no defect tracker, no CI config found). This section is mandatory and never empty when gaps exist — it is the report's primary honesty mechanism
+
+Discovery and QA artifacts table at the bottom links to all source files.
+
+### Report 5 — Security Report
 
 **Audience**: security team, tech leads
 
@@ -569,8 +772,9 @@ Relative paths use the report's location as the base (`evidence/discovery/`). Li
 ## Output
 
 - `evidence/discovery/stakeholder-report.md` — plain-language capability summary
-- `evidence/discovery/architect-report.md` — bounded context and coupling analysis
+- `evidence/discovery/architect-report.md` — bounded context and coupling analysis, security + QA overlays
 - `evidence/discovery/dev-report.md` — engineering team guide with file-level detail
+- `evidence/qa/sdet-report.md` — QA readiness, coverage, automation, testability, environments, QA backlog (always emitted)
 - `evidence/security/security-report.md` — risk-ranked security findings *(if `/assess` has run)*
 - `evidence/security/security-risk-map.json` — machine-readable risk map *(if `/assess` has run)*
 - `evidence/security/threat-catalog.json` — complete threat catalog *(if `/assess` has run)*
@@ -578,24 +782,31 @@ Relative paths use the report's location as the base (`evidence/discovery/`). Li
 
 ## Exit Criteria
 
-All three discovery reports are generated. Security report is generated if `/assess` has run, or skipped with a clear message if not. Every section in every report includes a source link to the artifact it draws from.
+Stakeholder, architect, dev, and SDET reports are always generated after `/discover`. The SDET report renders degraded but complete when some QA signals are absent, with an explicit Not-Collected Summary. The security report is generated if `/assess` has run, or skipped with a clear message if not. Every section in every report includes a source link to the artifact it draws from.
 
 ---
 
-# `/assess` — Security Assessment Phase
+# `/assess` — Security & QA Assessment Phase
 
 ## Purpose
 
-Evaluate security posture **per capability**, not per system. This phase uses the capability model from `/discover` and the security signals from `/scan` to produce capability-aware threat models, vulnerability classifications, control mappings, and risk scores.
+Evaluate security **and QA posture** **per capability**, not per system. This phase uses the capability model from `/discover`, the security signals and QA signals from `/scan`, and the contexts attached in `/discover` to produce:
 
-A generic security scan treats the system as a flat surface. This phase treats it as a structured set of business capabilities with different criticality levels, data sensitivities, trust boundaries, and exposure profiles. That structure changes what matters. A SQL injection in an internal admin tool and a SQL injection in a public-facing payment endpoint are not the same risk, even though they are the same vulnerability class.
+- Capability-aware threat models, vulnerability classifications, control mappings
+- Capability-aware QA risk assessment (coverage gaps, testability risk, defect density, change velocity)
+- A **unified per-capability risk score** that combines security and QA dimensions into a single composite, and preserves each dimension for drill-down
+
+A generic security scan treats the system as a flat surface. A generic QA audit treats test coverage as an undifferentiated percentage. This phase treats the system as a structured set of business capabilities with different criticality levels, data sensitivities, trust boundaries, exposure profiles — **and different test coverage, testability, and defect histories**. That structure changes what matters. A SQL injection in an internal admin tool and a SQL injection in a public-facing payment endpoint are not the same risk. A 40% coverage gap in a seldom-changed reporting module and a 40% gap in a high-velocity payment capability are not the same risk. Security and QA share the same unit of analysis — the capability — so they produce one unified view.
 
 ## Inputs
 
-- `evidence/discovery/domain-model.md` — capability model with security contexts
+- `evidence/discovery/domain-model.md` — capability model with security and QA contexts
 - `evidence/security/security-signals.json` — all security signals
 - `evidence/security/security-dependencies.json` — dependency vulnerabilities
-- `context.json` — security scope, compliance targets
+- `evidence/qa/qa-signals.json`, `evidence/qa/qa-context.json` — QA signals and per-capability QA context
+- `evidence/qa/coverage/coverage-map.json`, `evidence/qa/testability/testability-findings.json`, `evidence/qa/environments/*.json`
+- Git log / commit history — used to compute change velocity per capability
+- `context.json` — security scope, compliance targets, QA scope
 
 ## Process
 
@@ -639,24 +850,72 @@ For each identified threat and vulnerability, map existing controls:
 
 For each control, assess: is it present? Is it correctly implemented? Is it consistently applied across the capability's L2 operations?
 
-### Phase 4 — Risk Scoring (Per Capability)
+### Phase 3b — QA Risk Analysis (Per Capability)
 
-Score each capability across three dimensions:
+For each capability, compute a QA risk profile from the QA context attached in D6a plus git-derived change velocity:
+
+- **Coverage gap** — distance from the per-level targets defined in `qa_scope.coverage_targets`. Weighted by target depth: unit gaps count less than integration/e2e gaps for capabilities with high external exposure.
+- **Testability risk** — severity-weighted count of QS3 findings inside the capability's files. `blocked` findings drive the dimension toward 1.0; `smell` findings contribute marginally.
+- **Defect density** — open defects attributed to the capability (from defect-tracker export) plus flaky-test rate over the capability's test files.
+- **Change velocity** — normalized commits/month over the last 6 months to the capability's files. High velocity amplifies every other dimension: untested code that never changes is tolerable; untested code being rewritten weekly is not.
+- **Environment coverage** — whether the capability is exercised in the environments declared in `qa_scope.environments`.
+
+When a dimension has no input (e.g., no defect tracker registered), it is set to `null` with `source: "not-collected"` — not to a default value. Downstream scoring treats `null` as "unknown" and surfaces it in the SDET report rather than hiding it under an invented number.
+
+Classify each capability's QA posture:
+
+- **Release-ready** — coverage meets target, testability is good, defect density and flakiness are low
+- **Needs work** — one dimension below target
+- **High-risk** — two or more dimensions below target, or any `blocked` testability finding on a HIGH-criticality capability
+- **Unknown** — insufficient signals to score (explicit, not an omission)
+
+Output: `evidence/qa/qa-risk-scores.json`, `evidence/qa/qa-gaps.json`.
+
+### Phase 4 — Unified Risk Scoring (Per Capability)
+
+Score each capability across both security and QA dimensions, then combine into a unified composite:
 
 ```json
 "risk_score": {
-  "likelihood": 0.0-1.0,
-  "impact": 0.0-1.0,
-  "exposure": 0.0-1.0,
-  "composite": 0.0-1.0
+  "security": {
+    "likelihood": 0.0-1.0,
+    "impact": 0.0-1.0,
+    "exposure": 0.0-1.0,
+    "composite": 0.0-1.0
+  },
+  "qa": {
+    "coverage_gap": 0.0-1.0 | null,
+    "testability": 0.0-1.0 | null,
+    "defect_density": 0.0-1.0 | null,
+    "change_velocity": 0.0-1.0,
+    "composite": 0.0-1.0 | "unknown"
+  },
+  "unified_composite": 0.0-1.0 | "partial",
+  "drivers": ["top 1-3 reasons this capability scores where it does"]
 }
 ```
 
-- **Likelihood**: Based on vulnerability count, control gaps, and attack surface
-- **Impact**: Based on data sensitivity, business criticality, and blast radius
-- **Exposure**: Based on external surface (public endpoints, third-party integrations, trust boundaries crossed)
+**Security sub-score** (unchanged):
 
-Prioritize by risk, not by count. Optimize for exploitability and business impact, not for number of findings.
+- **Likelihood**: vulnerability count, control gaps, attack surface
+- **Impact**: data sensitivity, business criticality, blast radius
+- **Exposure**: external surface, third-party integrations, trust boundaries crossed
+- Composite: `(likelihood × 0.3) + (impact × 0.4) + (exposure × 0.3)`
+
+**QA sub-score**:
+
+- Composite: `(coverage_gap × 0.35) + (testability × 0.30) + (defect_density × 0.20) + (change_velocity × 0.15)`
+- If one or more dimensions are `null` ("not-collected"), the composite is `"unknown"` rather than a partial average — do not silently substitute zeros
+
+**Unified composite**:
+
+- When both sub-scores are numeric: `unified = (security_composite × 0.55) + (qa_composite × 0.45)`
+- The security weight is slightly higher by default because security risks tend to be harder to recover from than quality risks; teams can override weights in `context.json` under `risk_scope.weights`
+- When the QA composite is `"unknown"` because signals were not collected, the unified composite is reported as `"partial"` with the security score — and the drivers list explicitly states `"QA signals not collected"` so the gap is visible rather than masked
+
+Always list 1–3 **drivers** per capability — the specific reasons for the score. Drivers are what turn a number into an action item.
+
+Prioritize by risk, not by count. Optimize for exploitability, business impact, and release readiness, not for number of findings.
 
 ### Phase 5 — Cross-Capability Risk Analysis
 
@@ -689,18 +948,23 @@ AI-driven analysis will flag theoretical vulnerabilities, unreachable code paths
 - `evidence/security/threats/{capability_id}.json` — STRIDE threat model per capability
 - `evidence/security/vulnerabilities/catalog.json` — classified vulnerability catalog
 - `evidence/security/controls/control-map.json` — control-to-threat mapping
-- `evidence/security/risk-scores.json` — per-capability risk scores
+- `evidence/security/risk-scores.json` — per-capability security risk scores
 - `evidence/security/cross-capability-risks.json` — systemic risk analysis
 - `evidence/security/gaps.json` — missing controls and weak implementations
+- `evidence/qa/qa-risk-scores.json` — per-capability QA risk scores with posture classification
+- `evidence/qa/qa-gaps.json` — coverage gaps, testability blockers, environment gaps, strategy gaps
+- `evidence/risk/unified-risk-map.json` — per-capability unified composite (security + QA) with drivers
 
 ## Exit Criteria
 
 1. Every capability has a STRIDE threat model
 2. All vulnerabilities are classified (confirmed/probable/potential) and mapped to capabilities
 3. Existing controls are mapped to threats
-4. Risk scoring is complete for all capabilities
-5. Cross-capability risks are identified
-6. All findings are traceable to evidence with confidence levels
+4. Security risk scoring is complete for all capabilities
+5. QA risk scoring is complete for all capabilities, with `"unknown"` explicitly marked where signals were not collected (not substituted with defaults)
+6. Unified composite risk score is computed per capability with 1–3 drivers listed
+7. Cross-capability risks are identified
+8. All findings are traceable to evidence with confidence levels
 
 ---
 
@@ -716,6 +980,8 @@ The pattern: scope first, then analyze. The domain model tells the AI where to l
 
 - `evidence/discovery/domain-model.md` — capability model
 - All security evidence from `/assess`
+- All QA evidence from `/scan` and `/assess` (`qa-context.json`, `qa-risk-scores.json`, `qa-gaps.json`, testability findings)
+- `evidence/risk/unified-risk-map.json` — unified risk view
 
 ## Process
 
@@ -725,6 +991,7 @@ For each capability, generate a self-contained context package that includes:
 
 - The capability's L2 operations, code locations, and entity ownership
 - Relevant threats, vulnerabilities, and control gaps
+- Relevant QA context: current coverage, testability findings with file:line pointers, missing test levels, flaky tests, environment gaps
 - Specific file paths to constrain AI tool scope
 - Sensitive data classifications and compliance requirements
 
@@ -735,6 +1002,8 @@ Generate targeted prompts for AI-assisted work:
 - "Analyze the authentication flow in BC-003 (Account Management) for session fixation and token reuse vulnerabilities. Files: [specific paths]."
 - "Review input validation in BC-007 (Payments - Domestic) for injection risks. Focus on: [specific endpoints]."
 - "Suggest least-privilege refactoring for BC-001-02 (Identity Verification & KYC Compliance). Current authorization pattern: [description]. Target: [specific control gap]."
+- "Introduce a dependency-injection seam for the static `HttpClient` usage in `PaymentGateway.cs:87` so BC-007-03 can be unit-tested; preserve current retry behaviour."
+- "Draft an integration test for BC-002-01 covering the KYC provider happy path and the three failure modes listed in `qa-gaps.json`; use the existing WireMock harness in `tests/support/`."
 
 Each prompt references specific capabilities, specific files, specific threats — not generic instructions.
 
@@ -745,6 +1014,7 @@ For capabilities targeted for modernization, generate specification seeds that i
 - Business operations the capability must support
 - Entity ownership and data contracts
 - Security controls that must be preserved or improved
+- Test strategy requirements: minimum coverage targets, required test levels (contract / integration / e2e), testability constraints the new design must satisfy
 - Compliance constraints that apply
 
 ## Output
@@ -835,15 +1105,18 @@ This is no different from stakeholder discovery. You do not rely on a single int
 The pipeline is complete when:
 
 1. Every capability includes security context (data sensitivity, auth, exposure, criticality)
-2. A STRIDE threat model exists per capability
-3. Every vulnerability is mapped to both code and capability
-4. Risk scoring is present for all capabilities
-5. Security findings are traceable to source evidence with confidence levels
-6. Cross-capability risks are identified and documented
-7. Coverage exceeds 90% (files mapped to capabilities)
-8. Industry blueprint comparison is complete
-9. Domain model is generated with full code traceability
-10. All reports are generated via `/report` and evidence is preserved
+2. Every capability includes QA context (coverage, automation status, testability, defect profile, environments) — with explicit "not-collected" markers where signals were absent
+3. A STRIDE threat model exists per capability
+4. Every vulnerability is mapped to both code and capability
+5. Security risk scoring is present for all capabilities
+6. QA risk scoring is present for all capabilities (or explicitly marked `unknown` with reason)
+7. Unified composite risk score is computed per capability with 1–3 drivers
+8. Security and QA findings are traceable to source evidence with confidence levels
+9. Cross-capability risks are identified and documented
+10. File-to-capability coverage exceeds 90%
+11. Industry blueprint comparison is complete
+12. Domain model is generated with full code traceability
+13. All reports are generated via `/report` and evidence is preserved. The SDET report is always emitted with any missing QA signals called out in a Not-Collected Summary section
 
 ---
 
@@ -859,13 +1132,24 @@ The pipeline is complete when:
 | `domain-model.md` | /discover | Consolidated domain model |
 | `blueprint-comparison.md` | /discover | Industry alignment analysis |
 | `security-signals.json` | /scan | Extracted security signals |
+| `qa-signals.json` | /scan | Extracted QA signals (tests, coverage, testability, environments, CI) |
+| `test-inventory.json` | /scan | Classified test inventory with test-to-code mapping |
+| `coverage/coverage-map.json` | /scan | Per-file coverage (report-sourced or proxy) |
+| `testability/testability-findings.json` | /scan | Testability findings with severity |
+| `environments/environment-map.json` | /scan | Environment inventory and parity diff |
+| `environments/ci-map.json` | /scan | CI pipeline map with test stages and gates |
+| `qa-context.json` | /discover | Per-capability QA context |
 | `stakeholder-report.md` | /report | Plain-language capability summary for executives and PMs |
-| `architect-report.md` | /report | Bounded context, coupling analysis, decomposition options |
+| `architect-report.md` | /report | Bounded context, coupling analysis, decomposition options, security + QA overlays |
 | `dev-report.md` | /report | Engineering guide with file-level detail and refactor targets |
+| `sdet-report.md` | /report | QA readiness, coverage, automation, testability, environments, QA backlog (always emitted) |
 | `threats/{cap_id}.json` | /assess | STRIDE threat models |
 | `catalog.json` | /assess | Vulnerability catalog |
 | `control-map.json` | /assess | Control-to-threat mapping |
-| `risk-scores.json` | /assess | Per-capability risk scores |
+| `security/risk-scores.json` | /assess | Per-capability security risk scores |
+| `qa/qa-risk-scores.json` | /assess | Per-capability QA risk scores with posture classification |
+| `qa/qa-gaps.json` | /assess | Coverage, testability, environment, and strategy gaps |
+| `risk/unified-risk-map.json` | /assess | Unified per-capability composite (security + QA) with drivers |
 | `security-report.md` | /report | Risk-ranked security findings, compliance posture, remediation priorities |
 | `security-risk-map.json` | /report | Machine-readable per-capability risk map |
 | `threat-catalog.json` | /report | Complete cross-referenced threat catalog |

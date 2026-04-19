@@ -20,7 +20,7 @@ Supports **greenfield** (build from scratch) and **brownfield** (modernize exist
 10. [File Structure](#10-file-structure)
 11. [Greenfield Pipeline](#11-greenfield-pipeline)
 12. [Brownfield Discovery Pipeline](#12-brownfield-discovery-pipeline)
-13. [EDCR Security Assessment Pipeline](#13-edcr-security-assessment-pipeline)
+13. [EDCR Security & QA Assessment Pipeline](#13-edcr-security--qa-assessment-pipeline)
 14. [Generator Orchestrator](#14-generator-orchestrator)
 15. [Google Stitch Integration](#15-google-stitch-integration)
 16. [ADLC Extended Workflow](#16-adlc-extended-workflow)
@@ -85,16 +85,16 @@ code .
 In Copilot Chat — the full workflow runs here, no terminal needed after init:
 
 ```
-/init            — initialize project state as brownfield (includes security scope setup)
-/scan            — auto-detect language, framework, database, tools, architecture + extract security signals
-/discover        — run all 7 capability extraction steps + attach security context to each capability
-/report          — generate stakeholder, architect, dev, and security reports  [optional]
-/assess          — STRIDE threat modeling, vulnerability detection, control mapping, risk scoring
-/generate        — generate AI-ready security context packages + Copilot configuration
-/finish          — generate security report + remove bootstrap scaffolding
+/init            — initialize project state as brownfield (includes security + QA scope setup)
+/scan            — auto-detect language, framework, database, tools, architecture + extract security + QA signals
+/discover        — run capability extraction steps + attach security and QA context to each capability
+/report          — generate stakeholder, architect, dev, SDET, and security reports  [optional, SDET always emitted]
+/assess          — STRIDE threat modeling, vulnerability detection, control mapping, QA risk analysis, unified risk scoring
+/generate        — generate AI-ready security + QA context packages + Copilot configuration
+/finish          — remove bootstrap scaffolding
 ```
 
-**No interview.** `/scan` captures the stack and security signals; `/discover` extracts capabilities and attaches security context; `/report` (optional) produces four audience-specific reports; `/assess` produces per-capability threat models and risk scores; `/generate` and `/finish` produce the final artifacts.
+**No interview.** `/scan` captures the stack, security signals, and QA signals; `/discover` extracts capabilities and attaches security and QA context; `/report` (optional) produces five audience-specific reports (stakeholder, architect, dev, SDET always; security if `/assess` has run); `/assess` produces per-capability threat models, QA risk scores, and a unified composite risk score; `/generate` and `/finish` produce the final artifacts.
 
 ---
 
@@ -133,13 +133,17 @@ This framework uses all VS Code Copilot customization types:
 **Brownfield**:
 
 ```
-/init (chat)         → project.json (approach: brownfield) + security_scope in answers.json
-/scan (chat)         → .discovery/context.json + confidence.json + docs/security/security-signals.json
-/discover (chat)     → creates pipeline.lock.json, then runs Discovery (7 steps + attach-security-context)
+/init (chat)         → project.json (approach: brownfield) + security_scope + qa_scope in answers.json
+/scan (chat)         → .discovery/context.json + confidence.json + docs/security/security-signals.json + docs/qa/qa-signals.json
+                       + docs/qa/test-inventory.json, coverage/, testability/, environments/
+/discover (chat)     → creates pipeline.lock.json, then runs Discovery (capability steps + attach-security-context + attach-qa-context)
 /report (chat)       → docs/discovery/stakeholder-report.md, architect-report.md, dev-report.md  [optional — run after /discover]
+                       docs/qa/sdet-report.md  [always emitted; renders degraded when QA signals are partial]
                        docs/security/security-report.md  [only if /assess has been run]
 /assess (chat)       → docs/security/threats/, vulnerabilities/, controls/, risk-scores.json
-/generate (chat)     → docs/security/generate/ + .github/copilot-instructions.md, skills/, prompts/, .claude/settings.json
+                       docs/qa/qa-risk-scores.json, qa-gaps.json
+                       docs/risk/unified-risk-map.json
+/generate (chat)     → docs/security/generate/ + docs/qa/generate/ + .github/copilot-instructions.md, skills/, prompts/, .claude/settings.json
 /finish (chat)       → removes scaffolding
 ```
 
@@ -180,6 +184,7 @@ Brownfield uses a discovery chain instead of the interview:
 ```
 .discovery/context.json (from /scan)
   └─► docs/security/security-signals.json (from /scan, parallel)
+  └─► docs/qa/qa-signals.json + test-inventory.json + coverage/ + testability/ + environments/ (from /scan, parallel)
   └─► docs/discovery/candidates.md
         └─► docs/discovery/analysis.md
               └─► docs/discovery/coverage.md
@@ -187,16 +192,20 @@ Brownfield uses a discovery chain instead of the interview:
                           └─► docs/discovery/l2-capabilities.md
                                 └─► docs/discovery/domain-model.md
                                       └─► docs/discovery/blueprint-comparison.md
-                                            ├─► docs/discovery/stakeholder-report.md  (/report, optional)
-                                            ├─► docs/discovery/architect-report.md   (/report, optional)
-                                            ├─► docs/discovery/dev-report.md          (/report, optional)
-                                            └─► docs/security/capability-security-contexts.json
-                                                  └─► docs/security/threats/ (/assess)
-                                                        └─► docs/security/vulnerabilities/
-                                                              └─► docs/security/controls/
-                                                                    └─► docs/security/risk-scores.json
-                                                                          └─► docs/security/generate/ (/generate)
-                                                                                └─► docs/security/security-report.md (/report, optional)
+                                            ├─► docs/discovery/stakeholder-report.md  (/report, always)
+                                            ├─► docs/discovery/architect-report.md    (/report, always; includes QA + security overlays)
+                                            ├─► docs/discovery/dev-report.md           (/report, always; includes QA + security findings)
+                                            ├─► docs/qa/sdet-report.md                 (/report, always; renders degraded when QA partial)
+                                            ├─► docs/security/capability-security-contexts.json
+                                            └─► docs/qa/qa-context.json
+                                                  ├─► docs/security/threats/ (/assess)
+                                                  │     └─► docs/security/vulnerabilities/
+                                                  │           └─► docs/security/controls/
+                                                  │                 └─► docs/security/risk-scores.json
+                                                  ├─► docs/qa/qa-risk-scores.json + qa-gaps.json (/assess)
+                                                  └─► docs/risk/unified-risk-map.json (/assess; security + QA composite)
+                                                        └─► docs/security/generate/ + docs/qa/generate/ (/generate)
+                                                              └─► docs/security/security-report.md (/report, if /assess ran)
                                                                                     .github/copilot-instructions.md
                                                                                     .github/skills/
                                                                                     .github/prompts/
@@ -333,12 +342,13 @@ Steps that already have output files are automatically skipped (resumable from a
 
 ### Brownfield workflow (replaces greenfield entirely — no interview)
 
-**Scan phase** (`/scan`) — runs parallel signal extraction:
+**Scan phase** (`/scan`) — runs parallel signal extraction (capability + security + QA):
 
 | Step | Skill | Output |
 |------|-------|--------|
 | `seed_candidates` | `discover-candidates` | docs/discovery/candidates.md |
 | `scan_security` | `scan-security-signals` | docs/security/security-signals.json |
+| `scan_qa` | `scan-qa-signals` | docs/qa/qa-signals.json, test-inventory.json, coverage/coverage-map.json, testability/testability-findings.json, environments/environment-map.json, environments/ci-map.json |
 
 **Discovery phase** (`/discover`):
 
@@ -352,6 +362,7 @@ Steps that already have output files are automatically skipped (resumable from a
 | 6 | `discovery_domain` | `generate-discovery-domain` | docs/discovery/domain-model.md |
 | 7 | `blueprint_comparison` | `compare-blueprint` | docs/discovery/blueprint-comparison.md |
 | 8 | `attach_security_context` | `attach-security-context` | docs/security/capability-security-contexts.json |
+| 9 | `attach_qa_context` | `attach-qa-context` | docs/qa/qa-context.json |
 
 **Report suite** (`/report`) — optional, standalone:
 
@@ -360,16 +371,18 @@ Steps that already have output files are automatically skipped (resumable from a
 | `generate_stakeholder_report` | `generate-stakeholder-report` | docs/discovery/stakeholder-report.md |
 | `generate_architect_report` | `generate-architect-report` | docs/discovery/architect-report.md |
 | `generate_dev_report` | `generate-dev-report` | docs/discovery/dev-report.md |
+| `generate_sdet_report` | `generate-sdet-report` | docs/qa/sdet-report.md *(always emitted; renders degraded when QA signals are partial, with a Not-Collected Summary)* |
 | `generate_security_report` | `generate-security-report` | docs/security/security-report.md *(only if `/assess` has been run)* |
 
-**Security assessment phase** (`/assess`):
+**Security + QA assessment phase** (`/assess`):
 
 | # | Step | Skill | Output |
 |---|------|-------|--------|
 | 1 | `threat_model` | `threat-model` | docs/security/threats/BC-{NNN}.json + threat-summary.md |
 | 2 | `vulnerability_detection` | `detect-vulnerabilities` | docs/security/vulnerabilities/catalog.json + summary |
 | 3 | `map_controls` | `map-controls` | docs/security/controls/control-map.json + summary |
-| 4 | `score_risks` | `score-risks` | docs/security/risk-scores.json + cross-capability-risks.json + gaps.json |
+| 3b | `qa_risk_analysis` | `analyze-qa-risk` | docs/qa/qa-risk-scores.json + qa-gaps.json |
+| 4 | `score_risks` | `score-risks` | docs/security/risk-scores.json + cross-capability-risks.json + gaps.json + docs/risk/unified-risk-map.json |
 
 **Generation phase** (`/generate`):
 
@@ -509,7 +522,7 @@ Type `/` in Copilot Chat to access these commands. All commands run entirely in 
 ### Setup
 
 #### `/init`
-Initialize a new project. Creates `.project/state/workflow.json`, `.project/state/answers.json`, `project.json`, and `.greenfield/answers.json`. For brownfield projects, also collects security scope (standard, compliance targets, risk tolerance) and creates the `docs/security/` directory structure. Safe — exits if state already exists.
+Initialize a new project. Creates `.project/state/workflow.json`, `.project/state/answers.json`, `project.json`, and `.greenfield/answers.json`. For brownfield projects, also collects security scope (standard, compliance targets, risk tolerance), QA scope (coverage/automation targets, test pyramid, environments, defect tracker, CI system), and creates the `docs/security/`, `docs/qa/`, and `docs/risk/` directory structures. Safe — exits if state already exists.
 
 ```
 /init
@@ -574,7 +587,7 @@ Initialize the brownfield discovery pipeline and run it automatically. Creates `
 /discover
 ```
 
-Requires `project.json → approach = "brownfield"` and `.discovery/context.json` (from `/scan`). Also requires `docs/security/security-signals.json` (from `/scan`) for security context attachment. No interview needed. Re-run to resume after an interruption.
+Requires `project.json → approach = "brownfield"` and `.discovery/context.json` (from `/scan`). Also requires `docs/security/security-signals.json` and `docs/qa/qa-signals.json` (both from `/scan`) for security and QA context attachment. No interview needed. Re-run to resume after an interruption.
 
 ---
 
@@ -585,7 +598,7 @@ Generate the full discovery report suite from completed brownfield discovery res
 /report
 ```
 
-Produces three reports unconditionally (requires all 7 discovery steps complete):
+Produces four reports unconditionally (requires all discovery steps complete, including QA context attachment):
 
 **`docs/discovery/stakeholder-report.md`** — audience: executives, PMs, BAs
 - Plain language throughout — no jargon, no file paths, no code
@@ -600,7 +613,9 @@ Produces three reports unconditionally (requires all 7 discovery steps complete)
 - Decomposition options ranked by feasibility given current coupling
 - Modernisation posture with metric-level rationale
 - Orphan code hotspots with architectural risk assessment
+- QA risk overlay per capability (coverage, automation, testability, defects)
 - Security risk overlay per capability (if `/assess` has been run)
+- Unified risk map — capabilities ranked by security + QA composite with drivers (if `/assess` has been run)
 
 **`docs/discovery/dev-report.md`** — audience: developers, tech leads, engineering managers
 - Capability-to-code map with exact file/module paths per capability
@@ -608,10 +623,25 @@ Produces three reports unconditionally (requires all 7 discovery steps complete)
 - Health dashboard for sprint planning and tech debt backlog
 - Refactor targets with specific techniques and scope estimates
 - Orphan code hotspots with recommended actions
+- QA findings: testability blockers with file:line pointers and specific refactoring hints, coverage gaps against highest-churn files, flaky tests to stabilise or retire
 - Confirmed vulnerabilities and critical control gaps (if `/assess` has been run)
-- Sprint recommendations as ticket-ready action items
+- Sprint recommendations as ticket-ready action items (including testability and coverage work)
 
-Produces a fourth report if `/assess` has been run:
+**`docs/qa/sdet-report.md`** — audience: SDETs, QA engineers, QA leads, test architects, release managers
+
+- Always emitted after `/discover`. Capabilities with no collected QA signals appear with explicit `not-collected` rows and a reason — absence of data is itself a finding
+- Test strategy snapshot (current pyramid shape vs. target)
+- Per-capability coverage map (unit / integration / e2e %, source = report vs proxy vs not-collected, confidence)
+- Automation status matrix (regression / smoke / contract / performance per capability)
+- Testability hotspots (ranked; recommended seams with file:line pointers)
+- Defect and flakiness profile (open defects, flaky-test rates, top flakes by capability)
+- Environment readiness and parity issues per capability
+- CI quality gates (mandatory / optional / absent test levels; enforced thresholds)
+- QA risk ranking and unified risk view (if `/assess` has run)
+- Per-capability test strategy recommendations and sprint-ready QA backlog
+- Not-Collected Summary — mandatory section enumerating every QA signal gap and its reason
+
+Produces a fifth report if `/assess` has been run:
 
 **`docs/security/security-report.md`** — audience: security team, tech leads
 - Risk-ranked findings with CRITICAL/HIGH vulnerabilities and specific file:line references
@@ -626,19 +656,20 @@ If `/assess` has not been run, the security report step is skipped and the compl
 ---
 
 #### `/assess`
-Run the EDCR security assessment pipeline. Applies STRIDE threat modeling to each capability, detects and classifies vulnerabilities, maps existing controls, and calculates per-capability risk scores with cross-capability systemic risk analysis. **Brownfield only.**
+Run the EDCR security + QA assessment pipeline. Applies STRIDE threat modeling to each capability, detects and classifies vulnerabilities, maps existing controls, computes per-capability QA risk (coverage gap, testability, defect density, change velocity), and combines security and QA into a unified composite risk score per capability with drivers. **Brownfield only.**
 
 ```
 /assess
 ```
 
-Requires `docs/security/capability-security-contexts.json` (from `/discover`). Runs 4 steps in sequence: threat modeling, vulnerability detection, control mapping, risk scoring. Outputs all artifacts to `docs/security/`. Re-run to resume after an interruption.
+Requires `docs/security/capability-security-contexts.json` and `docs/qa/qa-context.json` (both from `/discover`). Runs 5 steps in sequence: threat modeling, vulnerability detection, control mapping, QA risk analysis, unified risk scoring. Outputs artifacts to `docs/security/`, `docs/qa/`, and `docs/risk/`. Re-run to resume after an interruption.
 
 Steps:
 - `threat_model` → `docs/security/threats/BC-{NNN}.json` + `threat-summary.md`
 - `vulnerability_detection` → `docs/security/vulnerabilities/catalog.json` + summary
 - `map_controls` → `docs/security/controls/control-map.json` + summary
-- `score_risks` → `docs/security/risk-scores.json`, `cross-capability-risks.json`, `gaps.json`
+- `qa_risk_analysis` → `docs/qa/qa-risk-scores.json` + `docs/qa/qa-gaps.json` (`"unknown"` posture explicit where signals were not collected — never substituted with defaults)
+- `score_risks` → `docs/security/risk-scores.json`, `cross-capability-risks.json`, `gaps.json`, and `docs/risk/unified-risk-map.json` (per-capability unified composite with drivers)
 
 ---
 
@@ -1273,6 +1304,30 @@ docs/
         BC-{NNN}-context.md**
       spec-seeds/**               Functional + security specification seeds
         BC-{NNN}-spec-seed.md**
+  qa/**                           EDCR QA assessment artifacts (brownfield only)
+    qa-signals.json**             Consolidated QA signals (QS1–QS4) with confidence levels
+    test-inventory.json**         Classified test inventory with test-to-code mapping
+    qa-context.json**             Per-capability QA context (coverage, automation, testability, defects, environments)
+    qa-risk-scores.json**         Per-capability QA risk (coverage_gap, testability, defect_density, change_velocity, composite, posture)
+    qa-gaps.json**                Prioritised coverage, testability, environment, and strategy gaps
+    sdet-report.md**              SDET report — always emitted; includes Not-Collected Summary
+    coverage/**
+      coverage-map.json**         Per-file coverage (report-sourced or proxy, with confidence)
+    testability/**
+      testability-findings.json** Testability findings with severity (blocks/impedes/smell)
+    defects/**
+      flaky-tests.json**          Flaky-test rates from CI history (when registered)
+    environments/**
+      environment-map.json**      Environment inventory and parity diff
+      ci-map.json**               CI pipeline map with test stages and gates
+    generate/**                   AI-ready QA artifacts for downstream tooling
+      qa-prompts.md**             Targeted testability refactor prompts with file:line pointers
+      capability-contexts/**      Per-capability QA context packages
+        BC-{NNN}-qa-context.md**
+      spec-seeds/**               Test-strategy spec seeds per capability
+        BC-{NNN}-test-seed.md**
+  risk/**                         Unified risk artifacts (brownfield only)
+    unified-risk-map.json**       Per-capability unified composite (security + QA) with drivers
   analysis/
     prd.md                        Product Requirements Document
     capabilities.md               Capability map
@@ -1469,9 +1524,9 @@ This produces AI-ready security context packages and project-specific Copilot co
 
 ---
 
-## 13. EDCR Security Assessment Pipeline
+## 13. EDCR Security & QA Assessment Pipeline
 
-The EDCR (Evidence-Driven Capability Reconstruction) Security Assessment extends the brownfield discovery pipeline with capability-aware security intelligence. Threats, vulnerabilities, and risks are always mapped to specific capabilities, not to the system as a whole.
+The EDCR (Evidence-Driven Capability Reconstruction) Security & QA Assessment extends the brownfield discovery pipeline with capability-aware security **and QA** intelligence. Threats, vulnerabilities, coverage gaps, testability issues, and risks are always mapped to specific capabilities, not to the system as a whole. Security and QA scores combine into a single unified composite per capability so prioritisation is consistent.
 
 ### When it runs
 
@@ -1483,24 +1538,30 @@ After `/discover` completes (which ends with `attach-security-context`), run:
 
 ### Design principles
 
-- **Capability-aware** — Every threat, vulnerability, and risk score is tied to a specific capability (BC-NNN). A SQL injection in a public payment endpoint and one in an internal admin tool are not the same risk. Context determines priority.
+- **Capability-aware** — Every threat, vulnerability, coverage gap, and risk score is tied to a specific capability (BC-NNN). A SQL injection in a public payment endpoint and one in an internal admin tool are not the same risk. A 40% coverage gap in a seldom-changed reporting module and a 40% gap in a high-velocity payment capability are not the same risk. Context determines priority.
 - **Evidence-driven** — Every finding traces back to a specific file, line, and detection method. No finding exists without evidence. Confidence levels (HIGH/MEDIUM/LOW) are explicit.
-- **Pre-generated inputs accepted** — Each skill checks whether its output file already exists. Feed in results from external tools (Snyk, SonarQube, Checkmarx) and the skill skips regeneration.
-- **Composite scoring** — Risk scores combine likelihood, impact, and exposure. High vulnerability count alone does not make a capability high-risk; business criticality and attack surface also matter.
+- **Pre-generated inputs accepted** — Each skill checks whether its output file already exists. Feed in results from external tools — Snyk / SonarQube / Checkmarx for security, JaCoCo / Cobertura / Istanbul / coverlet for coverage, Jira / Azure DevOps exports for defects, CI run history for flakiness — and the skill skips regeneration.
+- **Composite scoring** — Security score combines likelihood, impact, and exposure. QA score combines coverage gap, testability, defect density, and change velocity. Unified composite combines both (0.55 × security + 0.45 × qa by default, overridable in `context.json`). High finding counts alone do not drive priority — business criticality, attack surface, and release readiness do.
+- **Honest about missing data** — QA signals that cannot be collected (no coverage report registered, no defect tracker, no CI config) are flagged as `not-collected` with a reason. Missing dimensions make the composite `"unknown"` rather than silently substituting zero. The SDET report's Not-Collected Summary makes every gap visible.
 - **False positive management** — Theoretical vulnerabilities, mitigated patterns, and unreachable code paths are flagged separately — never silently removed, but not mixed with real findings.
 
 ### Pipeline steps
 
 | Phase | Step | What it produces |
 |-------|------|-----------------|
-| `/scan` | `scan_security` | Security signals: auth patterns, dependency risks, config issues, data sensitivity classifications |
+| `/scan` | `scan_security` | Security signals (SS1–SS4): auth patterns, dependency risks, config issues, data sensitivity classifications |
+| `/scan` | `scan_qa` | QA signals (QS1–QS4): test inventory, coverage signals, testability findings, environment & CI parsing. Missing inputs emit explicit `not-collected` markers |
 | `/discover` | `attach_security_context` | Per-capability security context: data sensitivity, auth, exposure, criticality, trust boundaries |
+| `/discover` | `attach_qa_context` | Per-capability QA context: coverage (unit/integration/e2e), automation status, testability rating, defect profile, environment coverage, test-strategy gaps |
 | `/assess` | `threat_model` | STRIDE threat model per capability: 6 categories × per-capability security context |
 | `/assess` | `vulnerability_detection` | Classified vulnerability catalog: confirmed / probable / potential, each mapped to a capability and code location |
 | `/assess` | `map_controls` | Control inventory mapped to threats; coverage gaps for CRITICAL/HIGH unmitigated threats |
-| `/assess` | `score_risks` | Composite risk scores (likelihood × impact × exposure), cross-capability systemic risks, compliance gaps |
-| `/generate` | `generate_security_contexts` | AI-ready context packages per capability, targeted remediation prompts, spec seeds for high-risk capabilities |
-| `/finish` | `security_report` | Executive security report, machine-readable risk map, threat catalog, domain model with security overlay |
+| `/assess` | `qa_risk_analysis` | Per-capability QA risk scores and gaps. Posture classified as release-ready / needs work / high-risk / unknown |
+| `/assess` | `score_risks` | Per-capability security composite; unified composite combining security + QA with drivers; cross-capability systemic risks; compliance gaps |
+| `/report` | `generate_sdet_report` | SDET report — coverage, automation, testability, defects, environments, CI gates, QA risk ranking, QA backlog, Not-Collected Summary. Always emitted |
+| `/generate` | `generate_security_contexts` | AI-ready context packages per capability, targeted security remediation prompts, spec seeds for high-risk capabilities |
+| `/generate` | `generate_qa_contexts` | Per-capability QA context packages, testability refactor prompts with file:line pointers, test-strategy spec seeds, coverage backlog seeds |
+| `/report` | `generate_security_report` | Security report, machine-readable risk map, threat catalog, domain model with security overlay (if `/assess` has run) |
 
 ### Key output: domain-model-secured.md
 
@@ -1522,6 +1583,18 @@ Security Assessment:
   Confirmed Vulns:  1 — VULN-003: Hardcoded API key at config/kyc.js:14
   Control Gaps:     2 — Rate limiting on registration endpoint missing
   Priority:         SHORT-TERM
+
+QA Assessment:
+  QA Score:         0.71 (#1 of 12)                          [posture: high-risk]
+  Coverage:         unit 34% · integration 8% · e2e 0%       [source: jacoco, HIGH confidence]
+  Automation:       regression partial · smoke manual · contract absent
+  Testability:      impeded (9 findings; 2 blocks)
+                    — static HttpClient in kyc.js:42 blocks unit test of KYC verify flow
+  Defect Profile:   4 open · 2 flaky tests · velocity HIGH (18 commits/30d)
+  Environments:     dev, staging · missing: pre-prod
+  Not-Collected:    flaky-test rate partial (CI history only last 14d)
+
+Unified Risk:       0.66                                      [drivers: PII + public exposure + missing integration tests]
 ```
 
 ### Security scope configuration
@@ -1536,6 +1609,35 @@ During `/init` (brownfield), the following is collected and saved to `answers.js
 | `risk_tolerance` | `medium` | `low`, `medium`, `high` |
 
 Compliance targets affect gap analysis: GDPR gaps check PII-handling capabilities for data minimization and audit logging; PCI-DSS gaps check financial capabilities for encryption and access control.
+
+### QA scope configuration
+
+`/init` also collects the QA scope, saved to `answers.json → qa_scope`:
+
+| Setting | Default | Purpose |
+|---------|---------|---------|
+| `coverage_targets.unit` | `0.70` | Unit coverage target; drives the coverage-gap dimension |
+| `coverage_targets.integration` | `0.40` | Integration coverage target |
+| `coverage_targets.e2e` | `0.20` | E2E coverage target |
+| `automation_targets.regression` | `0.80` | Expected regression automation |
+| `automation_targets.smoke` | `1.00` | Expected smoke automation |
+| `test_pyramid` | `standard` | `standard`, `inverted`, `trophy`, `custom`; report calls out deviations |
+| `environments` | `["dev", "staging", "prod"]` | Environment inventory used for parity checks |
+| `defect_tracker` | `none` | `jira`, `azure_devops`, `linear`, `none`; determines whether defect signals are collected |
+| `ci_system` | detected | `github_actions`, `jenkins`, `azure_pipelines`, `none` |
+
+The QA scope is informational — missing fields never block the pipeline. They surface as `not-collected` markers in the SDET report rather than gating it.
+
+### Risk scope configuration
+
+The unified composite weighting is overridable via `answers.json → risk_scope.weights`:
+
+| Setting | Default | Purpose |
+|---------|---------|---------|
+| `weights.security` | `0.55` | Weight of the security sub-score in the unified composite |
+| `weights.qa` | `0.45` | Weight of the QA sub-score in the unified composite |
+
+Raise the security weight when breach risk dominates release risk; raise the QA weight when release cadence and regression cost dominate.
 
 ---
 

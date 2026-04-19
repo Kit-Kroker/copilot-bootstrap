@@ -222,6 +222,70 @@ The categorization of entities and fields by the type of sensitive data they con
 
 ---
 
+## QA & Test Readiness
+
+**QA Context**
+The QA profile attached to each capability: test coverage (unit / integration / e2e) with source and confidence, automation status per test type, testability rating, defect profile, environment coverage, and flagged test-strategy gaps. Mirrors `security_context` in shape so the two overlays render side-by-side in reports.
+
+**QA Signal**
+Evidence extracted from the codebase, coverage reports, CI configs, and (when registered) defect-tracker and CI-history exports, relating to QA posture. Four categories: test inventory (QS1), coverage signals (QS2), testability signals (QS3), environment & CI signals (QS4).
+
+**Test Inventory**
+The enumerated, classified list of all tests in the codebase. Classified by level (unit, integration, contract, e2e, performance, manual) and mapped to target production code. Produced in QS1, consumed by D6a and the SDET report.
+
+**Test Pyramid**
+The target distribution of tests across levels, declared in `qa_scope.test_pyramid`. Standard pyramid weights unit > integration > e2e; trophy flips integration above unit; inverted puts e2e at the top (anti-pattern, but named so the report can call it out).
+
+**Coverage Signal**
+Per-file or per-package code coverage, sourced from a report (JaCoCo, Cobertura, Istanbul, coverlet) at HIGH confidence or computed as a proxy (tested-file presence) at LOW confidence. A capability's coverage is aggregated from these signals; missing data is represented as `"not-collected"`, not zero.
+
+**Proxy Coverage**
+A coverage estimate computed from test-file presence when no real coverage report is registered. Always flagged LOW confidence and labeled "proxy" in outputs so it cannot be mistaken for measured coverage.
+
+**Testability**
+The degree to which a capability's code can be tested in isolation and at low cost. Rated `good` / `impeded` / `blocked` based on QS3 findings inside the capability's files. Findings include hidden dependencies, direct instantiation of infrastructure, global state, missing seams, untestable constructs, and test hostility (ignored tests, swallowed assertions).
+
+**Testability Finding**
+A specific code pattern that makes testing harder, recorded with file:line, pattern category, and severity: `blocks` (tests impossible without refactor), `impedes` (tests costly or brittle), `smell` (localized concern).
+
+**Automation Status**
+Per-capability classification of which test types are automated: `full` / `partial` / `manual` / `none` / `not-applicable`. Scored separately for regression, smoke, contract, and performance tests.
+
+**Defect Profile**
+Per-capability defect and flakiness summary: open defects attributed to the capability (from defect tracker export), flaky-test rate over the capability's test files, and change velocity (commits/month) over the last 6 months. High velocity amplifies the risk impact of coverage gaps and testability issues.
+
+**Change Velocity**
+Normalized rate of commits to a capability's files over a rolling window. Untested code that rarely changes is tolerable; untested code being rewritten weekly is a release risk. Used as an amplifier in QA risk scoring.
+
+**Coverage Gap**
+The distance between a capability's measured coverage and the target defined in `qa_scope.coverage_targets`. Weighted by target depth — unit gaps count less than integration/e2e gaps for capabilities with high external exposure.
+
+**Environment Parity**
+The degree to which configuration is consistent across declared environments (dev, staging, pre-prod, prod). Divergent keys between prod and lower environments are parity issues. Surfaced per capability and aggregated in the SDET report.
+
+**CI Quality Gate**
+A test stage that is required on the default branch before merge: mandatory unit tests, integration tests, coverage thresholds, security scans. Recorded from CI config parsing in QS4.
+
+**QA Risk Score**
+Per-capability score with four dimensions: coverage_gap, testability, defect_density, change_velocity. Each is 0.0–1.0 or `null` when signals are not collected. Composite: `(coverage_gap × 0.35) + (testability × 0.30) + (defect_density × 0.20) + (change_velocity × 0.15)`. If any dimension is `null`, the composite is `"unknown"` — never silently substituted.
+
+**QA Posture**
+Classification derived from QA risk score and context: `release-ready` / `needs work` / `high-risk` / `unknown`. `unknown` is a first-class value indicating insufficient signals, not a failure to classify.
+
+**Unified Composite Risk**
+The per-capability combined security + QA risk score: `(security_composite × 0.55) + (qa_composite × 0.45)` when both are numeric. Weights are overridable in `context.json` under `risk_scope.weights`. When QA dimensions are `"not-collected"`, the unified composite is reported as `"partial"` with the security score and the drivers list states `"QA signals not collected"`.
+
+**Driver**
+A short phrase listed alongside each unified composite risk score that explains the top 1–3 reasons for the score (e.g., "public exposure + no integration tests", "high change velocity + blocked testability"). Drivers are what turn a number into an action item.
+
+**Not-Collected**
+A first-class value for QA signals that were unavailable (no coverage report, no defect tracker, no CI config). Flows through to the SDET report as an explicit gap rather than being omitted or replaced with a default. The Not-Collected Summary section of the SDET report enumerates all such gaps.
+
+**SDET Report**
+The audience-specific report generated by `/report` for SDETs, QA engineers, QA leads, test architects, and release managers. Always emitted after `/discover`. Covers test strategy snapshot, per-capability coverage map, automation matrix, testability hotspots, defect and flakiness profile, environment readiness, CI quality gates, QA risk ranking, unified risk view, per-capability test strategy recommendations, sprint-ready QA backlog, and a Not-Collected Summary.
+
+---
+
 ## Industry Comparison
 
 **Industry Blueprint**
@@ -269,10 +333,10 @@ The strategic positioning of each capability based on alignment and code quality
 An audience-specific report generated by `/report` for executives, product managers, business analysts, and engineering managers. Plain language throughout — no technical terms, no file paths, no code. Covers business capabilities with health signals, industry alignment summary, modernisation posture per capability, and proposed team ownership areas. Every section includes an inline source citation linking to the discovery artifact it draws from.
 
 **Architect Report**
-An audience-specific report generated by `/report` for solutions architects and enterprise architects. Uses DDD terminology, capability IDs, and actual metric values. Covers capability topology (cohesion/coupling/LOC), bounded context analysis, cross-context dependency table, decomposition options ranked by feasibility, orphan zone risk assessment, and — if `/assess` has run — a security risk overlay per capability.
+An audience-specific report generated by `/report` for solutions architects and enterprise architects. Uses DDD terminology, capability IDs, and actual metric values. Covers capability topology (cohesion/coupling/LOC), bounded context analysis, cross-context dependency table, decomposition options ranked by feasibility, orphan zone risk assessment, a QA risk overlay per capability, and — if `/assess` has run — a security risk overlay and unified risk map per capability.
 
 **Dev Report**
-An audience-specific report generated by `/report` for developers, tech leads, and engineering managers. Uses exact file paths, capability IDs, and line counts. Covers capability-to-code mapping, ownership assignments from bounded contexts, health dashboard for sprint planning, refactor targets with specific techniques and scope estimates, orphan hotspots with recommended actions, and — if `/assess` has run — confirmed vulnerabilities and critical control gaps with sprint-ready ticket items.
+An audience-specific report generated by `/report` for developers, tech leads, and engineering managers. Uses exact file paths, capability IDs, and line counts. Covers capability-to-code mapping, ownership assignments from bounded contexts, health dashboard for sprint planning, refactor targets with specific techniques and scope estimates, orphan hotspots with recommended actions, QA findings (testability blockers with file:line pointers, coverage gaps on highest-churn files, flaky tests to stabilise or retire), and — if `/assess` has run — confirmed vulnerabilities and critical control gaps with sprint-ready ticket items.
 
 **Security Report**
 An audience-specific report generated by `/report` for the security team and tech leads. Conditionally generated — only if `/assess` has completed. Covers risk-ranked CRITICAL/HIGH findings with file:line references, mitigation priorities (Immediate / Short-term / Medium-term), compliance posture per target standard, systemic cross-capability risks, and the capability risk map. Also produces `security-risk-map.json`, `threat-catalog.json`, and `domain-model-secured.md`.
@@ -352,3 +416,10 @@ The convention where every skill checks whether its output file already exists b
 | ORM | Object-Relational Mapping |
 | DBA | Database Administrator |
 | CRUD | Create, Read, Update, Delete |
+| QA | Quality Assurance |
+| SDET | Software Development Engineer in Test |
+| E2E | End-to-End (test level) |
+| CI | Continuous Integration |
+| SUT | System Under Test |
+| DI | Dependency Injection |
+| DoD | Definition of Done |
