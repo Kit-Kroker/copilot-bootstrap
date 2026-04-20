@@ -1067,6 +1067,23 @@ The primary interface for `/generate` is Copilot Chat — use the `/generate` sl
 
 ---
 
+### `render-html`
+
+Render the markdown report suite in `docs/` to styled HTML for sharing with stakeholders who don't read markdown in a repo viewer.
+
+```sh
+copilot-bootstrap render-html                 # walk docs/, emit .html next to each .md
+copilot-bootstrap render-html docs/dev        # scope to a subtree
+copilot-bootstrap render-html --out site      # mirror into site/ (for static hosting)
+copilot-bootstrap render-html --clean         # delete every .html that has a matching .md
+```
+
+Uses pandoc (GFM parser, so tables and task lists render) with an embedded light/dark stylesheet. Relative `.md` cross-links are rewritten to `.html` so the generated pages remain navigable; absolute URLs and anchor-only links are left untouched.
+
+**Requires:** pandoc (`apt install pandoc` / `brew install pandoc`).
+
+---
+
 ### `sync`
 
 Overwrite `.github/` and `docs/workflow/` with the latest package version. Never touches `.project/state/`, `project.json`, or generated documents.

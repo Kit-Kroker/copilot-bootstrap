@@ -22,6 +22,7 @@ COMMANDS = {
     "discovery-status": "discovery-status.sh",
     "generate": "generate.sh",
     "generate-status": "generate-status.sh",
+    "render-html": "render-html.sh",
 }
 
 

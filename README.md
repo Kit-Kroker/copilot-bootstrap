@@ -263,6 +263,8 @@ Produces four reports from discovery outputs (all always emitted after `/discove
 If `/assess` has already been run, a fifth report is also generated:
 - `docs/security/security-report.md` — risk-ranked findings, compliance posture, remediation priorities
 
+To share the report suite with stakeholders who don't read markdown, run `copilot-bootstrap render-html` — it walks `docs/` and writes a styled `.html` next to each `.md`, rewriting cross-report links so the generated pages stay navigable.
+
 Then run the security + QA assessment:
 
 ```
@@ -310,6 +312,9 @@ copilot-bootstrap discovery-status  # show discovery pipeline progress
 
 # Generation (both approaches — primary interface is /generate in Copilot Chat)
 copilot-bootstrap generate-status   # show generator progress
+
+# Reports
+copilot-bootstrap render-html       # render markdown reports in docs/ to styled HTML
 
 # Navigation (manual / legacy)
 copilot-bootstrap sync              # update framework files to latest version
